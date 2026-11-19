@@ -2,9 +2,9 @@
 #define PCMS_BACKENDS_OMEGA_H_UNIFORM_GRID_BINARY_FIELD_HPP
 
 #include "pcms/backends/uniform_grid/layout.hpp"
-#include "pcms/field/simple_field_data.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
 #include "pcms/field/function_spaces.hpp"
-#include "pcms/backends/uniform_grid/geometry.hpp"
+#include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/backends/omega_h/point_search.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -41,7 +41,8 @@ std::pair<std::shared_ptr<const uniform_grid::UniformGridFieldLayout<Dim>>,
 CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 {
   auto function_space = CreateLagrangeSpace(
-    uniform_grid::CreateGeometry(grid, csys::Cartesian::Deferred()), 1, 1);
+    uniform_grid::CreateGeometry(grid, pcms::detail::DeferredCartesian()), 1,
+    1);
   auto layout =
     std::dynamic_pointer_cast<const uniform_grid::UniformGridFieldLayout<Dim>>(
       function_space->GetLayout());

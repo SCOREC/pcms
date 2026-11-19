@@ -17,7 +17,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h/adj_search.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 #endif
@@ -184,14 +184,14 @@ inline std::shared_ptr<const FunctionSpace> MakeP1Space(
   Omega_h::Mesh& mesh, const std::string& global_id_name = "global")
 {
   return MakeP1Space(omega_h::CreateGeometry(
-    mesh, csys::Cartesian::Deferred(),
+    mesh, pcms::detail::DeferredCartesian(),
     omega_h::OmegaHGeometryOptions{.global_id_name = global_id_name}));
 }
 
 inline std::shared_ptr<const FunctionSpace> MakeP0Space(Omega_h::Mesh& mesh)
 {
   return MakeP0Space(
-    omega_h::CreateGeometry(mesh, csys::Cartesian::Deferred()));
+    omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian()));
 }
 
 inline bool AreArraysEqualUnordered(
@@ -670,7 +670,7 @@ inline std::shared_ptr<omega_h::OmegaHGeometry> MakeOmegaHGeometry(
   Omega_h::Mesh& mesh)
 {
   return std::make_shared<omega_h::OmegaHGeometry>(
-    mesh, pcms::csys::Cartesian::Create(mesh.dim()));
+    mesh, pcms::csys::CreateCartesian(mesh.dim()));
 }
 
 // The search record of a found point of an Omega_h binding, on the host: the

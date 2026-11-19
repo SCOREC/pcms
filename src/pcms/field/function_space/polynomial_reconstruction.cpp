@@ -1,7 +1,7 @@
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/point_cloud/evaluator.hpp"
-#include "pcms/backends/point_cloud/geometry.hpp"
-#include "pcms/field/simple_field_data.hpp"
+#include "pcms/backends/point_cloud/point_cloud_geometry.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/common.hpp"
 
@@ -33,7 +33,7 @@ std::shared_ptr<const FunctionSpace> CreatePolynomialReconstructionSpace(
   return std::make_shared<FunctionSpace>(
     layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return apply_to_type(t, [&](auto tag) -> FieldDataVariant {
+      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
         using T = typename decltype(tag)::type;
         if constexpr (!std::is_same_v<T, double>) {
           throw pcms_error("CreatePolynomialReconstructionSpace: only double "
@@ -44,7 +44,7 @@ std::shared_ptr<const FunctionSpace> CreatePolynomialReconstructionSpace(
         }
       });
     },
-    std::move(eval_factory));
+    eval_factory, eval_factory->GetGeometry());
 }
 
 } // namespace pcms

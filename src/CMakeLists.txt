@@ -34,6 +34,7 @@ if(PCMS_ENABLE_COUPLER)
 endif()
 # backend adapters; each adds its files to the core targets above
 add_subdirectory(pcms/backends)
+add_subdirectory(pcms/eqdsk)
 
 # Top-level and generated headers. They are found through pcms::utility's
 # include directories (source and binary src/ directories).

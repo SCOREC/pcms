@@ -18,8 +18,15 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/differential_operator.hpp
         ../../../include/pcms/field/gradient_source.hpp
         ../../../include/pcms/field/detail/transformed_point_evaluator.hpp
-        ../../../include/pcms/field/simple_field_data.hpp
+        ../../../include/pcms/field/detail/field_factory.hpp
+        ../../../include/pcms/field/detail/field_layout.hpp
+        ../../../include/pcms/field/detail/gradient_source.hpp
+        ../../../include/pcms/field/detail/point_evaluator.hpp
+        ../../../include/pcms/field/detail/point_evaluator_factory.hpp
+        ../../../include/pcms/field/detail/value_view.hpp
+        ../../../include/pcms/field/detail/simple_field_data.hpp
         ../../../include/pcms/field/function_spaces.hpp
+        ../../../include/pcms/field/mls_options.hpp
 )
 set(PCMS_FIELD_SOURCES
         field_layout.cpp
@@ -32,14 +39,8 @@ set(PCMS_FIELD_SOURCES
         layout/empty.cpp
         function_space/lagrange.cpp
         function_space/spline.cpp
-        evaluator/mls_interpolation.cpp
 )
 list(APPEND PCMS_FIELD_HEADERS
-        ../../../include/pcms/field/eqdsk_field.hpp
-                evaluator/mls_interpolation_impl.hpp
-        evaluator/interpolator_aliases.hpp
-        evaluator/interpolator_view_utils.hpp
-        evaluator/interpolator_logger.hpp
 )
 
 add_library(pcms_field ${PCMS_FIELD_SOURCES})

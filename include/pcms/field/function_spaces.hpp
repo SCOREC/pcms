@@ -10,7 +10,7 @@
 #include "pcms/field/field_layout.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/geometry/geometry.hpp"
-#include "pcms/localization/mls_options.hpp"
+#include "pcms/field/mls_options.hpp"
 #include "pcms/utility/coordinate_system.hpp"
 
 #include <memory>

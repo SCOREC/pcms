@@ -8,8 +8,8 @@
 #include <pcms/configuration.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
-#include <pcms/backends/omega_h/geometry.hpp>
-#include <pcms/backends/point_cloud/geometry.hpp>
+#include <pcms/backends/omega_h/omega_h_geometry.hpp>
+#include <pcms/backends/point_cloud/point_cloud_geometry.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/entity_layout.hpp>
@@ -63,7 +63,7 @@ std::shared_ptr<const pcms::Geometry> MakeGeometry(
   Omega_h::Mesh& mesh, pcms::SearchOptions options = {})
 {
   return pcms::CreateGeometry(
-    mesh, pcms::csys::Cartesian::Create(2),
+    mesh, pcms::csys::CreateCartesian(2),
     pcms::omega_h::OmegaHGeometryOptions{.search = options});
 }
 
@@ -116,7 +116,7 @@ void CheckJacobianRows(Omega_h::Mesh& mesh,
 
 std::shared_ptr<const pcms::Geometry> MakeMeshGeometry(Omega_h::Mesh& mesh)
 {
-  return pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(mesh.dim()));
+  return pcms::CreateGeometry(mesh, pcms::csys::CreateCartesian(mesh.dim()));
 }
 
 /// What a bind of an Omega_h geometry found, on the host.
@@ -246,10 +246,9 @@ TEST_CASE("Spaces on a geometry share it")
   // is on another geometry: owner hints name geometries by identity
   auto other = MakeSpace(MakeGeometry(mesh), 1, 1);
   REQUIRE(other->GetLayout()->GetGeometry() != geometry);
-  // the factory of a kind returns the kind's type, which a layout takes
-  // directly
+  // a layout takes the geometry the factory returns
   const pcms::OmegaHEntityLayout direct(
-    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(2)), pcms::Vertex,
+    pcms::CreateGeometry(mesh, pcms::csys::CreateCartesian(2)), pcms::Vertex,
     1);
   REQUIRE(direct.GetGeometry() != nullptr);
   // a layout needs its geometry
@@ -306,7 +305,7 @@ TEST_CASE("A layout is named by the options of its space")
   grid.edge_length = {1.0, 1.0};
   grid.divisions = {2, 2};
   REQUIRE(CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
-                                grid, pcms::csys::Cartesian::Create(2)),
+                                grid, pcms::csys::CreateCartesian(2)),
                               1, 1, LagrangeOptions{.layout_name = "grid"})
             ->GetLayout()
             ->GetName() == "grid");
@@ -314,7 +313,7 @@ TEST_CASE("A layout is named by the options of its space")
   REQUIRE(pcms::OmegaHLagrangeLayout(pcms::test::MakeOmegaHGeometry(mesh), 1, 1,
                                      "direct")
             .GetName() == "direct");
-  REQUIRE(pcms::EmptyFieldLayout(pcms::csys::Cartesian::Create(2), 1, "empty")
+  REQUIRE(pcms::EmptyFieldLayout(pcms::csys::CreateCartesian(2), 1, "empty")
             .GetName() == "empty");
 }
 
@@ -435,8 +434,7 @@ TEST_CASE("Differential gives the element measure")
   SECTION("tetrahedra")
   {
     auto mesh = pcms::test::BuildUnitCube(lib, 2);
-    auto geometry =
-      pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(3));
+    auto geometry = pcms::CreateGeometry(mesh, pcms::csys::CreateCartesian(3));
     const auto differential =
       geometry->Differential(*pcms::test::Bind(*geometry, {0.5, 0.5, 0.5}));
     const auto det = Kokkos::create_mirror_view_and_copy(
@@ -542,7 +540,7 @@ TEST_CASE("Neighbourhood returns vertex supports")
       "max_supports must be 0 or 3 * min_supports (18), got 12"));
   // the query points must be in the geometry's coordinate system
   auto cylindrical = pcms::test::CreateDeviceCoordinateView(
-    pcms::test::StandardEvalCoords2D(), pcms::csys::CylindricalRZ::Create());
+    pcms::test::StandardEvalCoords2D(), pcms::csys::CreateCylindricalRZ());
   REQUIRE_THROWS_WITH(
     geometry->Neighbourhood(cylindrical.coordinate_view, 0, {}),
     ContainsSubstring("is not the geometry's coordinate system"));
@@ -552,7 +550,7 @@ TEST_CASE("PointCloudGeometry::Neighbourhood takes the search of its sites")
 {
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildSquareMesh(lib, 8);
-  const auto system = pcms::csys::Cartesian::Create(2);
+  const auto system = pcms::csys::CreateCartesian(2);
   const auto mesh_geometry = pcms::test::MakeOmegaHGeometry(mesh);
   auto vertices =
     std::make_shared<pcms::OmegaHEntityLayout>(mesh_geometry, pcms::Vertex, 1);
@@ -669,7 +667,7 @@ TEST_CASE("Points the adjacency search cannot start from are missing")
     &mesh, OMEGA_H_SIMPLEX, 2, Omega_h::LOs({0, 1, 2, 3, 4, 5}),
     Omega_h::Reals({0, 0, 1, 0, 0, 1, 9, 9, 10, 9, 9, 10}));
   pcms::test::AddDefaultClassification(mesh);
-  const auto system = pcms::csys::Cartesian::Create(2);
+  const auto system = pcms::csys::CreateCartesian(2);
   auto vertices = std::make_shared<pcms::OmegaHEntityLayout>(
     pcms::test::MakeOmegaHGeometry(mesh), pcms::Vertex, 1);
   auto space = pcms::CreatePolynomialReconstructionSpace(
@@ -703,9 +701,9 @@ TEST_CASE("An empty bind evaluates to nothing")
   grid.divisions = {2, 2};
   std::vector<std::shared_ptr<const FunctionSpace>> spaces{
     MakeSpace(geometry, 1, 1),
-    CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
-                          grid, pcms::csys::Cartesian::Create(2)),
-                        1, 1)};
+    CreateLagrangeSpace(
+      pcms::uniform_grid::CreateGeometry(grid, pcms::csys::CreateCartesian(2)),
+      1, 1)};
 #ifdef PCMS_ENABLE_MESHFIELDS
   spaces.push_back(CreateLagrangeSpace(
     geometry, 1, 1, LagrangeOptions{.backend = LagrangeBackend::MeshFields}));
@@ -751,7 +749,7 @@ TEST_CASE("DOFHolderOwners gives the entity of each DOF holder")
   Kokkos::deep_copy(Kokkos::View<Omega_h::I8*>(mask.data(), 1), 0);
   const auto ghosted = CreateLagrangeSpace(
     pcms::CreateGeometry(
-      mesh, pcms::csys::Cartesian::Create(2),
+      mesh, pcms::csys::CreateCartesian(2),
       pcms::omega_h::OmegaHGeometryOptions{.owned_mask = Omega_h::Read(mask)}),
     1, 1, LagrangeOptions{.backend = LagrangeBackend::OmegaH});
   REQUIRE(ghosted->GetLayout()->HasGhosts());
@@ -759,10 +757,10 @@ TEST_CASE("DOFHolderOwners gives the entity of each DOF holder")
   // without a geometry there are no owners to name: a bare point cloud
   // (whose DOF holders are not entities of a mesh) and an empty layout
   const pcms::PointCloudLayout cloud(2, Kokkos::View<Real**>("sites", 3, 2),
-                                     pcms::csys::Cartesian::Create(2));
+                                     pcms::csys::CreateCartesian(2));
   REQUIRE(cloud.GetGeometry() == nullptr);
   REQUIRE(pcms::DOFHolderOwners(cloud).entities.extent(0) == 0);
-  const pcms::EmptyFieldLayout none(pcms::csys::Cartesian::Create(2));
+  const pcms::EmptyFieldLayout none(pcms::csys::CreateCartesian(2));
   REQUIRE(none.GetGeometry() == nullptr);
   REQUIRE(pcms::DOFHolderOwners(none).entities.extent(0) == 0);
   // the hint names the geometry of the layout, so a layout on another

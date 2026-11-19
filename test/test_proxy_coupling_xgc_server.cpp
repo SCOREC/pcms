@@ -10,7 +10,7 @@
 #include "pcms/backends/xgc/layout.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
@@ -182,7 +182,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
     // field registration, so each XGC plane is registered as a separate layout
     // communicator even though the layouts are geometrically identical.
     auto geometry = pcms::CreateGeometry(
-      mesh, pcms::csys::Cartesian::Deferred(),
+      mesh, pcms::detail::DeferredCartesian(),
       pcms::omega_h::OmegaHGeometryOptions{.global_id_name = numbering});
     auto factory = pcms::CreateLagrangeSpace(
       geometry, 1, 1,

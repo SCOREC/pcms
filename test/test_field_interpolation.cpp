@@ -32,15 +32,15 @@ TEST_CASE("interpolate linear 2d omega_h_field")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(geometry, 1, 1);
   auto field = factory->CreateFunction<Real>();
   auto interpolated = factory->CreateFunction<Real>();
   pcms::test::SetField(
     field, OMEGA_H_LAMBDA(Real x, Real y) { return -0.3 * x + 0.5 * y; });
 
-  pcms::Interpolator<Real> interp(*factory, *factory);
-  interp.Apply(field, interpolated);
+  const auto interp = pcms::CreateInterpolator<Real>(factory, factory);
+  interp->Apply(field, interpolated);
   auto interpolated_dof = pcms::detail::FlattenToRank1View(
     interpolated.GetDOFHolderDataHost().GetValues());
   auto original_dof =
@@ -61,7 +61,7 @@ TEST_CASE("interpolate quadratic 2d meshfields_field")
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
   auto geometry =
-    pcms::omega_h::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory2 = pcms::CreateLagrangeSpace(
     geometry, 2, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
@@ -71,8 +71,8 @@ TEST_CASE("interpolate quadratic 2d meshfields_field")
     field,
     OMEGA_H_LAMBDA(Real x, Real y) { return interpolation_linear_f(x, y); });
 
-  pcms::Interpolator<Real> interp(*factory2, *factory2);
-  interp.Apply(field, interpolated);
+  const auto interp = pcms::CreateInterpolator<Real>(factory2, factory2);
+  interp->Apply(field, interpolated);
 
   auto interpolated_dof = pcms::detail::FlattenToRank1View(
     interpolated.GetDOFHolderDataHost().GetValues());
@@ -96,7 +96,7 @@ TEST_CASE("interpolate quadratic 2d omega_h_field throws")
 
   REQUIRE_THROWS_AS(
     pcms::CreateLagrangeSpace(
-      pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred()), 2, 1,
+      pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian()), 2, 1,
       pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH}),
     pcms::pcms_error);
 }
@@ -111,7 +111,7 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 100, 100, 0, false);
-  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto factory = pcms::CreateLagrangeSpace(geometry, 1, 1);
 
   auto source = factory->CreateFunction<Real>();
@@ -120,12 +120,12 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   // Construct Interpolator once — localization happens here.
   // Because source and target share the same layout (same factory),
   // the target DOF holder coordinates are the source mesh node coordinates.
-  pcms::Interpolator<pcms::Real> interp(*factory, *factory);
+  const auto interp = pcms::CreateInterpolator<pcms::Real>(factory, factory);
 
   // First application: linear function f(x,y) = -0.3*x + 0.5*y
   pcms::test::SetField(
     source, OMEGA_H_LAMBDA(Real x, Real y) { return -0.3 * x + 0.5 * y; });
-  interp.Apply(source, target);
+  interp->Apply(source, target);
 
   {
     auto src_dof = pcms::detail::FlattenToRank1View(
@@ -143,7 +143,7 @@ TEST_CASE("Interpolator: construct once, apply twice with different data")
   // Apply is called without re-constructing the interpolator (no
   // re-localization).
   pcms::test::SetField(source, OMEGA_H_LAMBDA(Real, Real) { return 7.0; });
-  interp.Apply(source, target);
+  interp->Apply(source, target);
 
   {
     auto tgt_dof = pcms::detail::FlattenToRank1View(

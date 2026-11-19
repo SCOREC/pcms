@@ -4,8 +4,8 @@
 #include "pcms/field/field.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/field_data.hpp"
-#include "pcms/localization/mls_options.hpp"
-#include "pcms/field/evaluator/mls_interpolation.hpp"
+#include "pcms/field/mls_options.hpp"
+#include "pcms/backends/point_cloud/mls_interpolation.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 

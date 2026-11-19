@@ -113,7 +113,7 @@ TEST_CASE("QueryPoints and the one-shot evaluation apply the operator")
   grid.edge_length = {2.0, 2.0};
   grid.divisions = {16, 16};
   auto space = pcms::CreateSplineSpace(
-    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::Cartesian::Create(2)));
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::CreateCartesian(2)));
   auto f = space->CreateFunction<Real>("f");
   pcms::test::SetField(
     f, OMEGA_H_LAMBDA(Real x, Real y) { return Cubic(x, y); });

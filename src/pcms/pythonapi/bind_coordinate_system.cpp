@@ -44,11 +44,9 @@ PyCoordinateView MakeCoordinateView(
 
 void bind_coordinate_system_module(py::module& m)
 {
-  // Concrete systems are registered as subclasses so Python sees the dynamic
-  // type of any system pcms returns (isinstance(cs, pcms.csys.Cartesian)).
   py::class_<Immutable<CoordinateSystem>>(
     m, "CoordinateSystem",
-    "What coordinate numbers mean. Create one through the classes in "
+    "What coordinate numbers mean. Create one with the functions in "
     "pcms.csys.")
     .def(
       "kind",
@@ -87,40 +85,24 @@ void bind_coordinate_system_module(py::module& m)
       return Repr(*self.ptr);
     });
 
-  auto csys = m.def_submodule("csys", "Concrete coordinate systems");
-  py::class_<CartesianHandle, Immutable<CoordinateSystem>>(csys, "Cartesian")
-    .def_static(
-      "create",
-      [](int dim) { return CartesianHandle{{csys::Cartesian::Create(dim)}}; },
-      py::arg("dim"), "The Cartesian coordinate system of dimension 1..3");
-  py::class_<CylindricalRThetaZHandle, Immutable<CoordinateSystem>>(
-    csys, "CylindricalRThetaZ")
-    .def_static(
-      "create",
-      []() {
-        return CylindricalRThetaZHandle{{csys::CylindricalRThetaZ::Create()}};
-      },
-      "Cylindrical (r, theta, z) with theta = atan2(y, x); dimension 3");
-  py::class_<CylindricalRZHandle, Immutable<CoordinateSystem>>(csys,
-                                                               "CylindricalRZ")
-    .def_static(
-      "create",
-      []() { return CylindricalRZHandle{{csys::CylindricalRZ::Create()}}; },
-      "(R, Z) poloidal section; dimension 2");
+  auto csys = m.def_submodule("csys", "Coordinate systems");
+  csys.def(
+    "create_cartesian",
+    [](int dim) {
+      return Immutable<CoordinateSystem>{csys::CreateCartesian(dim)};
+    },
+    py::arg("dim"), "The Cartesian coordinate system of dimension 1..3");
+  csys.def(
+    "create_cylindrical_r_theta_z",
+    []() {
+      return Immutable<CoordinateSystem>{csys::CreateCylindricalRThetaZ()};
+    },
+    "Cylindrical (r, theta, z) with theta = atan2(y, x); dimension 3");
+  csys.def(
+    "create_cylindrical_rz",
+    []() { return Immutable<CoordinateSystem>{csys::CreateCylindricalRZ()}; },
+    "(R, Z) poloidal section; dimension 2");
 
-  m.def(
-    "same_coordinate_system",
-    [](const Immutable<CoordinateSystem>& a,
-       const Immutable<CoordinateSystem>& b) {
-      return pcms::detail::SameCoordinateSystem(a.ptr, b.ptr);
-    },
-    py::arg("a"), py::arg("b"));
-  m.def(
-    "has_identity_metric",
-    [](const Immutable<CoordinateSystem>& system) {
-      return pcms::detail::HasIdentityMetric(*system.ptr);
-    },
-    py::arg("system"));
   py::class_<PyCoordinateView>(m, "CoordinateView",
                                "Coordinates tagged with their coordinate "
                                "system")

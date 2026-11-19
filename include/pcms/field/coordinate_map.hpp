@@ -103,47 +103,24 @@ private:
   std::shared_ptr<const CoordinateSystem> target_;
 };
 
-// Maps points Cartesian -> cylindrical, so values run the other way: a field
-// stored in cylindrical components is re-expressed in Cartesian ones.
-class CartesianToCylindrical final : public CoordinateMap
-{
-public:
-  CartesianToCylindrical();
+/// Map from Cartesian (x, y, z) to cylindrical (R, theta, Z) points, so values
+/// run the other way: a field stored in cylindrical components is re-expressed
+/// in Cartesian ones.
+[[nodiscard]] std::shared_ptr<const CoordinateMap>
+CreateCartesianToCylindrical();
 
-protected:
-  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
-    const CoordinateView<DeviceMemorySpace>& query_points) const override;
-};
+/// Map from cylindrical (R, theta, Z) to Cartesian (x, y, z) points.
+[[nodiscard]] std::shared_ptr<const CoordinateMap>
+CreateCylindricalToCartesian();
 
-class CylindricalToCartesian final : public CoordinateMap
-{
-public:
-  CylindricalToCartesian();
-
-protected:
-  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
-    const CoordinateView<DeviceMemorySpace>& query_points) const override;
-};
-
-// Places points of a poloidal (R, Z) plane at a fixed toroidal angle:
-// (R, Z) -> (R, theta0, Z). This lets a 2D CylindricalRZ target query a 3D
-// CylindricalRThetaZ source: pass it as the map of the source geometry's Bind.
-//
-// Only scalar values (including multi-component scalars) are currently
-// supported.
-class PoloidalPlaneEmbedding final : public CoordinateMap
-{
-public:
-  /// @param theta0 toroidal angle of the plane, in radians
-  explicit PoloidalPlaneEmbedding(Real theta0);
-
-protected:
-  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
-    const CoordinateView<DeviceMemorySpace>& query_points) const override;
-
-private:
-  Real theta0_;
-};
+/// Places points of a poloidal (R, Z) plane at a fixed toroidal angle:
+/// (R, Z) -> (R, theta0, Z). This lets a 2D cylindrical (R, Z) target query a
+/// 3D cylindrical (R, theta, Z) source: pass it as the map of the source
+/// geometry's Bind. Only scalar values (including multi-component scalars) are
+/// currently supported.
+/// @param theta0 toroidal angle of the plane, in radians
+[[nodiscard]] std::shared_ptr<const CoordinateMap> CreatePoloidalPlaneEmbedding(
+  Real theta0);
 
 } // namespace pcms
 

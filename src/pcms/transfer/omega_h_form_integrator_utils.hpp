@@ -2,7 +2,7 @@
 #define PCMS_TRANSFER_OMEGA_H_FORM_INTEGRATOR_UTILS_HPP
 
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/geometry/geometry.hpp"
@@ -57,8 +57,8 @@ inline OmegaHScalarSpace ResolveOmegaHScalarSpace(const FunctionSpace& space,
   if (mesh.dim() != 2 && mesh.dim() != 3) {
     throw pcms_error(prefix + "mesh must be 2D or 3D");
   }
-  if (!pcms::detail::SameCoordinateSystem(
-        space.GetCoordinateSystem(), csys::Cartesian::Create(mesh.dim()))) {
+  if (!pcms::detail::SameCoordinateSystem(space.GetCoordinateSystem(),
+                                          csys::CreateCartesian(mesh.dim()))) {
     throw pcms_error(prefix +
                      "space must use the Cartesian coordinate system of its "
                      "mesh dimension; map other systems explicitly");

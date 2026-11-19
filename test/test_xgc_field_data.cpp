@@ -19,9 +19,9 @@ pcms::xgc::ReverseClassificationVertex create_dummy_rc(int size)
   pcms::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
     if (i % 4 == 0) {
-      rc.Insert({0, 0}, i);
+      pcms::xgc::detail::ReverseClassificationAccess::Insert(rc, {0, 0}, i);
     } else {
-      rc.Insert({0, 1}, i);
+      pcms::xgc::detail::ReverseClassificationAccess::Insert(rc, {0, 1}, i);
     }
   }
   return rc;

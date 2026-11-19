@@ -160,7 +160,7 @@ omega_h_field.set_dof_holder_data(omega_h_data)
 
 #### Option B: Use Existing Element/Face Field from Mesh Tags
 
-Fields data are saved as tags on mesh entities (e.g., vertices, edges, faces, elements). You can retrieve these fields and convert them to vertex-based fields for interpolation.
+Fields data are saved as tags on mesh entities (e.g., vertices, edges, faces, elements). An element field is a P0 field: one value per element. Read it into a Lagrange order-0 space and interpolate it from there.
 
 ```python
 # Get field from mesh tag (e.g., element-centered field).
@@ -169,15 +169,12 @@ tag_index = 0  # Index of the tag to use
 face_tag = mesh.get_tag(face_dim, tag_index)  # Get tag by index
 face_field = mesh.get_tag(face_dim, face_tag.name())
 
-# Convert element field to vertex field using averaging
-vertex_field = pcms.omega_h.map_entity_field_to_vertices_average(mesh, face_field, face_dim)
-
-# Create vertex-based field and set data
+# A P0 (one value per element) space on the mesh, and the field on it
 geometry = pcms.omega_h.create_geometry(mesh)
 omega_h_factory = pcms.create_lagrange_space(
-    geometry, 1, 1)
+    geometry, 0, 1)
 omega_h_field = omega_h_factory.create_function()
-omega_h_field.set_dof_holder_data(vertex_field)
+omega_h_field.set_dof_holder_data(face_field)
 
 ```
 
@@ -207,7 +204,7 @@ Interpolate field values from the unstructured mesh to the structured uniform gr
 
 ```python
 # Transfer field from Omega_h mesh to uniform grid using two FunctionSpaces
-interp = pcms.Interpolator(omega_h_factory, ug_factory)
+interp = pcms.create_interpolator(omega_h_factory, ug_factory)
 interp.apply(omega_h_field, ug_field)
 ```
 
@@ -257,8 +254,8 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 `get_dof_holder_data`).
 
 ### Coordinate Systems and Value Bases
-- `csys.Cartesian.create(dim)` - Cartesian system. Coordinate system arguments default to `None`, meaning Cartesian in the dimension of the mesh, grid or coordinates they are used with
-- `csys.CylindricalRThetaZ.create()`, `csys.CylindricalRZ.create()` - cylindrical systems
+- `csys.create_cartesian(dim)` - Cartesian system. Coordinate system arguments default to `None`, meaning Cartesian in the dimension of the mesh, grid or coordinates they are used with
+- `csys.create_cylindrical_r_theta_z()`, `csys.create_cylindrical_rz()` - cylindrical systems
 - `CoordinateView(system, coords)`, `CoordinateView(coords)` - coordinates `(num_points, dim)` tagged with their system (Cartesian when omitted); the array is copied
 - `view.get_coordinate_system()`, `view.get_values()` - the system and a read-only coordinate array
 - `ValueBasis(system, scaling, variance)` - the basis a value's components are in; `ValueBasis()` is the scalar basis
@@ -295,19 +292,16 @@ snake_case form of the C++ method (`GetDOFHolderData` is
 - `factory.supports(op)` - Whether `create_point_evaluator` accepts the `DifferentialOperator` `op`
 - `gradient(source)`, `divergence(source)`, `curl(source)` - A source whose evaluators write the gradient (divergence, curl) of the field they are given
 - `evaluator.evaluate(field, output)` - Evaluate into a `ValueView` tagged `evaluator.output_basis(field.get_data().get_value_basis())` (a plain array for scalar fields, of shape `(num_points,)` when the output has one component); the output array must be writeable, C-contiguous float64
-- `Interpolator(source, target_space)` - Create an interpolator from a `PointEvaluatorFactory` (cached localization)
-- `Interpolator(source, target_space, bound)` - Create an interpolator that reuses a BoundPoints, e.g. to interpolate a field and `gradient(source)` over one localization
-- `operator.apply(source_field, target_field)` - Apply any `TransferOperator` (`Interpolator`, `Copy`, projections)
-- `Copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces
-- `omega_h.map_entity_field_to_vertices_average(mesh, field_data, entity_dim)` - Convert element/face field to vertex field by averaging
-- `omega_h.map_entity_field_to_vertices_mls(mesh, field_data, entity_dim, interp_degree=1)` - The same with moving least squares
-- `omega_h.compute_entity_centroids(mesh, entity_dim)` - Centroids of the faces/elements, shape `(n_entities, dim)`
+- `create_interpolator(source, target_space)` - Create an interpolator from a `PointEvaluatorFactory` (cached localization)
+- `create_interpolator(source, target_space, bound)` - Create an interpolator that reuses a BoundPoints, e.g. to interpolate a field and `gradient(source)` over one localization
+- `operator.apply(source_field, target_field)` - Apply any `TransferOperator` (interpolators, copies, projections)
+- `create_copy(source_space, target_space)` - Create a copy operator for compatible FunctionSpaces
 
 ### Coordinate Transformations
-- `CartesianToCylindrical()`, `CylindricalToCartesian()` - `CoordinateMap`s; points map source to target, values are re-expressed the other way
+- `create_cartesian_to_cylindrical()`, `create_cylindrical_to_cartesian()` - `CoordinateMap`s; points map source to target, values are re-expressed the other way
 - `bound = coordinate_map.bind(coordinate_view)` - per-point work for points in the map's source system
 - `bound.mapped_points()`, `bound.output_basis(basis)`, `bound.transform_values(value_view)` - mapped points, and in-place re-expression of values
-- `geometry.bind(coordinate_view, policy, map)` / `geometry.bind(space, policy, map)` - bind points given in another coordinate system: `map` takes them to `geometry.get_coordinate_system()`, the points are located at their images, and evaluators created from the result re-express their values through the bound map; pass the result to `Interpolator(source, target_space, bound)` to transfer across coordinate systems
+- `geometry.bind(coordinate_view, policy, map)` / `geometry.bind(space, policy, map)` - bind points given in another coordinate system: `map` takes them to `geometry.get_coordinate_system()`, the points are located at their images, and evaluators created from the result re-express their values through the bound map; pass the result to `create_interpolator(source, target_space, bound)` to transfer across coordinate systems
 
 ### Out-of-Bounds Modes
 - `OutOfBoundsMode.ERROR` - Raise error when points are outside mesh

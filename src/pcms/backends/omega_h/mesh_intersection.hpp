@@ -2,7 +2,7 @@
 #define PCMS_BACKENDS_OMEGA_H_MESH_INTERSECTION_HPP
 
 #include <pcms/configuration.hpp>
-#include <pcms/backends/omega_h/geometry.hpp>
+#include <pcms/backends/omega_h/omega_h_geometry.hpp>
 #include <pcms/backends/omega_h/queue_visited.hpp>
 #include <Omega_h_fail.hpp>
 #include <Omega_h_int_scan.hpp>

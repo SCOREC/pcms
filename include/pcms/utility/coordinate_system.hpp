@@ -24,30 +24,8 @@ public:
   virtual ~CoordinateSystem() = default;
 };
 
-namespace detail
-{
-
-[[nodiscard]] inline bool SameCoordinateSystem(
-  const std::shared_ptr<const CoordinateSystem>& a,
-  const std::shared_ptr<const CoordinateSystem>& b) noexcept
-{
-  if (a == nullptr || b == nullptr) {
-    return a == b;
-  }
-  return *a == *b;
-}
-
-[[nodiscard]] inline bool HasIdentityMetric(
-  const CoordinateSystem& system) noexcept
-{
-  return system.HasOrthogonalBasis() && system.HasUnitScaleFactors();
-}
-
-[[nodiscard]] std::shared_ptr<const CoordinateSystem> ResolveCoordinateSystem(
-  std::shared_ptr<const CoordinateSystem> system, int dim);
-
-} // namespace detail
-
 } // namespace pcms
+
+#include "pcms/utility/detail/coordinate_system.hpp"
 
 #endif // PCMS_UTILITY_COORDINATE_SYSTEM_HPP

@@ -16,12 +16,12 @@ ZERO_COPY = pcms.device_memory_is_host_accessible
 
 
 def _cylindrical_vector():
-    return pcms.ValueBasis(pcms.csys.CylindricalRThetaZ.create(),
+    return pcms.ValueBasis(pcms.csys.create_cylindrical_r_theta_z(),
                            pcms.ComponentScaling.Physical, pcms.values.Vector)
 
 
 def _cartesian_vector():
-    return pcms.ValueBasis(pcms.csys.Cartesian.create(3),
+    return pcms.ValueBasis(pcms.csys.create_cartesian(3),
                            pcms.ComponentScaling.Physical, pcms.values.Vector)
 
 
@@ -36,7 +36,7 @@ def cylindrical_space(world):
                              6, 6, 4, False)
     return pcms.create_lagrange_space(
         pcms.omega_h.create_geometry(
-            mesh, pcms.csys.CylindricalRThetaZ.create()),
+            mesh, pcms.csys.create_cylindrical_r_theta_z()),
         1, 3, backend=pcms.LagrangeBackend.OmegaH)
 
 
@@ -46,7 +46,7 @@ def cartesian_space(world):
     mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 1.0,
                              3, 3, 3, False)
     return pcms.create_lagrange_space(
-        pcms.omega_h.create_geometry(mesh, pcms.csys.Cartesian.create(3)),
+        pcms.omega_h.create_geometry(mesh, pcms.csys.create_cartesian(3)),
         1, 3, backend=pcms.LagrangeBackend.OmegaH)
 
 
@@ -67,33 +67,31 @@ def _radial_field(space):
 
 
 class TestCoordinateSystem:
-    def test_concrete_types(self):
+    def test_kinds(self):
         cases = [
-            (pcms.csys.Cartesian.create(2), pcms.csys.Cartesian, 2),
-            (pcms.csys.CylindricalRThetaZ.create(),
-             pcms.csys.CylindricalRThetaZ, 3),
-            (pcms.csys.CylindricalRZ.create(), pcms.csys.CylindricalRZ, 2),
+            (pcms.csys.create_cartesian(2), "cartesian", 2),
+            (pcms.csys.create_cylindrical_r_theta_z(), "cylindrical_rthetaz", 3),
+            (pcms.csys.create_cylindrical_rz(), "cylindrical_rz", 2),
         ]
-        for system, cls, dim in cases:
-            assert isinstance(system, cls)
+        for system, kind, dim in cases:
             assert isinstance(system, pcms.CoordinateSystem)
+            assert system.kind() == kind
             assert system.dimension() == dim
 
     def test_properties(self):
-        cyl = pcms.csys.CylindricalRThetaZ.create()
+        cyl = pcms.csys.create_cylindrical_r_theta_z()
         assert cyl.kind() == "cylindrical_rthetaz"
         assert cyl.has_orthogonal_basis()
         assert not cyl.has_unit_scale_factors()
-        assert not pcms.has_identity_metric(cyl)
-        assert pcms.has_identity_metric(pcms.csys.Cartesian.create(3))
+        cart = pcms.csys.create_cartesian(3)
+        assert cart.has_orthogonal_basis() and cart.has_unit_scale_factors()
 
     def test_equality_is_by_value(self):
-        a = pcms.csys.Cartesian.create(3)
-        assert a == pcms.csys.Cartesian.create(3)
-        assert a != pcms.csys.Cartesian.create(2)
-        assert a != pcms.csys.CylindricalRThetaZ.create()
-        assert pcms.same_coordinate_system(a, pcms.csys.Cartesian.create(3))
-        assert len({a, pcms.csys.Cartesian.create(3)}) == 1
+        a = pcms.csys.create_cartesian(3)
+        assert a == pcms.csys.create_cartesian(3)
+        assert a != pcms.csys.create_cartesian(2)
+        assert a != pcms.csys.create_cylindrical_r_theta_z()
+        assert len({a, pcms.csys.create_cartesian(3)}) == 1
         assert a != "cartesian"
 
     def test_space_defaults_to_cartesian_of_mesh_dimension(self, world):
@@ -102,31 +100,31 @@ class TestCoordinateSystem:
         space = pcms.create_lagrange_space(
             pcms.omega_h.create_geometry(mesh), 1, 1)
         assert (space.get_layout().get_coordinate_system()
-                == pcms.csys.Cartesian.create(2))
+                == pcms.csys.create_cartesian(2))
 
     def test_create_rejects_bad_dimension(self):
         with pytest.raises(RuntimeError):
-            pcms.csys.Cartesian.create(4)
+            pcms.csys.create_cartesian(4)
 
 
 class TestCoordinateView:
     def test_defaults_to_cartesian_of_array_dimension(self):
         view = pcms.CoordinateView(np.zeros((4, 2)))
-        assert view.get_coordinate_system() == pcms.csys.Cartesian.create(2)
+        assert view.get_coordinate_system() == pcms.csys.create_cartesian(2)
 
     def test_rejects_wrong_dimension(self):
         with pytest.raises(RuntimeError, match="coordinate columns"):
-            pcms.CoordinateView(pcms.csys.CylindricalRThetaZ.create(),
+            pcms.CoordinateView(pcms.csys.create_cylindrical_r_theta_z(),
                                 np.zeros((4, 2)))
 
     def test_layout_coordinates_carry_the_space_system(self,
                                                        cylindrical_space):
         coords = cylindrical_space.get_layout().get_dof_holder_coordinates()
-        assert isinstance(coords.get_coordinate_system(),
-                          pcms.csys.CylindricalRThetaZ)
+        assert (coords.get_coordinate_system()
+                == pcms.csys.create_cylindrical_r_theta_z())
         assert not coords.get_values().flags.writeable
         assert cylindrical_space.get_coordinate_system() == \
-            pcms.csys.CylindricalRThetaZ.create()
+            pcms.csys.create_cylindrical_r_theta_z()
 
 
 class TestValueBasis:
@@ -142,18 +140,17 @@ class TestValueBasis:
         with pytest.raises(ValueError):
             pcms.values.Of([pcms.Variance.Covariant] * 5)
 
-    def test_equality_is_same_value_basis(self):
+    def test_equality_is_by_value(self):
         # Every scalar basis is the same, whatever its members say.
         assert pcms.ValueBasis() == pcms.ValueBasis(
-            pcms.csys.Cartesian.create(3))
+            pcms.csys.create_cartesian(3))
         assert _cylindrical_vector() == _cylindrical_vector()
         assert _cylindrical_vector() != _cartesian_vector()
-        assert pcms.same_value_basis(_cartesian_vector(), _cartesian_vector())
 
     def test_members(self):
         basis = _cylindrical_vector()
         assert basis.rank() == 1
-        assert isinstance(basis.system, pcms.csys.CylindricalRThetaZ)
+        assert basis.system == pcms.csys.create_cylindrical_r_theta_z()
         assert basis.scaling == pcms.ComponentScaling.Physical
         assert basis.variance == pcms.values.Vector
 
@@ -186,7 +183,7 @@ class TestFunction:
 
     def test_borrowed_basis(self, cylindrical_space):
         b = cylindrical_space.create_function(
-            "b", pcms.values.Vector, system=pcms.csys.Cartesian.create(3))
+            "b", pcms.values.Vector, system=pcms.csys.create_cartesian(3))
         assert b.get_data().get_value_basis() == _cartesian_vector()
 
     def test_ambiguous_scaling_must_be_stated(self, cylindrical_space):
@@ -234,19 +231,19 @@ class TestFunction:
 
 class TestCoordinateMap:
     def test_bind_maps_points_and_rotates_values(self):
-        cart = pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+        cart = pcms.CoordinateView(pcms.csys.create_cartesian(3),
                                    [[1.0, 0.0, 0.5], [0.0, 2.0, -1.0],
                                     [1.0, 1.0, 0.0]])
-        m = pcms.CartesianToCylindrical()
+        m = pcms.create_cartesian_to_cylindrical()
         assert m.get_source_coordinate_system() == \
-            pcms.csys.Cartesian.create(3)
+            pcms.csys.create_cartesian(3)
         assert m.get_target_coordinate_system() == \
-            pcms.csys.CylindricalRThetaZ.create()
+            pcms.csys.create_cylindrical_r_theta_z()
         bound = m.bind(cart)
         assert bound.num_points() == 3
         mapped = bound.mapped_points()
         assert mapped.get_coordinate_system() == \
-            pcms.csys.CylindricalRThetaZ.create()
+            pcms.csys.create_cylindrical_r_theta_z()
         rtz = mapped.get_values()
         np.testing.assert_allclose(rtz[:, 0], [1.0, 2.0, np.sqrt(2.0)])
         np.testing.assert_allclose(rtz[:, 1], [0.0, np.pi / 2, np.pi / 4])
@@ -263,22 +260,22 @@ class TestCoordinateMap:
                                np.zeros(3)], axis=1), atol=1e-15)
 
     def test_round_trip(self):
-        rtz = pcms.CoordinateView(pcms.csys.CylindricalRThetaZ.create(),
+        rtz = pcms.CoordinateView(pcms.csys.create_cylindrical_r_theta_z(),
                                   [[1.0, 0.3, 0.5], [2.0, 1.2, -1.0]])
-        xyz = pcms.CylindricalToCartesian().bind(rtz).mapped_points()
-        back = pcms.CartesianToCylindrical().bind(xyz).mapped_points()
+        xyz = pcms.create_cylindrical_to_cartesian().bind(rtz).mapped_points()
+        back = pcms.create_cartesian_to_cylindrical().bind(xyz).mapped_points()
         np.testing.assert_allclose(back.get_values(), rtz.get_values())
 
     def test_bind_checks_the_source_system(self):
-        rtz = pcms.CoordinateView(pcms.csys.CylindricalRThetaZ.create(),
+        rtz = pcms.CoordinateView(pcms.csys.create_cylindrical_r_theta_z(),
                                   np.ones((2, 3)))
         with pytest.raises(RuntimeError):
-            pcms.CartesianToCylindrical().bind(rtz)
+            pcms.create_cartesian_to_cylindrical().bind(rtz)
 
     def test_transform_values_requires_a_writeable_buffer(self):
-        cart = pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+        cart = pcms.CoordinateView(pcms.csys.create_cartesian(3),
                                    np.ones((2, 3)))
-        bound = pcms.CartesianToCylindrical().bind(cart)
+        bound = pcms.create_cartesian_to_cylindrical().bind(cart)
         values = np.zeros((2, 3))
         values.flags.writeable = False
         with pytest.raises(ValueError, match="writeable"):
@@ -286,9 +283,9 @@ class TestCoordinateMap:
                 pcms.ValueView(_cylindrical_vector(), values))
 
     def test_mapped_points_outlive_the_bound_map(self):
-        cart = pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+        cart = pcms.CoordinateView(pcms.csys.create_cartesian(3),
                                    [[0.0, 3.0, 1.0]])
-        points = pcms.CartesianToCylindrical().bind(cart).mapped_points()
+        points = pcms.create_cartesian_to_cylindrical().bind(cart).mapped_points()
         gc.collect()
         np.testing.assert_allclose(points.get_values(),
                                    [[3.0, np.pi / 2, 1.0]])
@@ -300,7 +297,7 @@ def _bind_through_map(cylindrical_space, target, policy=None):
     if policy is None:
         policy = pcms.OutOfBoundsPolicy()
     return cylindrical_space.get_geometry().bind(
-        target, policy, pcms.CartesianToCylindrical())
+        target, policy, pcms.create_cartesian_to_cylindrical())
 
 
 class TestBindWithMap:
@@ -339,24 +336,24 @@ class TestBindWithMap:
 
     def test_query_points_must_be_in_the_geometry_system(self,
                                                          cylindrical_space):
-        coords = pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+        coords = pcms.CoordinateView(pcms.csys.create_cartesian(3),
                                      np.full((2, 3), 0.5))
         with pytest.raises(RuntimeError, match="as Bind's map argument"):
             cylindrical_space.get_geometry().bind(coords)
 
     def test_the_map_must_end_in_the_geometry_system(self, cylindrical_space):
-        coords = pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+        coords = pcms.CoordinateView(pcms.csys.create_cartesian(3),
                                      np.full((2, 3), 0.5))
         with pytest.raises(RuntimeError,
                            match="must take the query coordinate system"):
             cylindrical_space.get_geometry().bind(
-                coords, map=pcms.CylindricalToCartesian())
+                coords, map=pcms.create_cylindrical_to_cartesian())
 
     def test_filled_points(self, cylindrical_space):
         # The second point has theta = pi, outside the source's [0, 1.6].
         bound = _bind_through_map(
             cylindrical_space,
-            pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+            pcms.CoordinateView(pcms.csys.create_cartesian(3),
                                 [[0.5, 0.5, 0.5], [-0.5, 0.0, 0.5]]),
             pcms.OutOfBoundsPolicy(pcms.OutOfBoundsMode.FILL, -7.0))
         np.testing.assert_array_equal(bound.found_points(), [0])
@@ -375,7 +372,7 @@ class TestBindWithMap:
                                                    cartesian_space):
         b_src = _radial_field(cylindrical_space)
         b_tgt = cartesian_space.create_function("b", pcms.values.Vector)
-        op = pcms.Interpolator(
+        op = pcms.create_interpolator(
             cylindrical_space, cartesian_space,
             _bind_through_map(cylindrical_space, cartesian_space))
         assert isinstance(op, pcms.TransferOperator)
@@ -388,9 +385,9 @@ class TestBindWithMap:
         b_src = _radial_field(cylindrical_space)
         wrong = cartesian_space.create_function(
             "b", pcms.values.Vector,
-            system=pcms.csys.CylindricalRThetaZ.create(),
+            system=pcms.csys.create_cylindrical_r_theta_z(),
             scaling=pcms.ComponentScaling.Physical)
-        op = pcms.Interpolator(
+        op = pcms.create_interpolator(
             cylindrical_space, cartesian_space,
             _bind_through_map(cylindrical_space, cartesian_space))
         with pytest.raises(RuntimeError, match="target's declared basis"):
@@ -399,7 +396,7 @@ class TestBindWithMap:
     def test_plain_interpolator_refuses_to_bridge_systems(
             self, cylindrical_space, cartesian_space):
         with pytest.raises(RuntimeError, match="as Bind's map argument"):
-            pcms.Interpolator(cylindrical_space, cartesian_space)
+            pcms.create_interpolator(cylindrical_space, cartesian_space)
 
 
 class TestLifetimes:
@@ -424,11 +421,11 @@ class TestLifetimes:
                                                 cartesian_space):
         b_src = _radial_field(cylindrical_space)
         b_tgt = cartesian_space.create_function("b", pcms.values.Vector)
-        op = pcms.Interpolator(
+        op = pcms.create_interpolator(
             cylindrical_space, cartesian_space,
             _bind_through_map(cylindrical_space, cartesian_space))
         # the BoundPoints owns its bound map; the map object may go
-        cart_to_cyl = pcms.CartesianToCylindrical()
+        cart_to_cyl = pcms.create_cartesian_to_cylindrical()
         bound = cylindrical_space.get_geometry().bind(
             cartesian_space, map=cart_to_cyl)
         evaluator = cylindrical_space.create_point_evaluator(bound)

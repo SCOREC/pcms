@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_EVALUATOR_INTERPOLATOR_VIEW_UTILS_HPP
 #define PCMS_FIELD_EVALUATOR_INTERPOLATOR_VIEW_UTILS_HPP
 
-#include <pcms/field/evaluator/interpolator_aliases.hpp>
+#include <pcms/backends/point_cloud/interpolator_aliases.hpp>
 #include <cmath>
 #include "pcms/utility/check.hpp"
 #include <Kokkos_MathematicalFunctions.hpp>

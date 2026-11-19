@@ -5,13 +5,13 @@
 #include "test_support.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/coupler/detail/field_serializer.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/value_view.hpp"
-#include "pcms/field/simple_field_data.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
 #include "pcms/transfer/copy.hpp"
 #include <chrono>
 #include <optional>
@@ -224,7 +224,7 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       return 1;
     });
   auto geometry = pcms::CreateGeometry(
-    mesh, pcms::csys::Cartesian::Deferred(),
+    mesh, pcms::detail::DeferredCartesian(),
     pcms::omega_h::OmegaHGeometryOptions{.global_id_name = numbering,
                                          .owned_mask = is_overlap});
   auto function_space = pcms::CreateLagrangeSpace(

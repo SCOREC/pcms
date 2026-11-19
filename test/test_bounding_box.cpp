@@ -2,7 +2,7 @@
 #include <pcms/utility/bounding_box.hpp>
 
 using pcms::AABBox;
-using pcms::intersects;
+using pcms::detail::intersects;
 #include <iostream>
 
 TEST_CASE("test intersection")

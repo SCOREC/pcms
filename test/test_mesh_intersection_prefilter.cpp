@@ -6,7 +6,7 @@
 #include <Omega_h_mesh.hpp>
 
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
-#include <pcms/backends/omega_h/geometry.hpp>
+#include <pcms/backends/omega_h/omega_h_geometry.hpp>
 #include <pcms/backends/omega_h/mesh_intersection.hpp>
 #include <pcms/utility/assert.hpp>
 
@@ -97,7 +97,7 @@ void check_outside_centroid_overlap(Omega_h::Library& lib)
     });
   target.set_coords(shifted);
   const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-    source, pcms::csys::Cartesian::Create(Dim));
+    source, pcms::csys::CreateCartesian(Dim));
   const auto source_coords = Omega_h::HostRead(source.coords());
   const auto target_coords = Omega_h::HostRead(target.coords());
   const auto source_nodes = Omega_h::HostRead(source.ask_elem_verts());
@@ -215,7 +215,7 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 8, 8, 0, false);
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(2));
+      source, pcms::csys::CreateCartesian(2));
     require_intersections_identical(
       pcms::intersectTargets(*geometry, target, true),
       pcms::intersectTargets(*geometry, target, false));
@@ -227,7 +227,7 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 4, 4, 0, false);
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(2));
+      source, pcms::csys::CreateCartesian(2));
     require_intersections_identical(
       pcms::intersectTargets(*geometry, target, true),
       pcms::intersectTargets(*geometry, target, false));
@@ -239,7 +239,7 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 5, 3, 0, false);
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(2));
+      source, pcms::csys::CreateCartesian(2));
     require_intersections_identical(
       pcms::intersectTargets(*geometry, target, true),
       pcms::intersectTargets(*geometry, target, false));
@@ -251,7 +251,7 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 4, 4, 4, false);
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(3));
+      source, pcms::csys::CreateCartesian(3));
     require_intersections_identical(
       pcms::intersectTargets(*geometry, target, true),
       pcms::intersectTargets(*geometry, target, false));
@@ -263,7 +263,7 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 3, 3, 3, false);
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(3));
+      source, pcms::csys::CreateCartesian(3));
     require_intersections_identical(
       pcms::intersectTargets(*geometry, target, true),
       pcms::intersectTargets(*geometry, target, false));
@@ -275,7 +275,7 @@ TEST_CASE("intersection prefilter preserves the intersection map",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 2, 4, 3, false);
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(3));
+      source, pcms::csys::CreateCartesian(3));
     require_intersections_identical(
       pcms::intersectTargets(*geometry, target, true),
       pcms::intersectTargets(*geometry, target, false));
@@ -300,10 +300,10 @@ TEST_CASE("intersection map is independent of the source search resolution",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 5, 3, 0, false);
     const auto coarse = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(2),
+      source, pcms::csys::CreateCartesian(2),
       pcms::omega_h::OmegaHGeometryOptions{.search = pcms::SearchOptions{3}});
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(2));
+      source, pcms::csys::CreateCartesian(2));
     require_intersections_equivalent(pcms::intersectTargets(*coarse, target),
                                      pcms::intersectTargets(*geometry, target));
   }
@@ -314,10 +314,10 @@ TEST_CASE("intersection map is independent of the source search resolution",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 2, 4, 3, false);
     const auto coarse = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(3),
+      source, pcms::csys::CreateCartesian(3),
       pcms::omega_h::OmegaHGeometryOptions{.search = pcms::SearchOptions{2}});
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      source, pcms::csys::Cartesian::Create(3));
+      source, pcms::csys::CreateCartesian(3));
     require_intersections_equivalent(pcms::intersectTargets(*coarse, target),
                                      pcms::intersectTargets(*geometry, target));
   }
@@ -328,7 +328,7 @@ TEST_CASE("intersection map is independent of the source search resolution",
     auto target =
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 2, 2, 2, false);
     const auto geometry = std::make_shared<pcms::OmegaHGeometry>(
-      flat, pcms::csys::Cartesian::Create(2));
+      flat, pcms::csys::CreateCartesian(2));
     REQUIRE_THROWS_AS(pcms::intersectTargets(*geometry, target),
                       pcms::pcms_error);
   }

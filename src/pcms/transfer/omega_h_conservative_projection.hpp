@@ -35,8 +35,10 @@ class OmegaHIntersectionRHSIntegrator;
 class OmegaHConservativeProjection : public TransferOperator<Real>
 {
 public:
+  /// Holds both spaces.
   OmegaHConservativeProjection(
-    const FunctionSpace& source_space, const FunctionSpace& target_space,
+    std::shared_ptr<const FunctionSpace> source_space,
+    std::shared_ptr<const FunctionSpace> target_space,
     MassMatrixType mass_matrix_type = MassMatrixType::Consistent);
 
   // Defined in the .cpp where GalerkinProjectionSolver is a complete type.
@@ -45,6 +47,8 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
 private:
+  std::shared_ptr<const FunctionSpace> source_space_;
+  std::shared_ptr<const FunctionSpace> target_space_;
   std::shared_ptr<const omega_h::OmegaHLagrangeLayout> source_layout_;
   std::shared_ptr<const omega_h::OmegaHLagrangeLayout> target_layout_;
   std::unique_ptr<OmegaHIntersectionRHSIntegrator> rhs_integrator_;

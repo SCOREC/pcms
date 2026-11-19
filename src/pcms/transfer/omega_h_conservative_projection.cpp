@@ -41,17 +41,22 @@ void CheckApplyCompatible(const Field<Real>& source, const Field<Real>& target,
 } // namespace
 
 OmegaHConservativeProjection::OmegaHConservativeProjection(
-  const FunctionSpace& source_space, const FunctionSpace& target_space,
+  std::shared_ptr<const FunctionSpace> source_space_ptr,
+  std::shared_ptr<const FunctionSpace> target_space_ptr,
   MassMatrixType mass_matrix_type)
-  : source_layout_(
-      detail::ResolveOmegaHScalarSpace(source_space, 0, 1,
+  : source_space_(std::move(source_space_ptr)),
+    target_space_(std::move(target_space_ptr)),
+    source_layout_(
+      detail::ResolveOmegaHScalarSpace(*source_space_, 0, 1,
                                        "OmegaHConservativeProjection", "source")
         .layout),
     target_layout_(
-      detail::ResolveOmegaHScalarSpace(target_space, 0, 1,
+      detail::ResolveOmegaHScalarSpace(*target_space_, 0, 1,
                                        "OmegaHConservativeProjection", "target")
         .layout)
 {
+  const FunctionSpace& source_space = *source_space_;
+  const FunctionSpace& target_space = *target_space_;
   // The space-based constructor lets the integrator reuse the source space's
   // point search for the intersection instead of building another.
   rhs_integrator_ = std::make_unique<OmegaHIntersectionRHSIntegrator>(

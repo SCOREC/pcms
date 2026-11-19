@@ -2,6 +2,7 @@
 #define PCMS_TRANSIENT_TIMESTEPPER_HPP
 
 #include "pcms/utility/types.hpp"
+#include <memory>
 
 namespace pcms
 {
@@ -32,22 +33,9 @@ public:
   virtual ~Timestepper() = default;
 };
 
-/// Always accepts and keeps a constant time step.
-class FixedTimestepper : public Timestepper
-{
-public:
-  /// \param dt Positive step size used for every window.
-  explicit FixedTimestepper(Real dt);
-
-  /// \return The configured fixed step.
-  Real InitialStep() const override;
-
-  /// Ignores \p dt and \p err; always accepts and returns the fixed step.
-  Step UpdateStep(Real dt, Real err) override;
-
-private:
-  Real dt_;
-};
+/// A timestepper that always accepts and keeps the constant step `dt`.
+/// @throws pcms_error unless `dt` is positive
+[[nodiscard]] std::unique_ptr<Timestepper> CreateFixedTimestepper(Real dt);
 
 } // namespace pcms
 

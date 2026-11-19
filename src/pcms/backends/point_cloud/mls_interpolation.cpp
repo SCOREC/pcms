@@ -1,5 +1,5 @@
-#include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/field/evaluator/mls_interpolation_impl.hpp>
+#include <pcms/backends/point_cloud/mls_interpolation.hpp>
+#include <pcms/backends/point_cloud/mls_interpolation_impl.hpp>
 #include <Kokkos_MathematicalFunctions.hpp>
 #include <cmath>
 

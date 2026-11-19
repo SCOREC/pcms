@@ -187,7 +187,7 @@ TEST_CASE("OmegaHMassIntegrator: lumped diagonal equals consistent row sums",
   Omega_h::Library lib;
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
 
-  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto space = pcms::CreateLagrangeSpace(
     geometry, 1, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -248,7 +248,7 @@ TEST_CASE("OmegaHMassIntegrator: P0 lumped equals consistent",
   Omega_h::Library lib;
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
 
-  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto space = pcms::CreateLagrangeSpace(
     geometry, 0, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -291,7 +291,7 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
   SECTION("multi-component space throws")
   {
     auto space = pcms::CreateLagrangeSpace(
-      pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred()), 1, 2,
+      pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian()), 1, 2,
       pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
     REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
   }
@@ -299,7 +299,7 @@ TEST_CASE("OmegaHMassIntegrator: rejects invalid layouts", "[mass_integrator]")
   SECTION("non-Cartesian coordinate system throws")
   {
     auto space = pcms::CreateLagrangeSpace(
-      pcms::CreateGeometry(mesh, pcms::csys::CylindricalRZ::Create()), 1, 1,
+      pcms::CreateGeometry(mesh, pcms::csys::CreateCylindricalRZ()), 1, 1,
       pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
     REQUIRE_THROWS(pcms::BuildOmegaHMassIntegrator(*space));
   }

@@ -84,7 +84,7 @@ int RunClient(MPI_Comm comm)
   auto* app = cpl.AddApplication("mfem_app");
 
   pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                 pcms::csys::Cartesian::Deferred(), LayoutName);
+                                 pcms::detail::DeferredCartesian(), LayoutName);
   auto layout = factory.GetLayout();
 
   auto overlap_view =
@@ -122,7 +122,7 @@ int RunServer(MPI_Comm comm)
   auto* app = cpl.AddApplication("mfem_app");
 
   pcms::MFEMFieldFactory factory(pmesh, pfes, gf,
-                                 pcms::csys::Cartesian::Deferred(), LayoutName);
+                                 pcms::detail::DeferredCartesian(), LayoutName);
   auto layout = factory.GetLayout();
   auto handle = app->AddField(factory.CreateField<Real>(FieldName));
 

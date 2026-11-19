@@ -10,12 +10,17 @@ namespace pcms
 {
 
 std::unique_ptr<TransferOperator<Real>> CreateConservativeProjection(
-  const FunctionSpace& source_space, const FunctionSpace& target_space,
+  std::shared_ptr<const FunctionSpace> source_space,
+  std::shared_ptr<const FunctionSpace> target_space,
   ConservativeProjectionOptions options)
 {
+  if (source_space == nullptr || target_space == nullptr) {
+    throw pcms_error(
+      "CreateConservativeProjection: the function spaces must not be null");
+  }
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
   return std::make_unique<transfer::OmegaHConservativeProjection>(
-    source_space, target_space, options.mass_matrix_type);
+    std::move(source_space), std::move(target_space), options.mass_matrix_type);
 #else
   (void)source_space;
   (void)target_space;
@@ -27,13 +32,18 @@ std::unique_ptr<TransferOperator<Real>> CreateConservativeProjection(
 }
 
 std::unique_ptr<TransferOperator<Real>> CreateControlVariateProjection(
-  const PointEvaluatorFactory& source, const FunctionSpace& target_space,
+  std::shared_ptr<const PointEvaluatorFactory> source,
+  std::shared_ptr<const FunctionSpace> target_space,
   ControlVariateProjectionOptions options)
 {
+  if (source == nullptr || target_space == nullptr) {
+    throw pcms_error("CreateControlVariateProjection: the source and the "
+                     "target space must not be null");
+  }
 #if defined(PCMS_ENABLE_PETSC) && defined(PCMS_ENABLE_MESHFIELDS)
   return std::make_unique<transfer::OmegaHControlVariateProjection>(
-    source, target_space, options.samples_per_element, options.seed,
-    options.mass_matrix_type, std::move(options.to_source));
+    std::move(source), std::move(target_space), options.samples_per_element,
+    options.seed, options.mass_matrix_type, std::move(options.to_source));
 #else
   (void)source;
   (void)target_space;

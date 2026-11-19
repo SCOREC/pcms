@@ -1,5 +1,7 @@
 set(PCMS_COUPLER_HEADERS
         ../../../include/pcms/coupler/coupler_types.hpp
+        ../../../include/pcms/coupler/detail/coupler_types.hpp
+        ../../../include/pcms/coupler/detail/global_data_interface.hpp
         ../../../include/pcms/coupler/detail/field_communicator.hpp
         ../../../include/pcms/coupler/coupler.hpp
         ../../../include/pcms/coupler/detail/field_serializer.hpp

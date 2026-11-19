@@ -11,9 +11,6 @@ namespace pcms
 
 struct OverlapMask
 {
-  Kokkos::View<bool*, HostMemorySpace> is_overlap_;
-  std::function<int8_t(int, int)> in_overlap_func_;
-
   // Masks are indexed by owned DOF holder, in owned order, matching the
   // owned-indexed exchange plan.
 
@@ -60,6 +57,10 @@ struct OverlapMask
     }
     return is_overlap;
   }
+
+private:
+  Kokkos::View<bool*, HostMemorySpace> is_overlap_;
+  std::function<int8_t(int, int)> in_overlap_func_;
 };
 
 } // namespace pcms

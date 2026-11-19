@@ -3,7 +3,7 @@
 
 #include <Omega_h_mesh.hpp>
 
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/field/field_layout.hpp"
 
 namespace pcms::omega_h
@@ -15,9 +15,9 @@ public:
   /// The DOF holders are the entities of dimension `entity_dim` of the
   /// geometry's mesh. The layout is on `geometry`, and takes its coordinate
   /// system and its global id tag name.
-  /// @throws pcms_error if `geometry` is null
-  OmegaHEntityLayout(std::shared_ptr<const OmegaHGeometry> geometry,
-                     int entity_dim, int num_components);
+  /// @throws pcms_error if `geometry` is null or not an Omega_h geometry
+  OmegaHEntityLayout(std::shared_ptr<const Geometry> geometry, int entity_dim,
+                     int num_components);
 
   int GetNumComponents() const override;
   LO GetNumDofHolder() const override;

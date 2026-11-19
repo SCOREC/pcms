@@ -26,21 +26,26 @@ const Geometry& SourceGeometry(const PointEvaluatorFactory& source)
 } // namespace
 
 OmegaHControlVariateProjection::OmegaHControlVariateProjection(
-  const PointEvaluatorFactory& source, const FunctionSpace& target_space,
+  std::shared_ptr<const PointEvaluatorFactory> source_ptr,
+  std::shared_ptr<const FunctionSpace> target_space_ptr,
   int samples_per_element, uint64_t seed, MassMatrixType mass_matrix_type,
   std::shared_ptr<const CoordinateMap> to_source)
-  : target_layout_(
+  : source_(std::move(source_ptr)),
+    target_space_(std::move(target_space_ptr)),
+    target_layout_(
       detail::ResolveOmegaHScalarSpace(
-        target_space, 1, 1, "OmegaHControlVariateProjection", "target")
+        *target_space_, 1, 1, "OmegaHControlVariateProjection", "target")
         .layout),
     rhs_integrator_(std::make_unique<OmegaHMonteCarloRHSIntegrator>(
-      target_space, samples_per_element, seed)),
-    interpolator_(source, target_space,
-                  SourceGeometry(source).Bind(
-                    target_space.GetLayout()->GetDOFHolderCoordinates(),
+      *target_space_, samples_per_element, seed)),
+    interpolator_(source_, target_space_,
+                  SourceGeometry(*source_).Bind(
+                    target_space_->GetLayout()->GetDOFHolderCoordinates(),
                     OutOfBoundsPolicy{}, to_source)),
-    control_variate_(target_space.CreateFunction<Real>())
+    control_variate_(target_space_->CreateFunction<Real>())
 {
+  const PointEvaluatorFactory& source = *source_;
+  const FunctionSpace& target_space = *target_space_;
   // The source lives on another mesh, so it searches for the samples; the
   // target space is bound to them in their own elements, without a search.
   source_at_samples_ =

@@ -55,20 +55,26 @@ Kokkos::View<bool*, DeviceMemorySpace> BuildOwned(Omega_h::Mesh& mesh,
   return owned;
 }
 
-Omega_h::Mesh& MeshOf(const std::shared_ptr<const OmegaHGeometry>& geometry)
+const OmegaHGeometry& OmegaHGeometryOf(
+  const std::shared_ptr<const Geometry>& geometry)
 {
   if (geometry == nullptr) {
     throw pcms_error("OmegaHEntityLayout: the geometry must not be null");
   }
-  return geometry->GetMesh();
+  const auto* mesh_geometry =
+    dynamic_cast<const OmegaHGeometry*>(geometry.get());
+  if (mesh_geometry == nullptr) {
+    throw pcms_error(
+      "OmegaHEntityLayout: the geometry must be an Omega_h geometry");
+  }
+  return *mesh_geometry;
 }
 
 } // namespace
 
-OmegaHEntityLayout::OmegaHEntityLayout(
-  std::shared_ptr<const OmegaHGeometry> geometry, int entity_dim,
-  int num_components)
-  : mesh_(MeshOf(geometry)),
+OmegaHEntityLayout::OmegaHEntityLayout(std::shared_ptr<const Geometry> geometry,
+                                       int entity_dim, int num_components)
+  : mesh_(OmegaHGeometryOf(geometry).GetMesh()),
     // dimension_ is the first member after mesh_, so this runs before the
     // class_ids_/class_dims_ initializers below read the mesh's classification
     // tags.
@@ -76,7 +82,8 @@ OmegaHEntityLayout::OmegaHEntityLayout(
     entity_dim_(entity_dim),
     num_components_(num_components),
     num_global_dof_holder_(mesh_.nglobal_ents(entity_dim)),
-    gids_(BuildGids(mesh_, entity_dim, geometry->GetGlobalIdName())),
+    gids_(BuildGids(mesh_, entity_dim,
+                    OmegaHGeometryOf(geometry).GetGlobalIdName())),
     coords_(get_entity_centroids(mesh_, entity_dim)),
     coords_2d_(
       ConvertCoordsTo2D(coords_, mesh_.nents(entity_dim), mesh_.dim())),
@@ -158,7 +165,7 @@ Kokkos::View<const LO*, DeviceMemorySpace> OmegaHEntityLayout::GetOwnedIndices()
 
 void OmegaHEntityLayout::BuildOwnedViews()
 {
-  auto owned = BuildOwnedLayoutData(
+  auto owned = pcms::detail::BuildOwnedLayoutData(
     owned_,
     Kokkos::View<const GO*, DeviceMemorySpace>(gids_.data(), gids_.size()),
     coords_2d_, dimension_);

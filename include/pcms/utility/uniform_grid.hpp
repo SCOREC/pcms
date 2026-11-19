@@ -144,23 +144,8 @@ private:
 using UniformGrid2D = UniformGrid<2>;
 using UniformGrid3D = UniformGrid<3>;
 
-namespace detail
-{
-
-/**
- * \brief Divisions per axis giving roughly one element per grid cell.
- *
- */
-template <unsigned dim>
-[[nodiscard]] LO DivisionsPerAxisForMesh(LO nelems, LO min_divisions = 10)
-{
-  const auto per_axis = static_cast<LO>(std::ceil(
-    std::pow(static_cast<double>(nelems), 1.0 / static_cast<double>(dim))));
-  return std::max(per_axis, min_divisions);
-}
-
-} // namespace detail
-
 } // namespace pcms
+
+#include "pcms/utility/detail/uniform_grid.hpp"
 
 #endif // PCMS_UTILITY_UNIFORM_GRID_HPP

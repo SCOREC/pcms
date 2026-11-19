@@ -25,9 +25,11 @@ struct ConservativeProjectionOptions
 
 /// Conservative (Galerkin L2) projection from source_space to target_space
 /// using exact mesh intersection. Both spaces must be scalar Lagrange spaces
-/// on Omega_h discretizations.
+/// on Omega_h discretizations. The operator holds both spaces.
+/// @throws pcms_error if a space is null
 std::unique_ptr<TransferOperator<Real>> CreateConservativeProjection(
-  const FunctionSpace& source_space, const FunctionSpace& target_space,
+  std::shared_ptr<const FunctionSpace> source_space,
+  std::shared_ptr<const FunctionSpace> target_space,
   ConservativeProjectionOptions options = {});
 
 struct ControlVariateProjectionOptions
@@ -43,9 +45,11 @@ struct ControlVariateProjectionOptions
 /// Galerkin projection of any evaluable source onto target_space, with the
 /// right-hand side estimated by Monte Carlo sampling with a control variate.
 /// target_space must be a scalar Lagrange space on an Omega_h
-/// discretization.
+/// discretization. The operator holds `source` and `target_space`.
+/// @throws pcms_error if `source` or `target_space` is null
 std::unique_ptr<TransferOperator<Real>> CreateControlVariateProjection(
-  const PointEvaluatorFactory& source, const FunctionSpace& target_space,
+  std::shared_ptr<const PointEvaluatorFactory> source,
+  std::shared_ptr<const FunctionSpace> target_space,
   ControlVariateProjectionOptions options = {});
 
 } // namespace pcms

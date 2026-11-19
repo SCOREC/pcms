@@ -15,15 +15,8 @@ enum class Mode
   Synchronous
 };
 
-namespace detail
-{
-inline redev::Mode ToRedev(Mode mode) noexcept
-{
-  return mode == Mode::Deferred ? redev::Mode::Deferred
-                                : redev::Mode::Synchronous;
-}
-} // namespace detail
-
 } // namespace pcms
+
+#include "pcms/coupler/detail/coupler_types.hpp"
 
 #endif // PCMS_COUPLER_COUPLER_TYPES_HPP

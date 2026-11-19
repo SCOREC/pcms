@@ -1,4 +1,4 @@
-#include "pcms/utility/eqdsk.hpp"
+#include "pcms/eqdsk/eqdsk.hpp"
 #include "pcms/utility/assert.hpp"
 #include <iostream>
 #include <fstream>

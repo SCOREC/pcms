@@ -19,6 +19,7 @@
 #include <memory>
 #include <optional>
 #include <variant>
+#include <string>
 
 namespace pcms
 {
@@ -45,29 +46,36 @@ public:
   ///        value type and basis (may throw for spaces whose fields hold no
   ///        values in PCMS)
   /// @param evaluator the evaluator source that evaluates the fields at
-  ///        points, or null for a space that does not evaluate at points
-  /// @param geometry the geometry of a space without an evaluator source, or
-  ///        null (an evaluator source supplies its own)
+  ///        points, or null for a space whose fields are not evaluated at
+  ///        points
+  /// @param geometry the geometry the space is on: the evaluator source's,
+  ///        when there is one
+  /// @throws pcms_error if `geometry` is null or is not the evaluator
+  ///         source's geometry
   explicit FunctionSpace(
     std::shared_ptr<const FieldLayout> layout,
     std::function<FieldDataVariant(Type, ValueBasis)> create_field_data,
     std::shared_ptr<const PointEvaluatorFactory> evaluator,
-    std::shared_ptr<const Geometry> geometry = nullptr) noexcept
+    std::shared_ptr<const Geometry> geometry)
     : layout_(std::move(layout)),
       create_field_data_(std::move(create_field_data)),
       evaluator_(std::move(evaluator)),
       geometry_(std::move(geometry))
   {
-    PCMS_ALWAYS_ASSERT(evaluator_ == nullptr || geometry_ == nullptr);
+    if (geometry_ == nullptr) {
+      throw pcms_error("FunctionSpace: the geometry must not be null");
+    }
+    if (evaluator_ != nullptr && evaluator_->GetGeometry() != geometry_) {
+      throw pcms_error("FunctionSpace: the geometry must be the evaluator "
+                       "source's geometry");
+    }
   }
 
-  /// @return the geometry the space is created on: its evaluator source's, or
-  ///         the one given to the constructor; null for a space that does not
-  ///         evaluate at points
+  /// @return the geometry the space is created on
   [[nodiscard]] std::shared_ptr<const Geometry> GetGeometry()
     const noexcept override
   {
-    return evaluator_ != nullptr ? evaluator_->GetGeometry() : geometry_;
+    return geometry_;
   }
 
   [[nodiscard]] std::shared_ptr<const FieldLayout> GetLayout() const noexcept
@@ -75,19 +83,15 @@ public:
     return layout_;
   }
 
-  /// @return the geometry's coordinate system, or the layout's for a space
-  ///         without a geometry
+  /// @return the geometry's coordinate system
   [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
   GetCoordinateSystem() const noexcept
   {
-    const Geometry* geometry =
-      evaluator_ != nullptr ? evaluator_->GetGeometry().get() : geometry_.get();
-    return geometry != nullptr ? geometry->GetCoordinateSystem()
-                               : GetLayout()->GetCoordinateSystem();
+    return geometry_->GetCoordinateSystem();
   }
 
   /// @return whether the space's evaluator source supports `op`; for a space
-  ///         without one, whether `op` is Value and the space has a geometry
+  ///         without one, whether `op` is Value
   [[nodiscard]] bool Supports(DifferentialOperator op) const noexcept override;
 
   ~FunctionSpace() noexcept override = default;
@@ -164,7 +168,7 @@ Function<T> FunctionSpace::CreateFunction(
   std::shared_ptr<const CoordinateSystem> system,
   std::optional<ComponentScaling> scaling) const
 {
-  static_assert(is_supported_field_type_v<T>,
+  static_assert(detail::is_supported_field_type_v<T>,
                 "T is not a supported field type");
   auto owner = Owner();
   ValueBasis basis = detail::MakeValueBasis(GetCoordinateSystem(), variance,
@@ -180,7 +184,7 @@ template <typename T>
 Function<T> FunctionSpace::CreateFunction(
   std::string name, std::unique_ptr<FieldData<T>> data) const
 {
-  static_assert(is_supported_field_type_v<T>,
+  static_assert(detail::is_supported_field_type_v<T>,
                 "T is not a supported field type");
   auto owner = Owner();
   if (!data) {

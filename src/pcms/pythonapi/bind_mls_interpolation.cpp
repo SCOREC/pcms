@@ -1,5 +1,5 @@
 #include <pybind11/pybind11.h>
-#include <pcms/field/evaluator/mls_interpolation.hpp>
+#include <pcms/field/mls_options.hpp>
 
 namespace py = pybind11;
 

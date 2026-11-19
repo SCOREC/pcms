@@ -17,3 +17,5 @@ c87eb2504ce8bfcc5ad05ce13b30db20de89d85d
 42e9931c4abe3b4dfb151fe0dc93e5dde20cd544
 # reorganization (0.4): refactor: give every header a path-derived include guard
 abaab305a9a4ec01e5f5cc12493e4837a0ed228f
+# reorganization (0.4): refactor: flatten backend namespaces, rename UniformGrid aliases and BoundSource to BoundPoints
+fb7da623a35ffb2d7561b6cf0818f78a2cb1b36d

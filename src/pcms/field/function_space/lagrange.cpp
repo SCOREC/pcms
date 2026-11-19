@@ -8,15 +8,15 @@
 #include "pcms/backends/omega_h_meshfields/evaluator.hpp"
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/backends/omega_h/lagrange_evaluator.hpp"
 #include "pcms/backends/omega_h/field_data.hpp"
 #endif
-#include "pcms/backends/uniform_grid/geometry.hpp"
+#include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
 #include "pcms/backends/uniform_grid/layout.hpp"
 #include "pcms/backends/uniform_grid/evaluator.hpp"
-#include "pcms/field/simple_field_data.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 
 #include <array>
@@ -119,7 +119,7 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
                          "supports the MeshFields scalar types enabled in "
                          "this build");
       },
-      std::move(eval_factory));
+      eval_factory, eval_factory->GetGeometry());
 #endif
   }
   auto layout = std::make_shared<OmegaHLagrangeLayout>(
@@ -129,7 +129,7 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
   return std::make_shared<FunctionSpace>(
     layout,
     [layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return apply_to_type(t, [&](auto tag) -> FieldDataVariant {
+      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
         using T = typename decltype(tag)::type;
         if constexpr (std::is_same_v<T, int8_t>) {
           throw pcms_error("CreateLagrangeSpace: int8_t is not supported");
@@ -138,7 +138,7 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
         }
       });
     },
-    std::move(eval_factory));
+    eval_factory, eval_factory->GetGeometry());
 }
 
 #endif // PCMS_ENABLE_OMEGA_H
@@ -160,7 +160,7 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridLagrangeSpace(
   return std::make_shared<FunctionSpace>(
     ug_layout,
     [ug_layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return apply_to_type(t, [&](auto tag) -> FieldDataVariant {
+      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
         using T = typename decltype(tag)::type;
         if constexpr (std::is_same_v<T, int8_t>) {
           throw pcms_error("CreateLagrangeSpace: int8_t is not supported");
@@ -170,7 +170,7 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridLagrangeSpace(
         }
       });
     },
-    std::move(eval_factory));
+    eval_factory, eval_factory->GetGeometry());
 }
 
 } // namespace

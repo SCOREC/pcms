@@ -1,6 +1,5 @@
-#include <pcms/utility/eqdsk.hpp>
+#include <pcms/eqdsk/eqdsk.hpp>
 #include <pcms/utility/arrays.hpp>
-#include <pcms/field/eqdsk_field.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/utility/coordinate_view.hpp>
 #include <Kokkos_Core.hpp>
@@ -181,20 +180,10 @@ TEST_CASE("EQDSKData with SplineFunctionSpace")
 
   SECTION("Spline function space creation and evaluation")
   {
-    // auto spline_space = pcms::SplineFunctionSpace::FromEQDSK(eqdsk_data);
-
-    // auto psi_field = spline_space->CreateFunction<pcms::Real>();
-
-    auto [spline_space, psi_field] = pcms::MakeEQDSKField(eqdsk_data);
-    auto layout = spline_space->GetLayout();
-    const int layout_size = layout->Size();
-    const int psizr_size = static_cast<int>(eqdsk_data.PSIZR.extent(0));
-
-    REQUIRE(layout_size == psizr_size);
-
-    // psi_field.GetData().SetDOFHolderData(
-    //   pcms::Rank1View<const pcms::Real, pcms::DeviceMemorySpace>(
-    //     eqdsk_data.PSIZR.data(), eqdsk_data.PSIZR.extent(0)));
+    auto psi = pcms::CreateEQDSKFunction(eqdsk_data);
+    const auto& space = psi.GetSpace();
+    REQUIRE(space.GetLayout()->Size() ==
+            static_cast<int>(eqdsk_data.PSIZR.extent(0)));
 
     // Evaluate at test points
     const pcms::Real R_mid =
@@ -213,13 +202,12 @@ TEST_CASE("EQDSKData with SplineFunctionSpace")
 
     const int num_eval_points = 3;
 
-    auto evaluator = spline_space->CreatePointEvaluator<pcms::Real>(
-      pcms::test::Bind(*spline_space->GetGeometry(), eval_coords));
+    auto evaluator = space.CreatePointEvaluator<pcms::Real>(
+      pcms::test::Bind(*space.GetGeometry(), eval_coords));
 
     Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> eval_results(
       "eval_results", num_eval_points, 1);
-    evaluator->Evaluate(psi_field,
-                        pcms::test::TagLike(psi_field, eval_results));
+    evaluator->Evaluate(psi, pcms::test::TagLike(psi, eval_results));
 
     auto results_host = Kokkos::create_mirror_view_and_copy(
       pcms::HostMemorySpace(), eval_results);

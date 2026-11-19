@@ -110,7 +110,7 @@ TEST_CASE("OmegaHControlVariateProjection: exact for fields in the target "
     GENERATE(pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped);
   CAPTURE(static_cast<int>(mass_type));
 
-  pcms::OmegaHControlVariateProjection projection(*source_space, *target_space,
+  pcms::OmegaHControlVariateProjection projection(source_space, target_space,
                                                   /*samples_per_element=*/4,
                                                   /*seed=*/8675309, mass_type);
   projection.Apply(source_field, target_field);
@@ -148,8 +148,8 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
 
   // Reference: exact mesh-intersection quadrature projection.
   auto reference_field = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection reference_projection(*source_space,
-                                                          *target_space);
+  pcms::OmegaHConservativeProjection reference_projection(source_space,
+                                                          target_space);
   reference_projection.Apply(source_field, reference_field);
   const auto reference = pcms::detail::FlattenToRank1View(
     reference_field.GetDOFHolderDataHost().GetValues());
@@ -169,8 +169,8 @@ TEST_CASE("OmegaHControlVariateProjection: reduces error vs plain Monte Carlo",
 
   // Control-variate projection with the same sampling configuration.
   auto cv_field = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHControlVariateProjection cv_projection(
-    *source_space, *target_space, samples_per_element, seed);
+  pcms::OmegaHControlVariateProjection cv_projection(source_space, target_space,
+                                                     samples_per_element, seed);
   cv_projection.Apply(source_field, cv_field);
   const auto cv_values = pcms::detail::FlattenToRank1View(
     cv_field.GetDOFHolderDataHost().GetValues());
@@ -264,7 +264,7 @@ TEST_CASE(
     });
 
   auto reference = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection ref_proj(*source_space, *target_space);
+  pcms::OmegaHConservativeProjection ref_proj(source_space, target_space);
   ref_proj.Apply(source, reference);
   const auto ref_vals = pcms::detail::FlattenToRank1View(
     reference.GetDOFHolderDataHost().GetValues());
@@ -281,7 +281,7 @@ TEST_CASE(
   const auto mc_h = Omega_h::HostRead<Omega_h::Real>(mc_x);
 
   auto cv_field = target_space->CreateFunction<pcms::Real>();
-  pcms::OmegaHControlVariateProjection cv(*source_space, *target_space, nsample,
+  pcms::OmegaHControlVariateProjection cv(source_space, target_space, nsample,
                                           seed);
   cv.Apply(source, cv_field);
   const auto cv_vals = pcms::detail::FlattenToRank1View(
@@ -320,8 +320,8 @@ class SwapXY final : public pcms::CoordinateMap
 {
 public:
   SwapXY()
-    : CoordinateMap(pcms::csys::Cartesian::Create(2),
-                    pcms::csys::Cartesian::Create(2))
+    : CoordinateMap(pcms::csys::CreateCartesian(2),
+                    pcms::csys::CreateCartesian(2))
   {
   }
 
@@ -354,7 +354,7 @@ TEST_CASE("OmegaHControlVariateProjection through a coordinate map maps the "
     OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return 3.0 * x - y + 0.25; });
 
   pcms::OmegaHControlVariateProjection projection(
-    *source_space, *target_space, /*samples_per_element=*/4, /*seed=*/8675309,
+    source_space, target_space, /*samples_per_element=*/4, /*seed=*/8675309,
     pcms::MassMatrixType::Consistent, std::make_shared<SwapXY>());
   projection.Apply(source_field, target_field);
 

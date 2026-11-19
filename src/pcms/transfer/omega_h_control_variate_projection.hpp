@@ -48,10 +48,12 @@ public:
   /// @param to_source map from the target's coordinate system to the source
   ///        geometry's, or null if they are the same; the source is evaluated
   ///        at the mapped points and its values re-expressed through it
+  /// Holds `source` and `target_space`.
   /// @throws pcms_error if the source has no geometry
   OmegaHControlVariateProjection(
-    const PointEvaluatorFactory& source, const FunctionSpace& target_space,
-    int samples_per_element, uint64_t seed = 8675309,
+    std::shared_ptr<const PointEvaluatorFactory> source,
+    std::shared_ptr<const FunctionSpace> target_space, int samples_per_element,
+    uint64_t seed = 8675309,
     MassMatrixType mass_matrix_type = MassMatrixType::Consistent,
     std::shared_ptr<const CoordinateMap> to_source = nullptr);
 
@@ -61,9 +63,11 @@ public:
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
 private:
+  std::shared_ptr<const PointEvaluatorFactory> source_;
+  std::shared_ptr<const FunctionSpace> target_space_;
   std::shared_ptr<const omega_h::OmegaHLagrangeLayout> target_layout_;
   std::unique_ptr<OmegaHMonteCarloRHSIntegrator> rhs_integrator_;
-  Interpolator<Real> interpolator_;
+  pcms::detail::Interpolator<Real> interpolator_;
   // Scratch field on the target space holding the interpolated control
   // variate; overwritten on every Apply.
   mutable Field<Real> control_variate_;

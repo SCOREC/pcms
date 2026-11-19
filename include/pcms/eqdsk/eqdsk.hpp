@@ -1,12 +1,21 @@
-#ifndef PCMS_UTILITY_EQDSK_HPP
-#define PCMS_UTILITY_EQDSK_HPP
+#ifndef PCMS_EQDSK_EQDSK_HPP
+#define PCMS_EQDSK_EQDSK_HPP
 
+// EQDSK equilibria as PCMS functions. This API is expected to move to
+// FusionIO 2.0, whose core evaluation is the spline below.
+
+#include "pcms/backends/uniform_grid/geometry.hpp"
+#include "pcms/field/field.hpp"
+#include "pcms/field/function_spaces.hpp"
+#include "pcms/utility/arrays.hpp"
+#include "pcms/utility/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
-#include "pcms/utility/memory_spaces.hpp"
-#include <vector>
+#include <Kokkos_Core.hpp>
 #include <string>
-#include <array>
+#include <utility>
+#include <vector>
 
 namespace pcms
 {
@@ -134,6 +143,35 @@ struct EQDSKData
   [[nodiscard]] Real GetI(int i) const { return I_psi[i]; }
 };
 
+/// Poloidal flux psi(R, Z) of an EQDSK equilibrium as a cubic-spline function
+/// on the EQDSK grid, in cylindrical (R, Z) coordinates. The function owns its
+/// space (GetSpace / GetSpacePtr), so it can be evaluated with QueryPoints,
+/// Evaluate or an interpolator directly. The flux values are copied.
+[[nodiscard]] inline Function<Real> CreateEQDSKFunction(const EQDSKData& eqdsk)
+{
+  auto space = CreateSplineSpace(
+    uniform_grid::CreateGeometry(eqdsk.grid, csys::CreateCylindricalRZ()));
+  Function<Real> psi = space->CreateFunction<Real>("psi");
+  psi.SetDOFHolderDataUnchecked(Rank2View<const Real, DeviceMemorySpace>(
+    eqdsk.PSIZR.data(), eqdsk.PSIZR.extent(0), 1));
+  return psi;
+}
+
+/// An EQDSK file's data and its psi function.
+struct EQDSKFunction
+{
+  EQDSKData data;
+  Function<Real> psi;
+};
+
+/// Reads an EQDSK file.
+[[nodiscard]] inline EQDSKFunction ReadEQDSK(const std::string& filename)
+{
+  EQDSKData data(filename);
+  Function<Real> psi = CreateEQDSKFunction(data);
+  return {std::move(data), std::move(psi)};
+}
+
 } // namespace pcms
 
-#endif // PCMS_UTILITY_EQDSK_HPP
+#endif // PCMS_EQDSK_EQDSK_HPP

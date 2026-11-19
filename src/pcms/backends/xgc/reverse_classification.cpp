@@ -64,7 +64,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& in)
       if (node_id >= 0) {
         // need to subtract 1 since XGC uses 1 based indexing, but we expect 0
         // based indexing in C code
-        rc.Insert(geometry, node_id - 1);
+        detail::ReverseClassificationAccess::Insert(rc, geometry, node_id - 1);
       }
     }
   }
@@ -79,7 +79,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& instr,
   MPI_Comm_rank(comm, &rank);
   if (rank == root) {
     auto rc = ReadReverseClassificationVertex(instr);
-    auto serialized_rc = rc.Serialize();
+    auto serialized_rc = detail::ReverseClassificationAccess::Serialize(rc);
     static_assert(std::is_same_v<LO, int32_t>,
                   "mpi type hardcoded, must update");
     size_t sz = serialized_rc.size();
@@ -96,7 +96,7 @@ ReverseClassificationVertex ReadReverseClassificationVertex(std::istream& instr,
   MPI_Bcast(serialized_rc.data(), sz, MPI_INT32_T, root, comm);
   Rank1View<LO, HostMemorySpace> av{serialized_rc.data(), serialized_rc.size()};
   ReverseClassificationVertex rc;
-  rc.Deserialize(av);
+  detail::ReverseClassificationAccess::Deserialize(rc, av);
   return rc;
 }
 
@@ -155,9 +155,9 @@ const std::set<LO>* ReverseClassificationVertex::Query(
 std::ostream& operator<<(std::ostream& os, const ReverseClassificationVertex& v)
 {
   os << v.GetTotalVerts() << "\n";
-  for (auto& geom : v) {
+  for (const auto& geom : v.data_) {
     os << geom.first.dim << " " << geom.first.id << "\n";
-    for (auto& vert : geom.second) {
+    for (const auto& vert : geom.second) {
       os << vert + 1 << " ";
     }
     os << "\n";

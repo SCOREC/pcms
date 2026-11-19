@@ -108,7 +108,7 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
   auto space = pcms::test::MakeP1Space(mesh);
   auto source = space->CreateFunction<pcms::Real>();
   auto target = space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection projection(*space, *space);
+  pcms::OmegaHConservativeProjection projection(space, space);
   SECTION("constant field")
   {
     const double c = 2.5;

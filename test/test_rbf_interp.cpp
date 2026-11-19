@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <pcms/backends/omega_h/adj_search.hpp>
-#include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/field/evaluator/interpolator_aliases.hpp>
+#include <pcms/backends/point_cloud/mls_interpolation.hpp>
+#include <pcms/backends/point_cloud/interpolator_aliases.hpp>
 #include <pcms/utility/arrays.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>

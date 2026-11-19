@@ -7,10 +7,10 @@
 #include "pcms/coupler/detail/field_exchange_planner.hpp"
 #include "pcms/coupler/detail/field_serializer.hpp"
 #include "pcms/coupler/overlap_mask.hpp"
-#include "pcms/field/simple_field_data.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
 #include "distributed_test_utils.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -449,7 +449,7 @@ int main(int argc, char** argv)
       mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
 
       auto geometry =
-        pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+        pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
       auto space = pcms::CreateLagrangeSpace(
         geometry, /*order=*/1, /*num_components=*/1,
         pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});

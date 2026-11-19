@@ -12,5 +12,6 @@ if(PCMS_ENABLE_XGC)
     PUBLIC FILE_SET field TYPE HEADERS BASE_DIRS
            ${PROJECT_SOURCE_DIR}/include/pcms FILES
            ${PROJECT_SOURCE_DIR}/include/pcms/backends/xgc/reverse_classification.hpp
+           ${PROJECT_SOURCE_DIR}/include/pcms/backends/xgc/detail/reverse_classification.hpp
            ${PROJECT_SOURCE_DIR}/include/pcms/backends/xgc/xgc.hpp)
 endif()

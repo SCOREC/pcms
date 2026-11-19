@@ -361,14 +361,14 @@ std::vector<double> ProjectSameMesh(Omega_h::Mesh& mesh,
                                     pcms::MassMatrixType mass_type,
                                     std::vector<double>& source_values)
 {
-  auto geometry = pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+  auto geometry = pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto source_space = pcms::test::MakeP0Space(geometry);
   auto target_space = pcms::test::MakeP1Space(geometry);
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
   pcms::test::SetField(source, SourceFunction<Dim>{});
 
-  pcms::OmegaHConservativeProjection projection(*source_space, *target_space,
+  pcms::OmegaHConservativeProjection projection(source_space, target_space,
                                                 mass_type);
   projection.Apply(source, target);
 

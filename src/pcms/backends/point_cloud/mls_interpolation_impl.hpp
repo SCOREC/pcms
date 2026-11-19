@@ -11,13 +11,13 @@
 #include <KokkosBlas.hpp>
 #include <KokkosBlas1_team_dot.hpp>
 #include <Kokkos_StdAlgorithms.hpp>
-#include <pcms/field/evaluator/mls_interpolation.hpp>
-#include <pcms/field/evaluator/interpolator_aliases.hpp>
+#include <pcms/backends/point_cloud/mls_interpolation.hpp>
+#include <pcms/backends/point_cloud/interpolator_aliases.hpp>
 #include <pcms/utility/check.hpp>
 #include <pcms/utility/assert.hpp>
 #include <pcms/utility/detail/profile.hpp>
-#include <pcms/field/evaluator/interpolator_view_utils.hpp>
-#include <pcms/field/evaluator/interpolator_logger.hpp>
+#include <pcms/backends/point_cloud/interpolator_view_utils.hpp>
+#include <pcms/backends/point_cloud/interpolator_logger.hpp>
 
 #include <KokkosBlas2_gemv.hpp>
 #include <KokkosBatched_SVD_Decl.hpp>

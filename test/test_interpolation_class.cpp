@@ -5,7 +5,7 @@
 #include <Omega_h_library.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/backends/point_cloud/mls_evaluator.hpp>
-#include <pcms/backends/point_cloud/geometry.hpp>
+#include <pcms/backends/point_cloud/point_cloud_geometry.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/entity_layout.hpp>
 #include <pcms/utility/entity_types.hpp>
@@ -56,7 +56,7 @@ TEST_CASE("MLS reconstruction from a mesh to vertices")
   auto world = lib.world();
   auto source_mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 20, 20, 0, false);
-  const auto system = pcms::csys::Cartesian::Create(2);
+  const auto system = pcms::csys::CreateCartesian(2);
   const pcms::NeighbourhoodOptions supports{.radius = 0.12, .min_supports = 15};
   const auto source_geometry = pcms::test::MakeOmegaHGeometry(source_mesh);
   auto vertices = std::make_shared<pcms::OmegaHEntityLayout>(source_geometry,
@@ -139,7 +139,7 @@ TEST_CASE("MLS reconstruction honours the dimension of the points")
       }
     }
   }
-  const auto system = pcms::csys::Cartesian::Create(3);
+  const auto system = pcms::csys::CreateCartesian(3);
   auto space = pcms::CreatePolynomialReconstructionSpace(
     pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<HostMemorySpace>(

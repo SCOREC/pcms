@@ -2,7 +2,7 @@
 #define PCMS_TRANSFER_OMEGA_H_MC_RHS_INTEGRATOR_HPP
 
 #include "pcms/utility/coordinate_view.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"

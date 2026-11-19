@@ -25,6 +25,8 @@ def demonstrate_face_field_transfer(mesh):
     print(f"\n--- Face Field Transfer ---")
     
     face_dim = 2
+    # a 2D mesh: the faces are the elements
+    assert mesh.dim() == face_dim
     face_tag = mesh.get_tag(face_dim, 14) # tag index 14
     face_field_values = mesh.get_tag(face_dim, face_tag.name())
     
@@ -33,42 +35,26 @@ def demonstrate_face_field_transfer(mesh):
     
     print(f"Face field: min={face_field_values.min():.6f}, max={face_field_values.max():.6f}, mean={face_field_values.mean():.6f}")
     
-    # Use the C++ implementation from pcms Python API
-    # vertex_field_values = pcms.omega_h.map_entity_field_to_vertices_mls(
-    #     mesh,
-    #     face_field_values,
-    #     face_dim,
-    #     interp_degree=2,
-    # )
-    # Alternative method (simple averaging):
-    vertex_field_values = pcms.omega_h.map_entity_field_to_vertices_average(
-        mesh, face_field_values, face_dim
-    )
-    print(
-        f"Vertex field: min={vertex_field_values.min():.6f}, "
-        f"max={vertex_field_values.max():.6f}, "
-        f"mean={vertex_field_values.mean():.6f}"
-    )
-    
-    omega_h_factory = pcms.create_lagrange_space(
-        pcms.omega_h.create_geometry(mesh), 1, 1)
-    omega_h_field = omega_h_factory.create_function()
-    omega_h_field.set_dof_holder_data(vertex_field_values)
+    # The face data is a P0 field: one value per element
+    geometry = pcms.omega_h.create_geometry(mesh)
+    p0_space = pcms.create_lagrange_space(geometry, 0, 1)
+    face_field = p0_space.create_function()
+    face_field.set_dof_holder_data(face_field_values)
     
     divisions = [1000, 500]
     grid = pcms.omega_h.create_uniform_grid_from_mesh(mesh, divisions)
-    ug_factory = pcms.create_lagrange_space(
+    ug_space = pcms.create_lagrange_space(
         pcms.uniform_grid.create_geometry(grid), 1, 1
     )
-    ug_field = ug_factory.create_function()
+    ug_field = ug_space.create_function()
     
     print(f"Interpolating field from OmegaH mesh to uniform grid...")
-    interp = pcms.Interpolator(
-        omega_h_factory,
-        ug_factory,
+    interp = pcms.create_interpolator(
+        p0_space,
+        ug_space,
         pcms.OutOfBoundsPolicy(pcms.OutOfBoundsMode.FILL, 0.0),
     )
-    interp.apply(omega_h_field, ug_field)
+    interp.apply(face_field, ug_field)
     
     transferred_data = ug_field.get_dof_holder_data().get_values()[:, 0]
     print(f"Transferred field: min={np.min(transferred_data):.6f}, max={np.max(transferred_data):.6f}, mean={np.mean(transferred_data):.6f}")

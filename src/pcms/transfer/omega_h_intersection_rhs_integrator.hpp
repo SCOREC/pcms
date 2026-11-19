@@ -4,7 +4,7 @@
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/geometry/bound_points.hpp"
 #include "pcms/transfer/linear_form_integrator.hpp"
 #include "pcms/backends/omega_h/mesh_intersection.hpp"

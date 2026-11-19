@@ -11,82 +11,57 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/common.hpp"
 #include "pcms/utility/detail/profile.hpp"
-#include "pcms/coupler/detail/global_communicator.hpp"
+#include "pcms/coupler/detail/global_data_interface.hpp"
 #include <memory>
+#include <map>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace pcms
 {
-template <typename T>
-class GlobalDataInterface
-{
-public:
-  GlobalDataInterface(std::string name,
-                      Rank1View<T, pcms::HostMemorySpace> data,
-                      MPI_Comm mpi_comm, redev::Channel& channel)
-    : data_(data),
-      variable_name_(name),
-      mpi_comm_(mpi_comm),
-      comm_(name, mpi_comm_, channel)
-  {
-    PCMS_FUNCTION_TIMER;
-  }
-
-  void Send(Mode mode = Mode::Synchronous)
-  {
-    PCMS_FUNCTION_TIMER;
-    comm_.Send(data_, variable_name_, mode);
-  }
-
-  void Receive(Mode mode = Mode::Synchronous)
-  {
-    PCMS_FUNCTION_TIMER;
-    comm_.Receive(data_, variable_name_, mode);
-  }
-
-private:
-  Rank1View<T, pcms::HostMemorySpace> data_;
-  std::string variable_name_;
-  MPI_Comm mpi_comm_;
-  detail::GlobalCommunicator<T> comm_;
-};
-using GlobalDataVariant =
-  std::variant<GlobalDataInterface<int8_t>, GlobalDataInterface<int32_t>,
-               GlobalDataInterface<int64_t>, GlobalDataInterface<float>,
-               GlobalDataInterface<double>>;
-
 class ApplicationComm;
 
+/// A field added to an ApplicationComm (AddField); its Send and Receive
+/// exchange the field through the application.
 template <typename T>
 class FieldHandle
 {
 public:
+  void Send(Mode mode = Mode::Synchronous) const;
+  void Receive(Mode mode = Mode::Synchronous) const;
+  [[nodiscard]] Field<T>& GetField() const;
+
+protected:
   FieldHandle(ApplicationComm* app, std::string name)
     : app_(app), name_(std::move(name))
   {
   }
 
-  void Send(Mode mode = Mode::Synchronous) const;
-  void Receive(Mode mode = Mode::Synchronous) const;
-  [[nodiscard]] Field<T>& GetField() const;
-
 private:
+  friend class ApplicationComm;
+
   ApplicationComm* app_;
   std::string name_;
 };
+/// Global data added to an ApplicationComm (AddData).
 template <typename T>
 class DataHandle
 {
 public:
-  DataHandle(ApplicationComm* app, std::string name)
-    : app_(app), name_(std::move(name))
-  {
-  }
   void Send(Mode mode = Mode::Synchronous) const;
   void Receive(Mode mode = Mode::Synchronous) const;
 
   [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
 
 private:
+  friend class ApplicationComm;
+
+  DataHandle(ApplicationComm* app, std::string name)
+    : app_(app), name_(std::move(name))
+  {
+  }
+
   ApplicationComm* app_;
   std::string name_;
 };
@@ -99,12 +74,6 @@ template <typename T>
 class FunctionHandle : public FieldHandle<T>
 {
 public:
-  FunctionHandle(ApplicationComm* app, std::string name,
-                 std::shared_ptr<const FunctionSpace> space)
-    : FieldHandle<T>(app, std::move(name)), space_(std::move(space))
-  {
-  }
-
   [[nodiscard]] const FunctionSpace& GetSpace() const noexcept
   {
     return *space_;
@@ -116,23 +85,21 @@ public:
   }
 
 private:
+  friend class ApplicationComm;
+
+  FunctionHandle(ApplicationComm* app, std::string name,
+                 std::shared_ptr<const FunctionSpace> space)
+    : FieldHandle<T>(app, std::move(name)), space_(std::move(space))
+  {
+  }
+
   std::shared_ptr<const FunctionSpace> space_;
 };
 
+/// An application's connection, from CouplerComm::AddApplication.
 class ApplicationComm
 {
 public:
-  ApplicationComm(std::string name, MPI_Comm comm, redev::Redev& redev,
-                  adios2::Params params, redev::TransportType transport_type,
-                  std::string path)
-    : mpi_comm_(comm),
-      redev_(redev),
-      channel_{redev_.CreateAdiosChannel(std::move(name), std::move(params),
-                                         transport_type, std::move(path))}
-  {
-    PCMS_FUNCTION_TIMER;
-  }
-
   // Set the overlap mask for a field's layout by name. Must be set before the
   // AddField/AddFunction that first creates that layout's communicator.
   void SetLayoutOverlapMask(const std::string& layout_name,
@@ -246,6 +213,19 @@ public:
   [[nodiscard]] Field<T>& GetField(const std::string& name);
 
 private:
+  friend class CouplerComm;
+
+  ApplicationComm(std::string name, MPI_Comm comm, redev::Redev& redev,
+                  adios2::Params params, redev::TransportType transport_type,
+                  std::string path)
+    : mpi_comm_(comm),
+      redev_(redev),
+      channel_{redev_.CreateAdiosChannel(std::move(name), std::move(params),
+                                         transport_type, std::move(path))}
+  {
+    PCMS_FUNCTION_TIMER;
+  }
+
   // Returns the communicator for `layout`, creating it (MPI split + overlap
   // mask lookup + planner) on first use and reusing it for any later
   // field/function whose layout has the same name.
@@ -269,7 +249,7 @@ private:
   std::map<std::string, std::unique_ptr<detail::FieldLayoutCommunicator>>
     field_layout_communicators_;
   std::map<std::string, std::unique_ptr<OverlapMask>> layout_overlap_masks_;
-  std::map<std::string, GlobalDataVariant> global_data_interfaces_;
+  std::map<std::string, detail::GlobalDataVariant> global_data_interfaces_;
 };
 
 template <typename T>
@@ -279,8 +259,8 @@ DataHandle<T> ApplicationComm::AddData(std::string name,
 {
   PCMS_FUNCTION_TIMER;
   auto [it, inserted] = global_data_interfaces_.try_emplace(
-    name, std::in_place_type<GlobalDataInterface<T>>, name, data, mpi_comm,
-    channel_);
+    name, std::in_place_type<detail::GlobalDataInterface<T>>, name, data,
+    mpi_comm, channel_);
   if (!inserted) {
     throw pcms_error("Global data interface with this name already exists");
   }
@@ -329,14 +309,17 @@ public:
   {
     PCMS_FUNCTION_TIMER;
     auto key = path + name;
-    auto [it, inserted] = applications_.try_emplace(
-      key, std::move(name), mpi_comm_, redev_, std::move(params),
-      transport_type, std::move(path));
-    if (!inserted) {
+    if (applications_.count(key) != 0) {
       std::cerr << "Application with name " << name << "already exists!\n";
       std::terminate();
     }
-    return &(it->second);
+    // the constructor is private, so the map holds the applications by
+    // pointer; the pointers handed out stay valid
+    auto& app = applications_[key];
+    app.reset(new ApplicationComm(std::move(name), mpi_comm_, redev_,
+                                  std::move(params), transport_type,
+                                  std::move(path)));
+    return app.get();
   }
 
   [[nodiscard]] const redev::Partition& GetPartition() const noexcept
@@ -349,7 +332,7 @@ private:
   MPI_Comm mpi_comm_;
   redev::Redev redev_;
   // gather and scatter operations have reference to internal fields
-  std::map<std::string, ApplicationComm> applications_;
+  std::map<std::string, std::unique_ptr<ApplicationComm>> applications_;
 };
 
 } // namespace pcms

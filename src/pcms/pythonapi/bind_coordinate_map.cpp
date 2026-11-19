@@ -12,19 +12,6 @@ namespace py = pybind11;
 namespace pcms
 {
 
-namespace
-{
-
-// The concrete maps a user can create derive from CoordinateMap in Python, so
-// their handles derive likewise.
-template <typename Map>
-struct MapHandle : Immutable<CoordinateMap>
-{
-  MapHandle() : Immutable<CoordinateMap>{std::make_shared<const Map>()} {}
-};
-
-} // namespace
-
 void bind_coordinate_map_module(py::module& m)
 {
   py::class_<BoundCoordinateMap, std::unique_ptr<BoundCoordinateMap>>(
@@ -78,12 +65,14 @@ void bind_coordinate_map_module(py::module& m)
       "Do every per-point computation for points in the source coordinate "
       "system");
 
-  py::class_<MapHandle<CartesianToCylindrical>, Immutable<CoordinateMap>>(
-    m, "CartesianToCylindrical")
-    .def(py::init<>());
-  py::class_<MapHandle<CylindricalToCartesian>, Immutable<CoordinateMap>>(
-    m, "CylindricalToCartesian")
-    .def(py::init<>());
+  m.def(
+    "create_cartesian_to_cylindrical",
+    []() { return Immutable<CoordinateMap>{CreateCartesianToCylindrical()}; },
+    "Map from Cartesian (x, y, z) to cylindrical (R, theta, Z) points");
+  m.def(
+    "create_cylindrical_to_cartesian",
+    []() { return Immutable<CoordinateMap>{CreateCylindricalToCartesian()}; },
+    "Map from cylindrical (R, theta, Z) to Cartesian (x, y, z) points");
 }
 
 } // namespace pcms

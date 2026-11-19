@@ -13,7 +13,7 @@
 #include "distributed_test_utils.hpp"
 #include "pcms/configuration.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -249,7 +249,7 @@ int main(int argc, char** argv)
       mesh.set_parting(OMEGA_H_GHOSTED, 1, false);
 
       auto geometry =
-        pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+        pcms::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
       for (int nc : {1, 2}) {
         const std::string suffix = " (" + std::to_string(nc) + " components)";
         CheckLayout(

@@ -197,7 +197,7 @@ OmegaHLagrangeLayout::GetOwnedIndices() const
 
 void OmegaHLagrangeLayout::BuildOwnedViews()
 {
-  auto owned = BuildOwnedLayoutData(
+  auto owned = pcms::detail::BuildOwnedLayoutData(
     owned_,
     Kokkos::View<const GO*, DeviceMemorySpace>(gids_.data(), gids_.size()),
     coords_2d_, mesh_.dim());

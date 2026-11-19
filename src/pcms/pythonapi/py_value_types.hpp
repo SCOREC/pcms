@@ -63,32 +63,12 @@ py::class_<Immutable<T>> ImmutableClass(py::handle scope, const char* name,
   return cls;
 }
 
-// The Python classes of the concrete coordinate systems derive from
-// CoordinateSystem, so Python sees the kind of any system pcms returns
-// (isinstance(cs, pcms.csys.Cartesian)); their handles derive likewise.
-struct CartesianHandle : Immutable<CoordinateSystem>
-{};
-struct CylindricalRThetaZHandle : Immutable<CoordinateSystem>
-{};
-struct CylindricalRZHandle : Immutable<CoordinateSystem>
-{};
-
-// The Python object of a coordinate system, of the class of its kind; None for
-// null.
+// The Python object of a coordinate system; None for null.
 inline py::object ToPython(
   const std::shared_ptr<const CoordinateSystem>& system)
 {
   if (system == nullptr) {
     return py::none();
-  }
-  if (dynamic_cast<const csys::Cartesian*>(system.get()) != nullptr) {
-    return py::cast(CartesianHandle{{system}});
-  }
-  if (dynamic_cast<const csys::CylindricalRThetaZ*>(system.get()) != nullptr) {
-    return py::cast(CylindricalRThetaZHandle{{system}});
-  }
-  if (dynamic_cast<const csys::CylindricalRZ*>(system.get()) != nullptr) {
-    return py::cast(CylindricalRZHandle{{system}});
   }
   return py::cast(Immutable<CoordinateSystem>{system});
 }
@@ -99,7 +79,7 @@ inline py::object ToPython(
 inline std::shared_ptr<const CoordinateSystem> CartesianIfNone(
   const std::optional<Immutable<CoordinateSystem>>& system)
 {
-  return system ? system->ptr : csys::Cartesian::Deferred();
+  return system ? system->ptr : pcms::detail::DeferredCartesian();
 }
 
 // Coordinates tagged with the coordinate system that gives them meaning.

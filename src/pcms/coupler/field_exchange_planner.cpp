@@ -61,8 +61,8 @@ static OutMsg ConstructOutMessage(const ReversePartitionMap2& reverse_partition)
   }
   out.offset.resize(counts.size() + 1);
   out.offset[0] = 0;
-  pcms::inclusive_scan(counts.begin(), counts.end(),
-                       std::next(out.offset.begin(), 1));
+  pcms::detail::inclusive_scan(counts.begin(), counts.end(),
+                               std::next(out.offset.begin(), 1));
   return out;
 }
 

@@ -1,7 +1,7 @@
 #ifndef PCMS_BACKENDS_OMEGA_H_LAGRANGE_EVALUATOR_HPP
 #define PCMS_BACKENDS_OMEGA_H_LAGRANGE_EVALUATOR_HPP
 
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/point_evaluator.hpp"

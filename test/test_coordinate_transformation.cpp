@@ -31,19 +31,19 @@ namespace
 
 ValueBasis CylindricalVector()
 {
-  return ValueBasis{pcms::csys::CylindricalRThetaZ::Create(),
+  return ValueBasis{pcms::csys::CreateCylindricalRThetaZ(),
                     ComponentScaling::Physical, pcms::values::Vector};
 }
 
 ValueBasis CartesianVector()
 {
-  return ValueBasis{pcms::csys::Cartesian::Create(3),
-                    ComponentScaling::Physical, pcms::values::Vector};
+  return ValueBasis{pcms::csys::CreateCartesian(3), ComponentScaling::Physical,
+                    pcms::values::Vector};
 }
 
 ValueBasis NaturalCylindricalVector()
 {
-  return ValueBasis{pcms::csys::CylindricalRThetaZ::Create(),
+  return ValueBasis{pcms::csys::CreateCylindricalRThetaZ(),
                     ComponentScaling::Natural, pcms::values::Vector};
 }
 
@@ -53,42 +53,41 @@ TEST_CASE("coordinate systems: structural equality")
 {
   // Independently constructed systems of the same family and dimension are
   // the same system: equality is structural, never pointer identity.
-  REQUIRE(pcms::detail::SameCoordinateSystem(pcms::csys::Cartesian::Create(3),
-                                             pcms::csys::Cartesian::Create(3)));
-  REQUIRE(pcms::csys::Cartesian::Create(3) != pcms::csys::Cartesian::Create(3));
-  REQUIRE(pcms::detail::SameCoordinateSystem(
-    pcms::csys::CylindricalRThetaZ::Create(),
-    pcms::csys::CylindricalRThetaZ::Create()));
+  REQUIRE(pcms::detail::SameCoordinateSystem(pcms::csys::CreateCartesian(3),
+                                             pcms::csys::CreateCartesian(3)));
+  REQUIRE(pcms::csys::CreateCartesian(3) != pcms::csys::CreateCartesian(3));
+  REQUIRE(
+    pcms::detail::SameCoordinateSystem(pcms::csys::CreateCylindricalRThetaZ(),
+                                       pcms::csys::CreateCylindricalRThetaZ()));
   // Distinct dimensions and families are distinct systems.
   REQUIRE_FALSE(pcms::detail::SameCoordinateSystem(
-    pcms::csys::Cartesian::Create(2), pcms::csys::Cartesian::Create(3)));
+    pcms::csys::CreateCartesian(2), pcms::csys::CreateCartesian(3)));
   REQUIRE_FALSE(pcms::detail::SameCoordinateSystem(
-    pcms::csys::CylindricalRZ::Create(),
-    pcms::csys::CylindricalRThetaZ::Create()));
-  REQUIRE(pcms::csys::Cartesian::Create(2)->Dimension() == 2);
-  REQUIRE(pcms::csys::CylindricalRZ::Create()->Dimension() == 2);
-  REQUIRE(pcms::csys::CylindricalRThetaZ::Create()->Dimension() == 3);
+    pcms::csys::CreateCylindricalRZ(), pcms::csys::CreateCylindricalRThetaZ()));
+  REQUIRE(pcms::csys::CreateCartesian(2)->Dimension() == 2);
+  REQUIRE(pcms::csys::CreateCylindricalRZ()->Dimension() == 2);
+  REQUIRE(pcms::csys::CreateCylindricalRThetaZ()->Dimension() == 3);
 
   // The analytic orthogonal coordinate systems are orthogonal
-  REQUIRE(pcms::csys::Cartesian::Create(3)->HasOrthogonalBasis());
-  REQUIRE(pcms::csys::CylindricalRThetaZ::Create()->HasOrthogonalBasis());
+  REQUIRE(pcms::csys::CreateCartesian(3)->HasOrthogonalBasis());
+  REQUIRE(pcms::csys::CreateCylindricalRThetaZ()->HasOrthogonalBasis());
 }
 
 TEST_CASE("coordinate systems: ResolveCoordinateSystem resolves the deferred "
           "Cartesian placeholder from the data dimension")
 {
-  const auto placeholder = pcms::csys::Cartesian::Deferred();
+  const auto placeholder = pcms::detail::DeferredCartesian();
   REQUIRE(pcms::detail::SameCoordinateSystem(
     pcms::detail::ResolveCoordinateSystem(placeholder, 2),
-    pcms::csys::Cartesian::Create(2)));
+    pcms::csys::CreateCartesian(2)));
   REQUIRE(pcms::detail::SameCoordinateSystem(
     pcms::detail::ResolveCoordinateSystem(placeholder, 3),
-    pcms::csys::Cartesian::Create(3)));
+    pcms::csys::CreateCartesian(3)));
   // A concrete coordinate system validates against the data dimension instead.
-  const auto concrete = pcms::csys::CylindricalRThetaZ::Create();
+  const auto concrete = pcms::csys::CreateCylindricalRThetaZ();
   REQUIRE(pcms::detail::SameCoordinateSystem(
     pcms::detail::ResolveCoordinateSystem(concrete, 3),
-    pcms::csys::CylindricalRThetaZ::Create()));
+    pcms::csys::CreateCylindricalRThetaZ()));
   REQUIRE_THROWS_WITH(pcms::detail::ResolveCoordinateSystem(concrete, 2),
                       ContainsSubstring("coordinate columns"));
   REQUIRE_THROWS_WITH(pcms::detail::ResolveCoordinateSystem(nullptr, 2),
@@ -96,29 +95,29 @@ TEST_CASE("coordinate systems: ResolveCoordinateSystem resolves the deferred "
   // A Cartesian that already states its dimension is validated like any
   // other system, not silently rewritten to the data's dimension.
   REQUIRE_THROWS_WITH(
-    pcms::detail::ResolveCoordinateSystem(pcms::csys::Cartesian::Create(3), 2),
+    pcms::detail::ResolveCoordinateSystem(pcms::csys::CreateCartesian(3), 2),
     ContainsSubstring("coordinate columns"));
   // The unresolved placeholder's Kind self-explains in error messages.
   REQUIRE(placeholder->Kind() == "cartesian (dimension deferred)");
   // Deferred() is the only route to a dimension-0 Cartesian.
-  REQUIRE_THROWS_WITH(pcms::csys::Cartesian::Create(0),
+  REQUIRE_THROWS_WITH(pcms::csys::CreateCartesian(0),
                       ContainsSubstring("1..3"));
-  REQUIRE_THROWS_WITH(pcms::csys::Cartesian::Create(4),
+  REQUIRE_THROWS_WITH(pcms::csys::CreateCartesian(4),
                       ContainsSubstring("1..3"));
 }
 
 TEST_CASE("CoordinateView validates the dimension; family form derives it")
 {
   auto pts2 = pcms::test::CreateDeviceCoordinateView(
-    {0.0, 1.0, 2.0, 3.0}, pcms::csys::Cartesian::Deferred(), 2);
+    {0.0, 1.0, 2.0, 3.0}, pcms::detail::DeferredCartesian(), 2);
   // Family form: dimension from extent(1).
-  CoordinateView<DeviceMemorySpace> v(pcms::csys::Cartesian::Deferred(),
+  CoordinateView<DeviceMemorySpace> v(pcms::detail::DeferredCartesian(),
                                       pcms::MakeConstRank2View(pts2.view));
   REQUIRE(pcms::detail::SameCoordinateSystem(v.GetCoordinateSystem(),
-                                             pcms::csys::Cartesian::Create(2)));
+                                             pcms::csys::CreateCartesian(2)));
   // Mis-declared buffer fails at its entry point.
   REQUIRE_THROWS_WITH(
-    CoordinateView<DeviceMemorySpace>(pcms::csys::CylindricalRThetaZ::Create(),
+    CoordinateView<DeviceMemorySpace>(pcms::csys::CreateCylindricalRThetaZ(),
                                       pcms::MakeConstRank2View(pts2.view)),
     ContainsSubstring("coordinate columns"));
 }
@@ -130,17 +129,17 @@ TEST_CASE("CartesianToCylindrical: Bind produces known values")
                                  -3.0, 0.0, 2.0,  //
                                  1.0,  1.0, 0.0};
   auto data = pcms::test::CreateDeviceRank2View(xyz, 3);
-  const pcms::CartesianToCylindrical map;
-  REQUIRE(pcms::detail::SameCoordinateSystem(map.GetSourceCoordinateSystem(),
-                                             pcms::csys::Cartesian::Create(3)));
+  const auto map = pcms::CreateCartesianToCylindrical();
+  REQUIRE(pcms::detail::SameCoordinateSystem(map->GetSourceCoordinateSystem(),
+                                             pcms::csys::CreateCartesian(3)));
   REQUIRE(pcms::detail::SameCoordinateSystem(
-    map.GetTargetCoordinateSystem(), pcms::csys::CylindricalRThetaZ::Create()));
+    map->GetTargetCoordinateSystem(), pcms::csys::CreateCylindricalRThetaZ()));
 
   const auto bound =
-    map.Bind(pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+    map->Bind(pcms::test::MakeCoords(data, pcms::csys::CreateCartesian(3)));
   REQUIRE(pcms::detail::SameCoordinateSystem(
     bound->MappedPoints().GetCoordinateSystem(),
-    pcms::csys::CylindricalRThetaZ::Create()));
+    pcms::csys::CreateCylindricalRThetaZ()));
   REQUIRE(bound->NumPoints() == 4);
 
   auto out =
@@ -163,10 +162,10 @@ TEST_CASE("round trip via sequential Bind calls")
 {
   const std::vector<Real> xyz = {0.3, -0.4, 1.0, 2.0, 1.0, -0.5, 0.0, 0.0, 3.0};
   auto data = pcms::test::CreateDeviceRank2View(xyz, 3);
-  const auto stage1 = pcms::CartesianToCylindrical{}.Bind(
-    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  const auto stage1 = pcms::CreateCartesianToCylindrical()->Bind(
+    pcms::test::MakeCoords(data, pcms::csys::CreateCartesian(3)));
   const auto stage2 =
-    pcms::CylindricalToCartesian{}.Bind(stage1->MappedPoints());
+    pcms::CreateCylindricalToCartesian()->Bind(stage1->MappedPoints());
   auto out =
     pcms::test::CopyCoordinatesToHost(stage2->MappedPoints().GetValues());
   for (size_t i = 0; i < xyz.size() / 3; ++i) {
@@ -180,8 +179,8 @@ TEST_CASE("Bind returns owned output and completes before returning")
 {
   const std::vector<Real> xyz = {1.0, 0.0, 3.0};
   auto data = pcms::test::CreateDeviceRank2View(xyz, 3);
-  const auto bound = pcms::CartesianToCylindrical{}.Bind(
-    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  const auto bound = pcms::CreateCartesianToCylindrical()->Bind(
+    pcms::test::MakeCoords(data, pcms::csys::CreateCartesian(3)));
   // Clobber the caller's buffer after Bind; the owned output stands.
   Kokkos::deep_copy(data, -99.0);
   auto out =
@@ -193,14 +192,14 @@ TEST_CASE("Bind returns owned output and completes before returning")
 
 TEST_CASE("one map instance serves multiple point sets")
 {
-  const pcms::CartesianToCylindrical map;
+  const auto map = pcms::CreateCartesianToCylindrical();
   auto a = pcms::test::CreateDeviceRank2View({1.0, 0.0, 0.0}, 3);
   auto b =
     pcms::test::CreateDeviceRank2View({0.0, 2.0, 1.0, -3.0, 0.0, 2.0}, 3);
   const auto bound_a =
-    map.Bind(pcms::test::MakeCoords(a, pcms::csys::Cartesian::Create(3)));
+    map->Bind(pcms::test::MakeCoords(a, pcms::csys::CreateCartesian(3)));
   const auto bound_b =
-    map.Bind(pcms::test::MakeCoords(b, pcms::csys::Cartesian::Create(3)));
+    map->Bind(pcms::test::MakeCoords(b, pcms::csys::CreateCartesian(3)));
   REQUIRE(bound_a->NumPoints() == 1);
   REQUIRE(bound_b->NumPoints() == 2);
   auto out_a =
@@ -217,8 +216,8 @@ TEST_CASE("Bind rejects a source system that is not the map's own")
   const std::vector<Real> pts = {1.0, 0.0, 0.0};
   auto data = pcms::test::CreateDeviceRank2View(pts, 3);
   REQUIRE_THROWS_WITH(
-    pcms::CartesianToCylindrical{}.Bind(
-      pcms::test::MakeCoords(data, pcms::csys::CylindricalRThetaZ::Create())),
+    pcms::CreateCartesianToCylindrical()->Bind(
+      pcms::test::MakeCoords(data, pcms::csys::CreateCylindricalRThetaZ())),
     ContainsSubstring("source coordinate system"));
 }
 
@@ -236,8 +235,8 @@ TEST_CASE("bound map: manufactured pushforward rotates vector components")
     xyz[3 * i + 2] = rtz[3 * i + 2];
   }
   auto data = pcms::test::CreateDeviceRank2View(xyz, 3);
-  const auto bound = pcms::CartesianToCylindrical{}.Bind(
-    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  const auto bound = pcms::CreateCartesianToCylindrical()->Bind(
+    pcms::test::MakeCoords(data, pcms::csys::CreateCartesian(3)));
   REQUIRE(bound->NumPoints() == 3);
 
   auto values = pcms::test::CreateDeviceRank2View(
@@ -260,8 +259,8 @@ TEST_CASE("bound map: manufactured pushforward rotates vector components")
 TEST_CASE("bound map: points on the axis rotate by the angle they map to")
 {
   auto data = pcms::test::CreateDeviceRank2View({0.0, 0.0, 2.0}, 3);
-  const auto bound = pcms::CartesianToCylindrical{}.Bind(
-    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  const auto bound = pcms::CreateCartesianToCylindrical()->Bind(
+    pcms::test::MakeCoords(data, pcms::csys::CreateCartesian(3)));
   auto mapped =
     pcms::test::CopyCoordinatesToHost(bound->MappedPoints().GetValues());
   REQUIRE_THAT(mapped(0, 0), WithinAbs(0.0, pcms::test::ExactTol));
@@ -290,10 +289,10 @@ TEST_CASE("bound map: the two cylindrical maps invert each other")
   const std::vector<Real> cyl = {2.0, theta, 0.3};
   auto cart_data = pcms::test::CreateDeviceRank2View(cart, 3);
   auto cyl_data = pcms::test::CreateDeviceRank2View(cyl, 3);
-  const auto to_cart = pcms::CartesianToCylindrical{}.Bind(
-    pcms::test::MakeCoords(cart_data, pcms::csys::Cartesian::Create(3)));
-  const auto to_cyl = pcms::CylindricalToCartesian{}.Bind(
-    pcms::test::MakeCoords(cyl_data, pcms::csys::CylindricalRThetaZ::Create()));
+  const auto to_cart = pcms::CreateCartesianToCylindrical()->Bind(
+    pcms::test::MakeCoords(cart_data, pcms::csys::CreateCartesian(3)));
+  const auto to_cyl = pcms::CreateCylindricalToCartesian()->Bind(
+    pcms::test::MakeCoords(cyl_data, pcms::csys::CreateCylindricalRThetaZ()));
 
   const std::vector<Real> v = {0.0, 1.0, 0.0}; // theta-direction unit vector
   auto values = pcms::test::CreateDeviceRank2View(v, 3);
@@ -317,8 +316,8 @@ TEST_CASE("bound map: TransformValues validates the values it is given")
 {
   const std::vector<Real> xyz = {1.0, 0.5, 0.0};
   auto data = pcms::test::CreateDeviceRank2View(xyz, 3);
-  const auto bound = pcms::CartesianToCylindrical{}.Bind(
-    pcms::test::MakeCoords(data, pcms::csys::Cartesian::Create(3)));
+  const auto bound = pcms::CreateCartesianToCylindrical()->Bind(
+    pcms::test::MakeCoords(data, pcms::csys::CreateCartesian(3)));
 
   SECTION("a basis the map cannot re-express")
   {
@@ -360,7 +359,7 @@ TEST_CASE("a points-only bound map cannot re-express component values")
 {
   auto data = pcms::test::CreateDeviceRank2View({1.0, 2.0, 3.0}, 3);
   Kokkos::View<Real**, DeviceMemorySpace> mapped("mapped", 1, 3);
-  const BoundCoordinateMap bound(pcms::csys::Cartesian::Create(3), mapped);
+  const BoundCoordinateMap bound(pcms::csys::CreateCartesian(3), mapped);
   REQUIRE(bound.NumPoints() == 1);
   REQUIRE_THROWS_WITH(bound.OutputBasis(CartesianVector()),
                       ContainsSubstring("maps points only"));
@@ -372,14 +371,14 @@ TEST_CASE("ValueView validates component counts and basis")
   // A rank-1 value on a 3-dimensional system needs 3 components.
   REQUIRE_THROWS_WITH(
     (ValueView<const Real, DeviceMemorySpace>(
-      ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+      ValueBasis{pcms::csys::CreateCartesian(3), ComponentScaling::Physical,
                  pcms::values::Vector},
       pcms::MakeConstRank2View(data))),
     ContainsSubstring("require 3 components"));
   // Component count comes from the system's dimension: a 2-dimensional system
   // takes 2.
   REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
-    ValueBasis{pcms::csys::CylindricalRZ::Create(), ComponentScaling::Physical,
+    ValueBasis{pcms::csys::CreateCylindricalRZ(), ComponentScaling::Physical,
                pcms::values::Vector},
     pcms::MakeConstRank2View(data)));
   // Non-scalar values require a basis coordinate system.
@@ -401,7 +400,7 @@ TEST_CASE("value declarations reject rank > 2")
   auto data = pcms::test::CreateDeviceRank2View(flat, 27);
   REQUIRE_THROWS_WITH(
     (ValueView<const Real, DeviceMemorySpace>(
-      ValueBasis{pcms::csys::Cartesian::Create(3), ComponentScaling::Physical,
+      ValueBasis{pcms::csys::CreateCartesian(3), ComponentScaling::Physical,
                  pcms::VarianceSignature{Variance::Contravariant,
                                          Variance::Contravariant,
                                          Variance::Contravariant}},

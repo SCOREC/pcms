@@ -14,6 +14,7 @@
 #include <mpi.h>
 
 #include <cmath>
+#include <cstdio>
 #include <cstddef>
 #include <vector>
 
@@ -36,7 +37,7 @@ int main(int argc, char** argv)
     Omega_h::Library lib{};
     auto mesh =
       Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1.0, 1.0, 0.0, 4, 4, 0);
-    const auto cartesian = pcms::csys::Cartesian::Create(2);
+    const auto cartesian = pcms::csys::CreateCartesian(2);
 
     // The geometry of the mesh, and a linear Lagrange space on it.
     auto geometry = pcms::omega_h::CreateGeometry(mesh, cartesian);
@@ -101,8 +102,9 @@ int main(int argc, char** argv)
     auto target_space = pcms::CreateLagrangeSpace(
       pcms::uniform_grid::CreateGeometry(grid, cartesian), 1, 1);
     auto target = target_space->CreateFunction<pcms::Real>("target");
-    pcms::Interpolator<pcms::Real> interpolate(*space, *target_space);
-    interpolate.Apply(source, target);
+    const auto interpolate =
+      pcms::CreateInterpolator<pcms::Real>(space, target_space);
+    interpolate->Apply(source, target);
 
     const auto target_coords = target.GetLayout().GetDOFHolderCoordinates();
     const auto num_target = target_coords.GetValues().extent(0);
@@ -120,8 +122,8 @@ int main(int argc, char** argv)
         ++mismatches;
       }
     }
-    pcms::printInfo("evaluated and interpolated %d values, %d mismatches\n",
-                    static_cast<int>(num_points + num_target), mismatches);
+    std::printf("evaluated and interpolated %d values, %d mismatches\n",
+                static_cast<int>(num_points + num_target), mismatches);
   }
   MPI_Finalize();
   return mismatches == 0 ? 0 : 1;

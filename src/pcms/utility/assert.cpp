@@ -1,5 +1,5 @@
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/print.hpp"
+#include "pcms/utility/detail/print.hpp"
 
 #include <mpi.h>
 
@@ -11,7 +11,7 @@ namespace detail
 {
 void Pcms_Assert_Fail(const char* msg)
 {
-  printError("%s", msg);
+  detail::printError("%s", msg);
   abort();
 }
 
@@ -32,10 +32,11 @@ void AssertFailOnRank(const char* cond, const char* file, int line, int rank,
                       const char* msg)
 {
   if (msg != nullptr) {
-    printError("%s failed at %s + %d on rank %d: %s\n", cond, file, line, rank,
-               msg);
+    detail::printError("%s failed at %s + %d on rank %d: %s\n", cond, file,
+                       line, rank, msg);
   } else {
-    printError("%s failed at %s + %d on rank %d\n", cond, file, line, rank);
+    detail::printError("%s failed at %s + %d on rank %d\n", cond, file, line,
+                       rank);
   }
   abort();
 }

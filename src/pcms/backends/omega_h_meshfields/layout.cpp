@@ -342,7 +342,7 @@ void MeshFieldsAdapterLayout::BuildOwnedViews()
 {
   Kokkos::deep_copy(owned_host_, owned_);
 
-  auto owned = BuildOwnedLayoutData(
+  auto owned = detail::BuildOwnedLayoutData(
     owned_,
     Kokkos::View<const GO*, DeviceMemorySpace>(gids_.data(), gids_.size()),
     dof_holder_coords_, mesh_.dim());

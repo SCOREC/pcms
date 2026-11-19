@@ -12,7 +12,7 @@
 #include <pcms/utility/arrays.hpp>
 #include <pcms/utility/entity_types.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
-#include <pcms/utility/print.hpp>
+#include <pcms/utility/detail/print.hpp>
 #include <Omega_h_file.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
@@ -64,7 +64,7 @@ PcmsInterpolatorHandle pcms_create_interpolator(PcmsOmegaHMeshHandle oh_mesh,
   OMEGA_H_CHECK_PRINTF(
     mesh.dim() == 2, "Only 2D meshes are supported but found %d\n", mesh.dim());
   const auto mesh_geometry =
-    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(2));
+    pcms::CreateGeometry(mesh, pcms::csys::CreateCartesian(2));
   auto space =
     pcms::CreatePolynomialReconstructionSpace(pcms::point_cloud::CreateGeometry(
       std::make_shared<pcms::OmegaHEntityLayout>(mesh_geometry, pcms::Face, 1),
@@ -81,7 +81,7 @@ PcmsInterpolatorHandle pcms_create_point_based_interpolator(
   int target_points_size, double radius, int degree, int min_req_supports,
   double lambda, double decay_factor)
 {
-  const auto system = pcms::csys::Cartesian::Create(2);
+  const auto system = pcms::csys::CreateCartesian(2);
   auto space = pcms::CreatePolynomialReconstructionSpace(
     pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<pcms::HostMemorySpace>(
@@ -108,7 +108,8 @@ Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
 {
   auto fname = std::string(mesh_filename);
   fname = fname.erase(fname.find_last_not_of(" \n\r\t") + 1);
-  pcms::printInfo("The interpolator got dg2 mesh file: %s\n", fname.c_str());
+  pcms::detail::printInfo("The interpolator got dg2 mesh file: %s\n",
+                          fname.c_str());
   auto mesh_lib = Omega_h::Library(nullptr, nullptr, MPI_COMM_SELF);
   auto mesh = Omega_h::binary::read(fname, mesh_lib.world());
   OMEGA_H_CHECK_PRINTF(mesh.dim() == 2, "Mesh dimension is not 2D %d\n",
@@ -120,8 +121,8 @@ Omega_h::HostRead<Omega_h::Real> read_mesh_centroids(const char* mesh_filename,
                        "of elements %d != %d\n",
                        num_elements * 2, elem_centroids.size());
 
-  pcms::printInfo("Number of element centroids: %d\n",
-                  elem_centroids.size() / 2);
+  pcms::detail::printInfo("Number of element centroids: %d\n",
+                          elem_centroids.size() / 2);
 
   return {elem_centroids};
 }
@@ -132,7 +133,8 @@ void write_void_int_pointer(void* pointer, int value)
     int* dg2_elem_count_int = reinterpret_cast<int*>(pointer);
     *dg2_elem_count_int = value;
   } else {
-    pcms::printError("Error: NULL pointer provided to write integer value\n");
+    pcms::detail::printError(
+      "Error: NULL pointer provided to write integer value\n");
   }
 }
 

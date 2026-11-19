@@ -2,7 +2,7 @@
 #define PCMS_BACKENDS_OMEGA_H_MESHFIELDS_EVALUATOR_HPP
 
 #include "pcms/backends/omega_h_meshfields/evaluator_backend.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/point_evaluator.hpp"

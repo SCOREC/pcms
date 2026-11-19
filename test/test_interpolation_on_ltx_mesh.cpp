@@ -19,7 +19,7 @@
 #include <pcms/field/point_evaluator.hpp>
 #include <pcms/utility/arrays.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
-#include <pcms/utility/print.hpp>
+#include <pcms/utility/detail/print.hpp>
 
 #include <functional>
 #include <memory>
@@ -41,7 +41,7 @@ std::function<void(HostArray, HostArray)> PointCloudInterpolation(
   pcms::Rank1View<const double, pcms::HostMemorySpace> target, double radius,
   double lambda)
 {
-  const auto system = pcms::csys::Cartesian::Create(2);
+  const auto system = pcms::csys::CreateCartesian(2);
   auto space = pcms::CreatePolynomialReconstructionSpace(
     pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<pcms::HostMemorySpace>(
@@ -100,7 +100,7 @@ std::string data_root_dir = "";
 int main(const int argc, char* argv[])
 {
   Catch::Session session;
-  pcms::printInfo("Starting interpolation test on LTX mesh...");
+  pcms::detail::printInfo("Starting interpolation test on LTX mesh...");
   using namespace Catch::Clara;
 
   const auto cli =

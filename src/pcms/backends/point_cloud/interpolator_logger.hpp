@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_EVALUATOR_INTERPOLATOR_LOGGER_HPP
 #define PCMS_FIELD_EVALUATOR_INTERPOLATOR_LOGGER_HPP
 
-#include <pcms/field/evaluator/interpolator_aliases.hpp>
+#include <pcms/backends/point_cloud/interpolator_aliases.hpp>
 #include <Kokkos_Printf.hpp>
 
 namespace pcms::field

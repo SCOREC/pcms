@@ -1,7 +1,7 @@
 #include "pcms/localization/mls_support_helpers.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/check.hpp"
-#include "pcms/utility/print.hpp"
+#include "pcms/utility/detail/print.hpp"
 
 #include <Kokkos_Core.hpp>
 
@@ -186,7 +186,7 @@ SupportResults BuildPointCloudSupports(
     if (!adapt_radius_flag)
       break;
     if (loop_count > max_iterations) {
-      pcms::printError(
+      pcms::detail::printError(
         "BuildPointCloudSupports: radius adjustment did not converge after "
         "%d iterations.\n",
         max_iterations);
@@ -197,16 +197,16 @@ SupportResults BuildPointCloudSupports(
 
     if (!within_number_of_support_range(min_found, max_found, min_req_supports,
                                         max_allowed)) {
-      pcms::printInfo("BuildPointCloudSupports: adjusting radius iter %d "
-                      "(min=%d max=%d req=%d allowed=%d)\n",
-                      loop_count, min_found, max_found, min_req_supports,
-                      max_allowed);
+      pcms::detail::printInfo(
+        "BuildPointCloudSupports: adjusting radius iter %d "
+        "(min=%d max=%d req=%d allowed=%d)\n",
+        loop_count, min_found, max_found, min_req_supports, max_allowed);
       adapt_radii(min_req_supports, max_allowed, n_targets, radii2,
                   num_supports);
     }
   }
 
-  pcms::printInfo(
+  pcms::detail::printInfo(
     "BuildPointCloudSupports: support search done after %d iterations "
     "(min=%d max=%d)\n",
     loop_count, min_found, max_found);

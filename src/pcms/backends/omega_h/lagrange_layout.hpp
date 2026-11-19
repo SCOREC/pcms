@@ -4,7 +4,7 @@
 #include <Omega_h_mesh.hpp>
 #include <memory>
 #include "pcms/utility/arrays.hpp"
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/field/field_layout.hpp"
 #include "pcms/field/field.hpp"
 

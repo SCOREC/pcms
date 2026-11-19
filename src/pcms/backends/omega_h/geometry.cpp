@@ -1,4 +1,4 @@
-#include "pcms/backends/omega_h/geometry.hpp"
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/backends/omega_h/adj_search.hpp"
 #include "pcms/utility/assert.hpp"

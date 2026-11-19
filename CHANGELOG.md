@@ -3,8 +3,7 @@
 ## 0.4.0
 
 A one-time breaking reorganization so that downstream codes migrate once.
-The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRATION.md) and
-`tools/migrate-pcms.sh`.
+The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRATION.md).
 
 ### Changed (breaking)
 
@@ -80,5 +79,3 @@ The reorganization does not change numerical behavior. See [MIGRATION.md](MIGRAT
 - Tests that every public header compiles on its own and that core public
   headers include no backend library; CI builds and runs
   `examples/external-usage-example` against the install tree.
-- `tools/migrate-pcms.sh` with `tools/reorg/header-map.txt` and
-  `tools/reorg/symbol-map.txt`.

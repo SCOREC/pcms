@@ -5,7 +5,7 @@
 #include <pcms/localization/mls_support_helpers.hpp>
 #include <pcms/utility/memory_spaces.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
-#include <pcms/utility/print.hpp>
+#include <pcms/utility/detail/print.hpp>
 #include <pcms/utility/types.hpp>
 
 #include <Kokkos_Core.hpp>

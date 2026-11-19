@@ -1,6 +1,7 @@
+# no public headers: the MLS support search is private
 set(
         PCMS_LOCALIZATION_HEADERS
-                        ../../../include/pcms/localization/mls_options.hpp
+        mls_support_helpers.hpp
 )
 
 set(
@@ -35,16 +36,7 @@ set_target_properties(
 )
 
 ## export the library
-# Only the public headers (include/pcms/...) are installed; the private
-# headers next to the sources are private sources of the target.
-set(PCMS_LOCALIZATION_HEADERS_PUBLIC ${PCMS_LOCALIZATION_HEADERS})
-list(FILTER PCMS_LOCALIZATION_HEADERS_PUBLIC INCLUDE REGEX "/include/pcms/")
-set(PCMS_LOCALIZATION_HEADERS_PRIVATE ${PCMS_LOCALIZATION_HEADERS})
-list(FILTER PCMS_LOCALIZATION_HEADERS_PRIVATE EXCLUDE REGEX "/include/pcms/")
-target_sources(pcms_localization
-  PUBLIC FILE_SET localization TYPE HEADERS BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
-         FILES ${PCMS_LOCALIZATION_HEADERS_PUBLIC}
-  PRIVATE ${PCMS_LOCALIZATION_HEADERS_PRIVATE})
+target_sources(pcms_localization PRIVATE ${PCMS_LOCALIZATION_HEADERS})
 
 install(
         TARGETS pcms_localization
@@ -54,7 +46,6 @@ install(
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         INCLUDES
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        FILE_SET localization DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
 
 install(

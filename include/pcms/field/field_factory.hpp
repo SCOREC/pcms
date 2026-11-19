@@ -9,27 +9,10 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include "pcms/field/detail/field_factory.hpp"
 
 namespace pcms
 {
-
-namespace detail
-{
-
-inline size_t ExpectedFlatFieldDataSize(const FieldLayout& layout)
-{
-  return static_cast<size_t>(layout.GetNumDofHolder()) *
-         static_cast<size_t>(layout.GetNumComponents());
-}
-
-} // namespace detail
-
-// Compile-time gate: true only for the five supported field value types.
-template <typename T>
-inline constexpr bool is_supported_field_type_v =
-  std::is_same_v<T, int8_t> || std::is_same_v<T, int32_t> ||
-  std::is_same_v<T, int64_t> || std::is_same_v<T, float> ||
-  std::is_same_v<T, double>;
 
 // FieldFactory constructs Field<T> bundles ({layout, data}) with no evaluation
 // capability and no shared-ownership requirement. Comm-only backends (e.g.
@@ -90,7 +73,7 @@ Field<T> FieldFactory::CreateField(
   std::shared_ptr<const CoordinateSystem> system,
   std::optional<ComponentScaling> scaling) const
 {
-  static_assert(is_supported_field_type_v<T>,
+  static_assert(detail::is_supported_field_type_v<T>,
                 "T is not a supported field type");
   ValueBasis basis = detail::MakeValueBasis(
     GetLayout()->GetCoordinateSystem(), variance, std::move(system), scaling);
@@ -105,7 +88,7 @@ template <typename T>
 Field<T> FieldFactory::CreateField(std::string name,
                                    std::unique_ptr<FieldData<T>> data) const
 {
-  static_assert(is_supported_field_type_v<T>,
+  static_assert(detail::is_supported_field_type_v<T>,
                 "T is not a supported field type");
   if (!data) {
     throw pcms_error("FieldFactory::CreateField: data must not be null");

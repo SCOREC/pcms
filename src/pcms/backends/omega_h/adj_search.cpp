@@ -178,7 +178,7 @@ SupportResults searchNeighbors(
   const auto nvertices_target = static_cast<Omega_h::LO>(seeds.extent(0));
   Omega_h::Write<Omega_h::LO> nSupports(
     nvertices_target, 0, "number of supports in each target vertex");
-  pcms::printInfo("INFO: Cut off distance: %f\n", cutoffDistance);
+  pcms::detail::printInfo("INFO: Cut off distance: %f\n", cutoffDistance);
   Omega_h::Write<Omega_h::Real> radii2 = Omega_h::Write<Omega_h::Real>(
     nvertices_target, cutoffDistance, "squared radii of the supports");
 
@@ -186,12 +186,13 @@ SupportResults searchNeighbors(
   Omega_h::Write<Omega_h::LO> supports_idx;
 
   if (!adapt_radius) {
-    pcms::printInfo("INFO: Fixed radius search *(disregarding required minimum "
-                    "support)*... \n");
+    pcms::detail::printInfo(
+      "INFO: Fixed radius search *(disregarding required minimum "
+      "support)*... \n");
     adjBasedSearch(mesh, site_dim, target_coords, seed_dim, seeds, supports_ptr,
                    nSupports, supports_idx, radii2, true);
   } else {
-    pcms::printInfo("INFO: Adaptive radius search... \n");
+    pcms::detail::printInfo("INFO: Adaptive radius search... \n");
     // Cap the adaptation so targets that can never reach the required support
     // count do not spin the loop forever.
     const int max_radius_adjust_loops = 50;
@@ -201,8 +202,8 @@ SupportResults searchNeighbors(
         nvertices_target, 0, "number of supports in each target vertex");
 
       const auto max_radius = Omega_h::get_max(Omega_h::read(radii2));
-      pcms::printInfo("INFO: Loop %d: max_radius: %f\n", r_adjust_loop,
-                      max_radius);
+      pcms::detail::printInfo("INFO: Loop %d: max_radius: %f\n", r_adjust_loop,
+                              max_radius);
 
       adjBasedSearch(mesh, site_dim, target_coords, seed_dim, seeds,
                      supports_ptr, nSupports, supports_idx, radii2, true);
@@ -222,7 +223,7 @@ SupportResults searchNeighbors(
         Kokkos::Min<Omega_h::LO>(min_supports_found),
         Kokkos::Max<Omega_h::LO>(max_supports_found));
       r_adjust_loop++;
-      pcms::printInfo(
+      pcms::detail::printInfo(
         "Iter: %d min_nSupports: %d max_nSupports: %d, max_radius %f\n",
         r_adjust_loop, min_supports_found, max_supports_found, max_radius);
 
@@ -233,7 +234,7 @@ SupportResults searchNeighbors(
       }
 
       if (r_adjust_loop >= max_radius_adjust_loops) {
-        pcms::printInfo(
+        pcms::detail::printInfo(
           "WARNING: radius adaptation hit the %d-loop cap; some targets remain "
           "outside the [%d, %d] support range\n",
           max_radius_adjust_loops, min_req_support, 3 * min_req_support);
@@ -244,8 +245,8 @@ SupportResults searchNeighbors(
                   radii2.view(), nSupports.view());
     }
 
-    pcms::printInfo("INFO: Took %d loops to adjust the radius\n",
-                    r_adjust_loop);
+    pcms::detail::printInfo("INFO: Took %d loops to adjust the radius\n",
+                            r_adjust_loop);
   }
 
   Omega_h::LO total_supports = 0;

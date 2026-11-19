@@ -9,11 +9,11 @@
 #include <pcms/field/query_points.hpp>
 #include <pcms/geometry/geometry.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
-#include <pcms/utility/print.hpp>
 
 #include <Kokkos_Core.hpp>
 
 #include <cmath>
+#include <cstdio>
 #include <cstddef>
 #include <memory>
 #include <vector>
@@ -93,7 +93,7 @@ int main(int argc, char** argv)
   int mismatches = 0;
   {
     Kokkos::ScopeGuard kokkos(argc, argv);
-    const auto cartesian = pcms::csys::Cartesian::Create(2);
+    const auto cartesian = pcms::csys::CreateCartesian(2);
 
     // a linear Lagrange space on a uniform grid
     const pcms::UniformGrid<2> grid{
@@ -123,9 +123,9 @@ int main(int argc, char** argv)
       cartesian, MLSTol);
 
     mismatches = lagrange + mls;
-    pcms::printInfo("uniform-grid Lagrange: %d mismatches; point-cloud MLS: %d "
-                    "mismatches\n",
-                    lagrange, mls);
+    std::printf("uniform-grid Lagrange: %d mismatches; point-cloud MLS: %d "
+                "mismatches\n",
+                lagrange, mls);
   }
   return mismatches == 0 ? 0 : 1;
 }

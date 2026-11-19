@@ -38,11 +38,12 @@ protected:
   [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
                                              ValueBasis basis) const override
   {
-    return apply_to_type(storage_type, [&](auto tag) -> FieldVariant {
-      using T = typename decltype(tag)::type;
-      return WrapField<T>(layout_,
-                          std::make_unique<XGCFieldData<T>>(layout_, basis));
-    });
+    return pcms::detail::apply_to_type(
+      storage_type, [&](auto tag) -> FieldVariant {
+        using T = typename decltype(tag)::type;
+        return WrapField<T>(layout_,
+                            std::make_unique<XGCFieldData<T>>(layout_, basis));
+      });
   }
 
   [[nodiscard]] FieldVariant CreateFieldImpl(

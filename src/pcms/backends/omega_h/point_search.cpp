@@ -216,7 +216,7 @@ template <int dim>
   const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox)
 {
   // triangle and grid cell bounding box intersect
-  if (intersects(triangle_bbox(coords), bbox)) {
+  if (pcms::detail::intersects(triangle_bbox(coords), bbox)) {
     // if any of the triangle verts inside of bbox
     if (within_bbox<2>(coords[0], bbox) || within_bbox<2>(coords[1], bbox) ||
         within_bbox<2>(coords[2], bbox)) {
@@ -240,7 +240,7 @@ template <unsigned dim>
 [[nodiscard]] KOKKOS_FUNCTION bool simplex_intersects_bbox(
   const Omega_h::Matrix<dim, dim + 1>& coords, const AABBox<dim>& bbox)
 {
-  return intersects(simplex_bbox<dim>(coords), bbox);
+  return pcms::detail::intersects(simplex_bbox<dim>(coords), bbox);
   // TODO: Add refined cases from triangle_intersects_bbox
 }
 

@@ -8,8 +8,16 @@ set(
         ../../../include/pcms/utility/assert.hpp
         ../../../include/pcms/utility/bounding_box.hpp
         ../../../include/pcms/utility/detail/common.hpp
+        ../../../include/pcms/utility/detail/array_traits.hpp
+        ../../../include/pcms/utility/detail/arrays.hpp
+        ../../../include/pcms/utility/detail/assert.hpp
+        ../../../include/pcms/utility/detail/bounding_box.hpp
+        ../../../include/pcms/utility/detail/coordinate_system.hpp
+        ../../../include/pcms/utility/detail/memory_spaces.hpp
+        ../../../include/pcms/utility/detail/print.hpp
+        ../../../include/pcms/utility/detail/types.hpp
+        ../../../include/pcms/utility/detail/uniform_grid.hpp
         ../../../include/pcms/utility/entity_types.hpp
-        ../../../include/pcms/utility/eqdsk.hpp
         check.hpp
         mesh_geometry.hpp
         ../../../include/pcms/utility/memory_spaces.hpp
@@ -27,7 +35,6 @@ set(
         PCMS_UTILITY_SOURCES
         assert.cpp
         coordinate_system.cpp
-        eqdsk.cpp
         print.cpp
 )
 add_library(pcms_utility ${PCMS_UTILITY_SOURCES})

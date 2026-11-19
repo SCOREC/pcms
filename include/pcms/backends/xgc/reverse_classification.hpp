@@ -8,33 +8,18 @@
 
 #include <Kokkos_Core.hpp>
 #include <mpi.h>
+#include <iosfwd>
 #include <set>
+#include <string>
 #include <unordered_map>
+#include <vector>
+
+#include "pcms/backends/xgc/detail/reverse_classification.hpp"
 
 #ifdef PCMS_ENABLE_OMEGA_H
 #include <Omega_h_mesh.hpp>
 #include "pcms/utility/assert.hpp"
 #endif
-
-namespace pcms::xgc
-{
-
-namespace detail
-{
-
-struct DimID
-{
-  LO dim;
-  LO id;
-  bool operator==(const DimID& other) const
-  {
-    return (dim == other.dim) && (id == other.id);
-  }
-};
-
-} // namespace detail
-
-} // namespace pcms::xgc
 
 namespace std
 {
@@ -57,10 +42,20 @@ namespace pcms::xgc
 {
 ///
 /// This datastructure represents the reverse classification
-/// of the mesh verticies on the geometric entities
+/// of the mesh verticies on the geometric entities. It is opaque: create it
+/// with ReadReverseClassificationVertex or CreateReverseClassification and
+/// pass it to CreateFieldFactory (pcms/backends/xgc/xgc.hpp).
 class ReverseClassificationVertex
 {
 public:
+  /// Writes the reverse classification in the format
+  /// ReadReverseClassificationVertex reads.
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const ReverseClassificationVertex& v);
+
+private:
+  friend struct detail::ReverseClassificationAccess;
+
   // the ordered nature of the set is relied upon to provide the entries for
   // each geometric entity in iteration order (for xgc) where the gids are in
   // ascending order
@@ -89,10 +84,6 @@ public:
 
   [[nodiscard]] LO GetTotalVerts() const noexcept { return total_verts_; }
 
-  friend std::ostream& operator<<(std::ostream& os,
-                                  const ReverseClassificationVertex& v);
-
-private:
   DataMapType data_;
   LO total_verts_{0};
 };
@@ -129,10 +120,10 @@ template <typename T = Omega_h::LO>
   for (int i = 0; i < class_dims_h.size(); ++i) {
     detail::DimID geom{class_dims_h[i], class_ids_h[i]};
     if (index_base == IndexBase::Zero) {
-      rc.Insert(geom, vert_id[i]);
+      detail::ReverseClassificationAccess::Insert(rc, geom, vert_id[i]);
     } else {
       PCMS_ALWAYS_ASSERT(vert_id[i] > 0);
-      rc.Insert(geom, vert_id[i] - 1);
+      detail::ReverseClassificationAccess::Insert(rc, geom, vert_id[i] - 1);
     }
   }
   return rc;

@@ -5,7 +5,6 @@
 // Omega_h mesh. This header (and only backend headers) may use Omega_h types.
 
 #include "pcms/backends/omega_h/geometry.hpp"
-#include "pcms/backends/point_cloud/geometry.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -36,14 +35,14 @@ namespace pcms::omega_h
 ///        from it
 /// @param system the mesh's coordinate system, or null for Cartesian
 /// @param options search, global id tag and ownership
-[[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateGeometry(
+[[nodiscard]] std::shared_ptr<const Geometry> CreateGeometry(
   Omega_h::Mesh& mesh, std::shared_ptr<const CoordinateSystem> system,
   OmegaHGeometryOptions options = {});
 
 /// The geometry of an Omega_h mesh that shares ownership of the mesh and its
 /// library: they live as long as the geometry and what holds it (the Python
 /// bindings).
-[[nodiscard]] std::shared_ptr<const OmegaHGeometry> CreateGeometry(
+[[nodiscard]] std::shared_ptr<const Geometry> CreateGeometry(
   std::shared_ptr<Omega_h::Mesh> mesh,
   std::shared_ptr<Omega_h::Library> library,
   std::shared_ptr<const CoordinateSystem> system,
@@ -55,13 +54,14 @@ namespace pcms::omega_h
 /// Spaces made on the same geometry object share its entities, so binding the
 /// cloud at their DOF holders starts from those entities. For
 /// CreatePolynomialReconstructionSpace.
-/// @param geometry an Omega_h geometry
+/// @param geometry an Omega_h geometry (from CreateGeometry)
 /// @param entity_dim 0 or the mesh dimension
 /// @param options the support search of the geometry
-/// @throws pcms_error if `entity_dim` is not 0 or the mesh dimension
-[[nodiscard]] std::shared_ptr<const point_cloud::PointCloudGeometry>
-CreatePointCloudGeometry(std::shared_ptr<const OmegaHGeometry> geometry,
-                         int entity_dim, NeighbourhoodOptions options = {});
+/// @throws pcms_error if `geometry` is null or not an Omega_h geometry, or if
+///         `entity_dim` is not 0 or the mesh dimension
+[[nodiscard]] std::shared_ptr<const Geometry> CreatePointCloudGeometry(
+  std::shared_ptr<const Geometry> geometry, int entity_dim,
+  NeighbourhoodOptions options = {});
 
 /// 0/1 field on the vertices of a 2D uniform grid marking the vertices that
 /// lie inside mesh. The grid is given, or covers the mesh's bounding box with

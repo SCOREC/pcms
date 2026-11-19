@@ -16,7 +16,7 @@ using ExecutionSpace = DeviceMemorySpace::execution_space;
 
 const ValueBasis& CartesianPhysicalVector()
 {
-  static const ValueBasis basis{csys::Cartesian::Create(3),
+  static const ValueBasis basis{csys::CreateCartesian(3),
                                 ComponentScaling::Physical,
                                 VarianceSignature{Variance::Contravariant}};
   return basis;
@@ -24,7 +24,7 @@ const ValueBasis& CartesianPhysicalVector()
 
 const ValueBasis& CylindricalPhysicalVector()
 {
-  static const ValueBasis basis{csys::CylindricalRThetaZ::Create(),
+  static const ValueBasis basis{csys::CreateCylindricalRThetaZ(),
                                 ComponentScaling::Physical,
                                 VarianceSignature{Variance::Contravariant}};
   return basis;
@@ -221,6 +221,71 @@ std::unique_ptr<BoundCoordinateMap> BindCylindrical(
     std::move(sin_theta), stored, output, to_cylindrical ? 1.0 : -1.0);
 }
 
+// Maps points Cartesian -> cylindrical, so values run the other way: a field
+// stored in cylindrical components is re-expressed in Cartesian ones.
+class CartesianToCylindrical final : public CoordinateMap
+{
+public:
+  CartesianToCylindrical()
+    : CoordinateMap(csys::CreateCartesian(3), csys::CreateCylindricalRThetaZ())
+  {
+  }
+
+protected:
+  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
+    const CoordinateView<DeviceMemorySpace>& query_points) const override
+  {
+    return BindCylindrical(query_points, GetTargetCoordinateSystem(),
+                           PointDirection::ToCylindrical);
+  }
+};
+
+class CylindricalToCartesian final : public CoordinateMap
+{
+public:
+  CylindricalToCartesian()
+    : CoordinateMap(csys::CreateCylindricalRThetaZ(), csys::CreateCartesian(3))
+  {
+  }
+
+protected:
+  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
+    const CoordinateView<DeviceMemorySpace>& query_points) const override
+  {
+    return BindCylindrical(query_points, GetTargetCoordinateSystem(),
+                           PointDirection::ToCartesian);
+  }
+};
+
+// Places points of a poloidal (R, Z) plane at a fixed toroidal angle:
+// (R, Z) -> (R, theta0, Z).
+class PoloidalPlaneEmbedding final : public CoordinateMap
+{
+public:
+  explicit PoloidalPlaneEmbedding(Real theta0)
+    : CoordinateMap(csys::CreateCylindricalRZ(),
+                    csys::CreateCylindricalRThetaZ()),
+      theta0_(theta0)
+  {
+  }
+
+protected:
+  [[nodiscard]] std::unique_ptr<BoundCoordinateMap> BindImpl(
+    const CoordinateView<DeviceMemorySpace>& query_points) const override
+  {
+    const auto in = query_points.GetValues();
+    auto mapped = AllocateCoordinates(in.extent(0), 3);
+    EmbedPoloidalPoints(in, mapped, theta0_);
+    // The base bound map re-expresses no vector values; scalars never reach
+    // it.
+    return std::make_unique<BoundCoordinateMap>(GetTargetCoordinateSystem(),
+                                                std::move(mapped));
+  }
+
+private:
+  Real theta0_;
+};
+
 } // namespace
 
 BoundCoordinateMap::BoundCoordinateMap(
@@ -296,48 +361,19 @@ std::unique_ptr<BoundCoordinateMap> CoordinateMap::Bind(
   return bound;
 }
 
-CartesianToCylindrical::CartesianToCylindrical()
-  : CoordinateMap(csys::Cartesian::Create(3),
-                  csys::CylindricalRThetaZ::Create())
+std::shared_ptr<const CoordinateMap> CreateCartesianToCylindrical()
 {
+  return std::make_shared<const CartesianToCylindrical>();
 }
 
-std::unique_ptr<BoundCoordinateMap> CartesianToCylindrical::BindImpl(
-  const CoordinateView<DeviceMemorySpace>& query_points) const
+std::shared_ptr<const CoordinateMap> CreateCylindricalToCartesian()
 {
-  return BindCylindrical(query_points, GetTargetCoordinateSystem(),
-                         PointDirection::ToCylindrical);
+  return std::make_shared<const CylindricalToCartesian>();
 }
 
-CylindricalToCartesian::CylindricalToCartesian()
-  : CoordinateMap(csys::CylindricalRThetaZ::Create(),
-                  csys::Cartesian::Create(3))
+std::shared_ptr<const CoordinateMap> CreatePoloidalPlaneEmbedding(Real theta0)
 {
-}
-
-std::unique_ptr<BoundCoordinateMap> CylindricalToCartesian::BindImpl(
-  const CoordinateView<DeviceMemorySpace>& query_points) const
-{
-  return BindCylindrical(query_points, GetTargetCoordinateSystem(),
-                         PointDirection::ToCartesian);
-}
-
-PoloidalPlaneEmbedding::PoloidalPlaneEmbedding(Real theta0)
-  : CoordinateMap(csys::CylindricalRZ::Create(),
-                  csys::CylindricalRThetaZ::Create()),
-    theta0_(theta0)
-{
-}
-
-std::unique_ptr<BoundCoordinateMap> PoloidalPlaneEmbedding::BindImpl(
-  const CoordinateView<DeviceMemorySpace>& query_points) const
-{
-  const auto in = query_points.GetValues();
-  auto mapped = AllocateCoordinates(in.extent(0), 3);
-  EmbedPoloidalPoints(in, mapped, theta0_);
-  // The base bound map re-expresses no vector values; scalars never reach it.
-  return std::make_unique<BoundCoordinateMap>(GetTargetCoordinateSystem(),
-                                              std::move(mapped));
+  return std::make_shared<const PoloidalPlaneEmbedding>(theta0);
 }
 
 } // namespace pcms

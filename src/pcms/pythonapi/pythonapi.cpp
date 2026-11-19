@@ -32,8 +32,6 @@ void bind_coordinate_map_module(py::module& m);
 
 void bind_mls_interpolation_module(py::module& m);
 
-void bind_mesh_utilities_module(py::module& m);
-
 } // namespace pcms
 
 namespace
@@ -71,5 +69,4 @@ PYBIND11_MODULE(pcms, m)
   pcms::bind_transfer_field_module(m);
   pcms::bind_coordinate_map_module(m);
   pcms::bind_mls_interpolation_module(m);
-  pcms::bind_mesh_utilities_module(m);
 }

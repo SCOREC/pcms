@@ -78,9 +78,11 @@ pcms::xgc::ReverseClassificationVertex CreateDummyReverseClassification(
 {
   pcms::xgc::ReverseClassificationVertex rc;
   for (int i = 0; i < size; ++i) {
-    rc.Insert(i % 4 == 0 ? pcms::xgc::detail::DimID{0, 0}
-                         : pcms::xgc::detail::DimID{0, 1},
-              i);
+    pcms::xgc::detail::ReverseClassificationAccess::Insert(
+      rc,
+      i % 4 == 0 ? pcms::xgc::detail::DimID{0, 0}
+                 : pcms::xgc::detail::DimID{0, 1},
+      i);
   }
   return rc;
 }
@@ -160,7 +162,7 @@ TEST_CASE("FieldSerializer round-trips a polynomial-reconstruction field")
   auto space =
     pcms::CreatePolynomialReconstructionSpace(pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<pcms::HostMemorySpace>(
-        pcms::csys::Cartesian::Deferred(), coords_view)));
+        pcms::detail::DeferredCartesian(), coords_view)));
   auto field = space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data{5.0, 6.0, 7.0, 8.0};
@@ -178,7 +180,7 @@ TEST_CASE("FieldSerializer round-trips a uniform-grid field")
   grid.edge_length = {10.0, 10.0};
   grid.divisions = {3, 3};
   auto space = pcms::CreateLagrangeSpace(
-    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::Cartesian::Deferred()),
+    pcms::uniform_grid::CreateGeometry(grid, pcms::detail::DeferredCartesian()),
     1, 1);
   auto field = space->CreateFunction<pcms::Real>();
 
@@ -214,7 +216,7 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
   auto mesh = pcms::test::BuildUnitSquare(lib, 0);
   constexpr int num_components = 3;
   auto geometry =
-    pcms::omega_h::CreateGeometry(mesh, pcms::csys::Cartesian::Deferred());
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
   auto space = pcms::CreateLagrangeSpace(
     geometry, 1, num_components,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
@@ -258,7 +260,7 @@ TEST_CASE("FieldSerializer preserves holders outside the exchange on receive")
   auto space =
     pcms::CreatePolynomialReconstructionSpace(pcms::point_cloud::CreateGeometry(
       pcms::CoordinateView<pcms::HostMemorySpace>(
-        pcms::csys::Cartesian::Deferred(), coords_view)));
+        pcms::detail::DeferredCartesian(), coords_view)));
   auto field = space->CreateFunction<pcms::Real>();
 
   std::vector<pcms::Real> data{5.0, 6.0, 7.0, 8.0};

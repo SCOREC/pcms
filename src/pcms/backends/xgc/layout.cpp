@@ -67,7 +67,7 @@ XGCFieldLayout::XGCFieldLayout(
     num_plane_nodes_(num_plane_nodes)
 {
   // XGC poloidal planes are in the RZ plane of a cylindrical coordinate system
-  SetCoordinateSystem(csys::CylindricalRZ::Create());
+  SetCoordinateSystem(csys::CreateCylindricalRZ());
   Kokkos::parallel_for("InitXGCMembers",
                        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
                          0, num_plane_nodes_),
@@ -76,7 +76,8 @@ XGCFieldLayout::XGCFieldLayout(
   // stay unclassified (-1)
   Kokkos::deep_copy(class_dims_, LO{-1});
   Kokkos::deep_copy(class_ids_, LO{-1});
-  for (const auto& [geom, verts] : reverse_classification) {
+  for (const auto& [geom, verts] :
+       detail::ReverseClassificationAccess::Entries(reverse_classification)) {
     auto verts_host =
       Kokkos::View<LO*, HostMemorySpace>("verts_host", verts.size());
     int idx = 0;

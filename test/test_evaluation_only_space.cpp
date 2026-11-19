@@ -72,7 +72,7 @@ protected:
 class AnalyticGeometry final : public pcms::Geometry
 {
 public:
-  AnalyticGeometry() : system_(pcms::csys::CylindricalRThetaZ::Create()) {}
+  AnalyticGeometry() : system_(pcms::csys::CreateCylindricalRThetaZ()) {}
 
   const std::shared_ptr<const pcms::CoordinateSystem>& GetCoordinateSystem()
     const noexcept override
@@ -162,21 +162,21 @@ private:
 std::shared_ptr<const pcms::FunctionSpace> MakeMockSpace(int num_components)
 {
   const auto layout = std::make_shared<pcms::EmptyFieldLayout>(
-    pcms::csys::CylindricalRThetaZ::Create(), num_components);
+    pcms::csys::CreateCylindricalRThetaZ(), num_components);
+  const auto geometry = std::make_shared<AnalyticGeometry>();
   return std::make_shared<pcms::FunctionSpace>(
     layout,
     [](pcms::Type, ValueBasis) -> pcms::FieldDataVariant {
       throw pcms::pcms_error("MockSpace: pass the data naming the quantity");
     },
-    std::make_shared<MockEvaluatorFactory>(std::make_shared<AnalyticGeometry>(),
-                                           layout));
+    std::make_shared<MockEvaluatorFactory>(geometry, layout), geometry);
 }
 
 std::shared_ptr<const pcms::FunctionSpace> MakePoloidalTarget(
   Omega_h::Mesh& mesh, int num_components)
 {
   return pcms::CreateLagrangeSpace(
-    pcms::CreateGeometry(mesh, pcms::csys::CylindricalRZ::Create()), 1,
+    pcms::CreateGeometry(mesh, pcms::csys::CreateCylindricalRZ()), 1,
     num_components,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
 }
@@ -194,12 +194,13 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
   const auto target_layout = target->GetLayout();
   const auto on_plane = source->GetGeometry()->Bind(
     target_layout->GetDOFHolderCoordinates(), pcms::OutOfBoundsPolicy{},
-    std::make_shared<pcms::PoloidalPlaneEmbedding>(theta0));
-  pcms::Interpolator<Real> interpolator(*source, *target, on_plane);
+    pcms::CreatePoloidalPlaneEmbedding(theta0));
+  const auto interpolator =
+    pcms::CreateInterpolator<Real>(source, target, on_plane);
 
   auto f = source->CreateFunction<Real>("f", std::make_unique<MockData>());
   auto g = target->CreateFunction<Real>("g");
-  interpolator.Apply(f, g);
+  interpolator->Apply(f, g);
 
   const auto coords = pcms::test::CopyCoordinatesToHost(
     target->GetLayout()->GetDOFHolderCoordinates().GetValues());
@@ -216,7 +217,7 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
   // The embedding maps points only, so vector values cannot pass through it.
   auto evaluator = source->CreatePointEvaluator<Real>(on_plane);
   REQUIRE_THROWS_WITH(
-    evaluator->OutputBasis(ValueBasis{pcms::csys::CylindricalRThetaZ::Create(),
+    evaluator->OutputBasis(ValueBasis{pcms::csys::CreateCylindricalRThetaZ(),
                                       pcms::ComponentScaling::Physical,
                                       pcms::values::Vector}),
     ContainsSubstring("cannot re-express"));
@@ -230,4 +231,27 @@ TEST_CASE("Functions of an evaluation-only space hold no values")
   REQUIRE_THROWS_WITH(f.GetDOFHolderData(), ContainsSubstring("no DOFAccess"));
   REQUIRE_THROWS_WITH(source->CreateFunction<Real>("default"),
                       ContainsSubstring("naming the quantity"));
+}
+
+TEST_CASE("FunctionSpace requires the geometry of its evaluator source")
+{
+  const auto layout = std::make_shared<pcms::EmptyFieldLayout>(
+    pcms::csys::CreateCylindricalRThetaZ(), 1);
+  const auto create_data = [](pcms::Type,
+                              ValueBasis) -> pcms::FieldDataVariant {
+    throw pcms::pcms_error("no data");
+  };
+  const auto geometry = std::make_shared<AnalyticGeometry>();
+  const auto evaluator =
+    std::make_shared<MockEvaluatorFactory>(geometry, layout);
+  REQUIRE_THROWS_WITH(
+    pcms::FunctionSpace(layout, create_data, evaluator, nullptr),
+    Catch::Matchers::ContainsSubstring("the geometry must not be null"));
+  REQUIRE_THROWS_WITH(
+    pcms::FunctionSpace(layout, create_data, nullptr, nullptr),
+    Catch::Matchers::ContainsSubstring("the geometry must not be null"));
+  REQUIRE_THROWS_WITH(
+    pcms::FunctionSpace(layout, create_data, evaluator,
+                        std::make_shared<AnalyticGeometry>()),
+    Catch::Matchers::ContainsSubstring("the evaluator source's geometry"));
 }

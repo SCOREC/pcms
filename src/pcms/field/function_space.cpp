@@ -52,9 +52,8 @@ void ValidateWrappedFieldData(const FieldLayout& layout,
 
 bool FunctionSpace::Supports(DifferentialOperator op) const noexcept
 {
-  return evaluator_ != nullptr
-           ? evaluator_->Supports(op)
-           : (geometry_ != nullptr && op == DifferentialOperator::Value);
+  return evaluator_ != nullptr ? evaluator_->Supports(op)
+                               : op == DifferentialOperator::Value;
 }
 
 std::shared_ptr<const FunctionSpace> FunctionSpace::Owner() const
@@ -74,11 +73,12 @@ PointEvaluatorVariant FunctionSpace::CreatePointEvaluatorImpl(
     throw pcms_error("CreatePointEvaluator: this function space does not "
                      "evaluate fields at points");
   }
-  return apply_to_type(value_type, [&](auto type) -> PointEvaluatorVariant {
-    using T = typename decltype(type)::type;
-    return CreateUntransformedPointEvaluator<T>(*evaluator_, std::move(bound),
-                                                op);
-  });
+  return detail::apply_to_type(value_type,
+                               [&](auto type) -> PointEvaluatorVariant {
+                                 using T = typename decltype(type)::type;
+                                 return CreateUntransformedPointEvaluator<T>(
+                                   *evaluator_, std::move(bound), op);
+                               });
 }
 
 FieldVariant FunctionSpace::CreateFieldImpl(Type storage_type,

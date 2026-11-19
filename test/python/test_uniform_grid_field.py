@@ -169,7 +169,7 @@ class TestUniformGridOmegaHWorkflow:
         ug_field = ug_factory.create_function()
 
         # Transfer from unstructured mesh to uniform grid.
-        interp = pcms.Interpolator(omega_h_factory, ug_factory)
+        interp = pcms.create_interpolator(omega_h_factory, ug_factory)
         interp.apply(omega_h_field, ug_field)
 
         ug_field_data = ug_field.get_dof_holder_data().get_values()
@@ -206,7 +206,7 @@ class TestUniformGridOmegaHWorkflow:
             src_data[i] = src_coords[i, 0] + 2.0 * src_coords[i, 1]
         src_field.set_dof_holder_data(src_data)
 
-        interp = pcms.Interpolator(src_factory, tgt_factory)
+        interp = pcms.create_interpolator(src_factory, tgt_factory)
         interp.apply(src_field, tgt_field)
 
         tgt_coords = _coordinates(tgt_field)

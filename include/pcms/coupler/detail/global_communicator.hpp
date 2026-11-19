@@ -6,6 +6,7 @@
 #include <pcms/utility/assert.hpp>
 #include <pcms/utility/memory_spaces.hpp>
 #include <pcms/coupler/coupler_types.hpp>
+#include <string>
 namespace pcms::detail
 {
 template <typename T>

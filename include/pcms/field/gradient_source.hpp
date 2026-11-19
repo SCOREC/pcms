@@ -1,38 +1,34 @@
 #ifndef PCMS_FIELD_GRADIENT_SOURCE_HPP
 #define PCMS_FIELD_GRADIENT_SOURCE_HPP
 
-#include "pcms/field/differential_operator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include <memory>
 
-namespace pcms::detail
+namespace pcms
 {
 
-/// @brief Source whose evaluators apply `op` to the fields of `source`.
-///
-/// It has the geometry of `source`, so it accepts the BoundPoints `source`
-/// accepts. Only Value is supported on the returned source.
-/// @param op operator to apply; not Value
-/// @param source source whose evaluators compute `op`; not null
-/// @return source whose evaluators write the basis `op` gives for the field's
-///         stored basis
-/// @throws pcms_error if `source` is null, `op` is Value, or `source` does
-///         not support `op`
-[[nodiscard]] std::shared_ptr<const PointEvaluatorFactory> Apply(
-  DifferentialOperator op, std::shared_ptr<const PointEvaluatorFactory> source);
+// Derivative sources: evaluator sources whose evaluators write a derivative of
+// the fields of `source`, e.g. as the source of an interpolator or projection
+// (CreateInterpolator(Gradient(space), target_space)). They have the geometry
+// of `source`, so they accept the BoundPoints `source` accepts.
 
-/// @brief Apply(DifferentialOperator::Gradient, source).
+/// @brief Source whose evaluators write the gradient of the fields of
+///        `source`.
+/// @throws pcms_error if `source` is null or does not support the gradient
 [[nodiscard]] std::shared_ptr<const PointEvaluatorFactory> Gradient(
   std::shared_ptr<const PointEvaluatorFactory> source);
 
-/// @brief Apply(DifferentialOperator::Divergence, source).
+/// @brief Source whose evaluators write the divergence of the fields of
+///        `source`.
+/// @throws pcms_error if `source` is null or does not support the divergence
 [[nodiscard]] std::shared_ptr<const PointEvaluatorFactory> Divergence(
   std::shared_ptr<const PointEvaluatorFactory> source);
 
-/// @brief Apply(DifferentialOperator::Curl, source).
+/// @brief Source whose evaluators write the curl of the fields of `source`.
+/// @throws pcms_error if `source` is null or does not support the curl
 [[nodiscard]] std::shared_ptr<const PointEvaluatorFactory> Curl(
   std::shared_ptr<const PointEvaluatorFactory> source);
 
-} // namespace pcms::detail
+} // namespace pcms
 
 #endif // PCMS_FIELD_GRADIENT_SOURCE_HPP

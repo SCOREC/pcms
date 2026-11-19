@@ -104,7 +104,7 @@ gradient = source_space.create_point_evaluator(
     bound, op=pcms.DifferentialOperator.Gradient)
 
 bound = source_space.get_geometry().bind(target_space)
-pcms.Interpolator(source_space, target_space, bound).apply(source, target)
+pcms.create_interpolator(source_space, target_space, bound).apply(source, target)
 ```
 
 ## Creating Archive for Release

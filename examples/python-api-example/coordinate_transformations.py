@@ -18,7 +18,7 @@ import PyOmega_h as omega_h
 
 
 def cylindrical_vector():
-    return pcms.ValueBasis(pcms.csys.CylindricalRThetaZ.create(),
+    return pcms.ValueBasis(pcms.csys.create_cylindrical_r_theta_z(),
                            pcms.ComponentScaling.Physical, pcms.values.Vector)
 
 
@@ -44,22 +44,22 @@ def build_spaces(world):
                                  8, 8, 6, False)
     src = pcms.create_lagrange_space(
         pcms.omega_h.create_geometry(
-            src_mesh, pcms.csys.CylindricalRThetaZ.create()),
+            src_mesh, pcms.csys.create_cylindrical_r_theta_z()),
         1, 3, backend=pcms.LagrangeBackend.OmegaH)
     tgt_mesh = omega_h.build_box(world, omega_h.Family.SIMPLEX, 1.0, 1.0, 1.0,
                                  4, 4, 4, False)
     tgt = pcms.create_lagrange_space(
-        pcms.omega_h.create_geometry(tgt_mesh, pcms.csys.Cartesian.create(3)),
+        pcms.omega_h.create_geometry(tgt_mesh, pcms.csys.create_cartesian(3)),
         1, 3, backend=pcms.LagrangeBackend.OmegaH)
     return src, tgt
 
 
 def case_a():
     print("(a) coordinate transformation")
-    xyz = pcms.CoordinateView(pcms.csys.Cartesian.create(3),
+    xyz = pcms.CoordinateView(pcms.csys.create_cartesian(3),
                               [[1.0, 0.0, 0.5], [0.0, 2.0, -1.0],
                                [1.0, 1.0, 0.0]])
-    bound = pcms.CartesianToCylindrical().bind(xyz)
+    bound = pcms.create_cartesian_to_cylindrical().bind(xyz)
     rtz = bound.mapped_points().get_values()
 
     # Values run opposite to points: this map re-expresses cylindrical
@@ -84,7 +84,7 @@ def case_b(world):
     # The space's points are (r, theta, z), but the field's
     # components are Cartesian. B = (x, y, z) = (r cos theta, r sin theta, z).
     b_src = src.create_function("b", pcms.values.Vector,
-                                system=pcms.csys.Cartesian.create(3))
+                                system=pcms.csys.create_cartesian(3))
     fill_field(b_src, lambda p: np.stack(
         [p[:, 0] * np.cos(p[:, 1]), p[:, 0] * np.sin(p[:, 1]), p[:, 2]],
         axis=1))
@@ -92,8 +92,8 @@ def case_b(world):
 
     # The values are already in the target's basis, so the map passes them
     # through and only the points are mapped.
-    bound = src.get_geometry().bind(tgt, map=pcms.CartesianToCylindrical())
-    pcms.Interpolator(src, tgt, bound).apply(b_src, b_tgt)
+    bound = src.get_geometry().bind(tgt, map=pcms.create_cartesian_to_cylindrical())
+    pcms.create_interpolator(src, tgt, bound).apply(b_src, b_tgt)
     # B's Cartesian components are not linear in (r, theta, z), so
     # the P1 source field only approximates them.
     err = max_error_from_xyz(b_tgt)
@@ -117,8 +117,8 @@ def case_c(world):
     # The map given to the bind must end in the source's system: it carries
     # the target's Cartesian points to (r, theta, z), and the source's
     # cylindrical components back to Cartesian.
-    bound = src.get_geometry().bind(tgt, map=pcms.CartesianToCylindrical())
-    pcms.Interpolator(src, tgt, bound).apply(b_src, b_tgt)
+    bound = src.get_geometry().bind(tgt, map=pcms.create_cartesian_to_cylindrical())
+    pcms.create_interpolator(src, tgt, bound).apply(b_src, b_tgt)
     err = max_error_from_xyz(b_tgt)
     print("    max |B - (x,y,z)| = %.2e" % err)
     return err

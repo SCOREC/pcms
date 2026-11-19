@@ -27,19 +27,23 @@ TEST_CASE("reverse classification")
   std::stringstream ss{test_data};
   auto rc = pcms::xgc::ReadReverseClassificationVertex(ss);
   {
-    const auto* q = rc.Query({2, 20});
+    const auto* q =
+      pcms::xgc::detail::ReverseClassificationAccess::Query(rc, {2, 20});
     REQUIRE(q == nullptr);
   }
   {
-    const auto* q = rc.Query({2, 1});
+    const auto* q =
+      pcms::xgc::detail::ReverseClassificationAccess::Query(rc, {2, 1});
     REQUIRE(q != nullptr);
     REQUIRE(q->size() == 3);
     std::set<pcms::LO> s{4, 5, 6};
     REQUIRE(s == *q);
   }
-  auto vec = rc.Serialize();
+  auto vec = pcms::xgc::detail::ReverseClassificationAccess::Serialize(rc);
   pcms::xgc::ReverseClassificationVertex rc_deserialized;
   auto av = pcms::detail::make_array_view(vec);
-  rc_deserialized.Deserialize(av);
-  REQUIRE(rc_deserialized == rc);
+  pcms::xgc::detail::ReverseClassificationAccess::Deserialize(rc_deserialized,
+                                                              av);
+  REQUIRE(
+    pcms::xgc::detail::ReverseClassificationAccess::Equal(rc_deserialized, rc));
 }

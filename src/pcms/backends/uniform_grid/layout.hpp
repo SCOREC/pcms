@@ -2,7 +2,7 @@
 #define PCMS_BACKENDS_UNIFORM_GRID_LAYOUT_HPP
 
 #include "pcms/utility/arrays.hpp"
-#include "pcms/backends/uniform_grid/geometry.hpp"
+#include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
 #include "pcms/field/field_layout.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/utility/uniform_grid.hpp"

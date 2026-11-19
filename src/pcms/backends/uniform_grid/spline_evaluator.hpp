@@ -2,7 +2,7 @@
 #define PCMS_BACKENDS_UNIFORM_GRID_SPLINE_EVALUATOR_HPP
 
 #include "pcms/backends/uniform_grid/spline_interpolator.hpp"
-#include "pcms/backends/uniform_grid/geometry.hpp"
+#include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/backends/uniform_grid/layout.hpp"

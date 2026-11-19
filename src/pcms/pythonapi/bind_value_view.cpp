@@ -143,9 +143,6 @@ void bind_value_view_module(py::module& m)
       "Whether the two bases describe the same components (SameValueBasis)")
     .def("__repr__", [](const ValueBasis& self) { return Repr(self); });
 
-  m.def("same_value_basis", &pcms::detail::SameValueBasis, py::arg("a"),
-        py::arg("b"));
-
   py::class_<PyValueView>(m, "ValueView",
                           "Values (num_points × num_components) tagged with "
                           "the basis their components are in")

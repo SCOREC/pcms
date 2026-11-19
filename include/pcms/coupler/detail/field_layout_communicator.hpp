@@ -8,6 +8,7 @@
 #include "pcms/utility/arrays.hpp"
 #include <redev.h>
 #include <memory>
+#include <string>
 
 namespace pcms::detail
 {

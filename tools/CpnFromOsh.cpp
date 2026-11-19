@@ -4,12 +4,12 @@
 #include <array>
 #include <map>
 #include <numeric>
-#include "pcms/utility/print.hpp"
+#include "pcms/utility/detail/print.hpp"
 
 int main(int argc, char** argv)
 {
   if (argc != 3) {
-    pcms::printError("Usage: %s <mesh file> <nparts>\n", argv[0]);
+    pcms::detail::printError("Usage: %s <mesh file> <nparts>\n", argv[0]);
     std::abort();
   }
   Omega_h::Library lib(&argc, &argv);

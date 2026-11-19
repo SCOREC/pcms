@@ -7,7 +7,7 @@
 #include "pcms/backends/xgc/reverse_classification.hpp"
 #include "pcms/coupler/coupler.hpp"
 #include "pcms/field/layout/empty.hpp"
-#include "pcms/field/simple_field_data.hpp"
+#include "pcms/field/detail/simple_field_data.hpp"
 #include "pcms/utility/assert.hpp"
 #include <map>
 #include <memory>
@@ -73,12 +73,13 @@ protected:
   [[nodiscard]] FieldVariant CreateFieldImpl(Type storage_type,
                                              ValueBasis basis) const override
   {
-    return apply_to_type(storage_type, [this, basis](auto tag) -> FieldVariant {
-      using T = typename decltype(tag)::type;
-      return WrapField<T>(
-        layout_,
-        std::make_unique<pcms::detail::SimpleFieldData<T>>(layout_, basis));
-    });
+    return detail::apply_to_type(
+      storage_type, [this, basis](auto tag) -> FieldVariant {
+        using T = typename decltype(tag)::type;
+        return WrapField<T>(
+          layout_,
+          std::make_unique<pcms::detail::SimpleFieldData<T>>(layout_, basis));
+      });
   }
 
   [[nodiscard]] FieldVariant CreateFieldImpl(
@@ -163,7 +164,7 @@ inline ClientState::HandleVariant RegisterField(
   // should happen after we finalize new coordinate transformations
   // and higher level field control
   auto function_space =
-    detail::EmptyFieldFactory{name, csys::CylindricalRZ::Create()};
+    detail::EmptyFieldFactory{name, csys::CreateCylindricalRZ()};
   auto field = function_space.CreateField<int>(std::move(name));
   return ClientState::HandleVariant{
     app.AddField(std::move(field), participates)};
@@ -337,8 +338,9 @@ int pcms_reverse_classification_count_verts(PcmsReverseClassificationHandle rc)
   auto* reverse_classification =
     reinterpret_cast<const pcms::xgc::ReverseClassificationVertex*>(rc.pointer);
   PCMS_ALWAYS_ASSERT(reverse_classification != nullptr);
-  return std::accumulate(reverse_classification->begin(),
-                         reverse_classification->end(), 0,
+  const auto& entries = pcms::xgc::detail::ReverseClassificationAccess::Entries(
+    *reverse_classification);
+  return std::accumulate(entries.begin(), entries.end(), 0,
                          [](auto current, const auto& verts) {
                            return current + verts.second.size();
                          });

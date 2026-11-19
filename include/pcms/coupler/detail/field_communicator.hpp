@@ -12,6 +12,9 @@
 #include "pcms/utility/arrays.hpp"
 #include <redev.h>
 #include <memory>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace pcms::detail
 {

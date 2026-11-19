@@ -69,7 +69,7 @@ class TestOmegaHField:
             source_data[i, 0] = np.sum(coords[i, :dim])
         source.set_dof_holder_data(source_data)
 
-        interp = pcms.Interpolator(source_space, target_space)
+        interp = pcms.create_interpolator(source_space, target_space)
         interp.apply(source, target)
         np.testing.assert_allclose(
             target.get_dof_holder_data().get_values(), source_data, atol=1e-14

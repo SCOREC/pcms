@@ -11,26 +11,20 @@
 // utility
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/detail/common.hpp"
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/utility/entity_types.hpp"
-#include "pcms/utility/eqdsk.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/print.hpp"
-#include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
-
-// discretization and localization
 
 // geometry
 #include "pcms/geometry/bound_points.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/geometry/supports.hpp"
-#include "pcms/localization/mls_options.hpp"
 
 // field
 #include "pcms/field/coordinate_map.hpp"
@@ -42,14 +36,12 @@
 #include "pcms/field/function_space.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/field/gradient_source.hpp"
+#include "pcms/field/mls_options.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/query_points.hpp"
 #include "pcms/field/value_view.hpp"
-#ifdef PCMS_ENABLE_OMEGA_H
-#include "pcms/field/eqdsk_field.hpp"
-#endif
 
 // transfer
 #include "pcms/transfer/copy.hpp"

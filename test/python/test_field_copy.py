@@ -44,7 +44,7 @@ class TestFieldCopy:
 
         # Create copied field and copy data
         copied = factory.create_function()
-        copier = pcms.Copy(factory, factory)
+        copier = pcms.create_copy(factory, factory)
         copier.apply(original, copied)
 
         # Get copied data

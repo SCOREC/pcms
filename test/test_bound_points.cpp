@@ -6,9 +6,10 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <pcms/geometry/bound_points.hpp>
+#include <pcms/utility/entity_types.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
-#include <pcms/backends/omega_h/geometry.hpp>
+#include <pcms/backends/omega_h/omega_h_geometry.hpp>
 #include <pcms/backends/point_cloud/geometry.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/function_spaces.hpp>
@@ -139,7 +140,7 @@ TEST_CASE("Binding checks the query coordinate system")
   auto mesh = pcms::test::BuildSquareMesh(lib, 8);
   auto space = pcms::test::MakeP1Space(mesh);
   auto coords = pcms::test::CreateDeviceCoordinateView(
-    pcms::test::StandardEvalCoords2D(), pcms::csys::CylindricalRZ::Create());
+    pcms::test::StandardEvalCoords2D(), pcms::csys::CreateCylindricalRZ());
   REQUIRE_THROWS_WITH(space->GetGeometry()->Bind(coords.coordinate_view),
                       ContainsSubstring("is not the geometry's coordinate"));
 }
@@ -198,7 +199,7 @@ TEST_CASE("A rebind gives what a new bind of the points gives")
 {
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildSquareMesh(lib, 8);
-  const auto cartesian = pcms::csys::Cartesian::Create(2);
+  const auto cartesian = pcms::csys::CreateCartesian(2);
   pcms::UniformGrid<2> grid;
   grid.bot_left = {0.0, 0.0};
   grid.edge_length = {1.0, 1.0};
@@ -394,7 +395,7 @@ TEST_CASE("An Omega_h rebind from the last elements gives a new bind's")
   auto mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 16)
                        : pcms::test::BuildUnitCube(lib, 4);
   const auto geometry =
-    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(dim));
+    pcms::CreateGeometry(mesh, pcms::csys::CreateCartesian(dim));
   std::mt19937 rng(7);
   const int n = 200;
   auto pts = RandomPoints(rng, n, dim, 0.0, 1.0);
@@ -500,7 +501,7 @@ TEST_CASE("An Omega_h rebind of as many points allocates nothing")
   auto lib = Omega_h::Library{};
   auto mesh = pcms::test::BuildSquareMesh(lib, 16);
   const auto geometry =
-    pcms::CreateGeometry(mesh, pcms::csys::Cartesian::Create(2));
+    pcms::CreateGeometry(mesh, pcms::csys::CreateCartesian(2));
   // 64 points inside triangles, farther than the moves from their edges, so
   // the guesses hold and no point is searched for on the grid
   std::vector<Real> pts;

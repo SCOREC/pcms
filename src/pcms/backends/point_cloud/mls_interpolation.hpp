@@ -1,7 +1,7 @@
 #ifndef PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP
 #define PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP
 
-#include "pcms/localization/mls_options.hpp"
+#include "pcms/field/mls_options.hpp"
 #include "pcms/geometry/supports.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"

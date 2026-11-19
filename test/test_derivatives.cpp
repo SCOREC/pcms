@@ -34,7 +34,7 @@ std::shared_ptr<const pcms::FunctionSpace> MakeSplineSpace()
   grid.edge_length = {2.0, 2.0};
   grid.divisions = {16, 16};
   return pcms::CreateSplineSpace(
-    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::Cartesian::Create(2)));
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::CreateCartesian(2)));
 }
 
 } // namespace
@@ -96,8 +96,7 @@ TEST_CASE("Evaluators reject fields of another function space")
   const std::vector<Real> pts = {0.3, -0.7, 1.1, 0.2};
   const auto bound = pcms::test::Bind(*space->GetGeometry(), pts);
   auto values = space->CreatePointEvaluator<Real>(bound);
-  auto gradient =
-    pcms::detail::Gradient(space)->CreatePointEvaluator<Real>(bound);
+  auto gradient = pcms::Gradient(space)->CreatePointEvaluator<Real>(bound);
 
   const auto value_basis = f.GetData().GetValueBasis();
   const auto gradient_basis = gradient->OutputBasis(value_basis);
@@ -155,11 +154,13 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   const auto value_layout = value_space->GetLayout();
   const auto bound =
     source->GetGeometry()->Bind(value_layout->GetDOFHolderCoordinates());
-  const auto grad_source = pcms::detail::Gradient(source);
-  pcms::Interpolator<Real> values(*source, *value_space, bound);
-  pcms::Interpolator<Real> gradients(*grad_source, *gradient_space, bound);
-  values.Apply(f, value);
-  gradients.Apply(f, gradient);
+  const auto grad_source = pcms::Gradient(source);
+  const auto values =
+    pcms::CreateInterpolator<Real>(source, value_space, bound);
+  const auto gradients =
+    pcms::CreateInterpolator<Real>(grad_source, gradient_space, bound);
+  values->Apply(f, value);
+  gradients->Apply(f, gradient);
 
   const auto coords = pcms::test::CopyCoordinatesToHost(
     value_space->GetLayout()->GetDOFHolderCoordinates().GetValues());
@@ -175,15 +176,16 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
   }
 
   // A gradient source binds through the source, so it can also bind itself.
-  pcms::Interpolator<Real> self_bound(*grad_source, *gradient_space);
-  self_bound.Apply(f, gradient);
+  const auto self_bound =
+    pcms::CreateInterpolator<Real>(grad_source, gradient_space);
+  self_bound->Apply(f, gradient);
   REQUIRE_THAT(gradient.GetDOFHolderDataHost().GetValues()(0, 0),
                WithinAbs(g(0, 0), pcms::test::ExactTol));
 
   // Values are not written into a covector target.
   REQUIRE_THROWS_WITH(
-    pcms::Interpolator<Real>(*source, *gradient_space, bound)
-      .Apply(f, gradient),
+    pcms::CreateInterpolator<Real>(source, gradient_space, bound)
+      ->Apply(f, gradient),
     ContainsSubstring("differs from the target's declared basis"));
   // The bound points must be the target's DOF holders.
   pcms::UniformGrid<2> other_grid = grid;
@@ -192,11 +194,12 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
     pcms::CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
                                 other_grid, source->GetCoordinateSystem()),
                               1, 1);
-  REQUIRE_THROWS_WITH(pcms::Interpolator<Real>(*source, *other_space, bound),
-                      ContainsSubstring("target's DOF-holder sites"));
+  REQUIRE_THROWS_WITH(
+    pcms::CreateInterpolator<Real>(source, other_space, bound),
+    ContainsSubstring("target's DOF-holder sites"));
   // Second derivatives are not available from the spline yet.
   REQUIRE_THROWS_WITH(
-    pcms::detail::Gradient(grad_source),
+    pcms::Gradient(grad_source),
     ContainsSubstring(
       "Apply: Gradient is not supported by the wrapped source"));
 }
@@ -210,24 +213,24 @@ TEST_CASE("Unsupported operators are refused by name")
     space->CreatePointEvaluator<Real>(bound, pcms::DifferentialOperator::Curl),
     ContainsSubstring("Curl is not supported"));
   // an operator source only supports Value
-  auto grad = pcms::detail::Gradient(space);
+  auto grad = pcms::Gradient(space);
   REQUIRE(grad->Supports(pcms::DifferentialOperator::Value));
   REQUIRE_FALSE(grad->Supports(pcms::DifferentialOperator::Gradient));
   // an operator the wrapped source lacks is refused by name when applied
   REQUIRE_THROWS_WITH(
-    pcms::detail::Curl(space),
+    pcms::Curl(space),
     ContainsSubstring("Apply: Curl is not supported by the wrapped source"));
 }
 
 TEST_CASE("Gradients of vectors need Cartesian coordinates")
 {
   // GradientBasis directly: rank-1 stored basis
-  auto cyl = pcms::csys::CylindricalRThetaZ::Create();
+  auto cyl = pcms::csys::CreateCylindricalRThetaZ();
   pcms::ValueBasis v{cyl, pcms::ComponentScaling::Physical,
                      pcms::values::Vector};
   REQUIRE_THROWS_WITH(pcms::detail::GradientBasis(v, cyl),
                       ContainsSubstring("connection"));
-  auto cart = pcms::csys::Cartesian::Create(3);
+  auto cart = pcms::csys::CreateCartesian(3);
   pcms::ValueBasis w{cart, pcms::ComponentScaling::Physical,
                      pcms::values::Vector};
   REQUIRE(pcms::detail::GradientBasis(w, cart).Rank() == 2);

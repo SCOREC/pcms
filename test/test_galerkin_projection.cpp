@@ -4,6 +4,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
+#include <pcms/field/field_ops.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/field/coordinate_map.hpp>
@@ -98,6 +99,9 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   }
   CAPTURE(lhs, rhs);
   CHECK(std::abs(lhs - rhs) <= 1e-12 * std::max(1.0, scale));
+  // the pairing of the functional with the function is the same number
+  CHECK(std::abs(pcms::Apply(functional, field) - lhs) <=
+        1e-12 * std::max(1.0, scale));
 
   // accumulates: a second call doubles the result
   evaluator.EvaluateTranspose(y_view, functional);
@@ -232,6 +236,47 @@ TEST_CASE("EvaluateTranspose checks its arguments", "[adjoint]")
   CHECK_THROWS_AS(evaluator->EvaluateTranspose(
                     View(basis, pcms::MakeConstRank2View(values)), foreign),
                   pcms::pcms_error);
+}
+
+TEST_CASE("field operations: Scale, Axpy, Dot, norms and the pairing",
+          "[field_ops]")
+{
+  Omega_h::Library lib;
+  auto mesh = pcms::test::BuildSquareMesh(lib, 3);
+  const auto space = pcms::test::MakeP1Space(mesh);
+  std::mt19937 rng(7);
+  const auto a = RandomDofs(*space->GetLayout(), rng);
+  const auto b = RandomDofs(*space->GetLayout(), rng);
+  auto x = space->CreateFunction<pcms::Real>();
+  auto y = space->CreateFunction<pcms::Real>();
+  SetDofs(x, a);
+  SetDofs(y, b);
+  double dot = 0, xx = 0, inf = 0;
+  for (std::size_t i = 0; i < a.size(); ++i) {
+    dot += a.data()[i] * b.data()[i];
+    xx += a.data()[i] * a.data()[i];
+    inf = std::max(inf, std::abs(a.data()[i]));
+  }
+  CHECK(pcms::Dot(x, y) == Catch::Approx(dot).epsilon(1e-14));
+  CHECK(pcms::Apply(x, y) == Catch::Approx(dot).epsilon(1e-14));
+  CHECK(pcms::Norm2(x) == Catch::Approx(std::sqrt(xx)).epsilon(1e-14));
+  CHECK(pcms::NormInf(x) == Catch::Approx(inf).epsilon(1e-14));
+  auto w = space->CreateFunction<pcms::Real>();
+  Host2D twos("w", a.extent(0), 1);
+  Kokkos::deep_copy(twos, 2.0);
+  SetDofs(w, twos);
+  CHECK(pcms::WeightedRmsNorm(x, w) ==
+        Catch::Approx(2 * std::sqrt(xx / a.size())).epsilon(1e-14));
+  pcms::Axpy(3.0, x, y); // y = b + 3 a
+  pcms::Scale(0.5, y);   // y = (b + 3 a) / 2
+  const auto values = y.GetDOFHolderDataHost().GetValues();
+  for (std::size_t i = 0; i < a.size(); ++i) {
+    CHECK(values.data_handle()[i] ==
+          Catch::Approx(0.5 * (b.data()[i] + 3 * a.data()[i])).epsilon(1e-14));
+  }
+  // fields of another layout are refused
+  auto other = pcms::test::MakeP1Space(mesh)->CreateFunction<pcms::Real>();
+  CHECK_THROWS_AS(pcms::Dot(x, other), pcms::pcms_error);
 }
 
 TEST_CASE("FunctionSpace::CreateQuadrature is exact for products of two "

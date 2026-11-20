@@ -1,6 +1,7 @@
 #ifndef PCMS_BACKENDS_POINT_CLOUD_MLS_EVALUATOR_HPP
 #define PCMS_BACKENDS_POINT_CLOUD_MLS_EVALUATOR_HPP
 
+#include "pcms/field/detail/field_ops.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/field_data.hpp"
@@ -127,7 +128,57 @@ private:
   NeighbourhoodOptions options_;
 };
 
-/// @brief Evaluates a scalar point-cloud field at the bound points by MLS.
+/// The values at the targets from the coefficient rows, for every component:
+/// values(i, c) = sum_j coefficients(j) data(idx(j), c) over the supports of i.
+/// (Free functions: CUDA does not allow device lambdas in the virtual
+/// functions of the evaluator.)
+template <typename Data, typename Values>
+void ApplyMLSRows(const SupportResults& supports,
+                  const Kokkos::View<const Real*, DeviceMemorySpace>& rows,
+                  const Data& data, const Values& values, int n_comp)
+{
+  const auto num_points = static_cast<LO>(supports.supports_ptr.extent(0)) - 1;
+  pcms::detail::ForEach(
+    "MLSPointEvaluator::Evaluate", num_points, KOKKOS_LAMBDA(const LO i) {
+      for (int c = 0; c < n_comp; ++c) {
+        Real sum = 0;
+        for (LO j = supports.supports_ptr[i]; j < supports.supports_ptr[i + 1];
+             ++j) {
+          sum += rows(j) * data(supports.supports_idx[j], c);
+        }
+        values(i, c) = sum;
+      }
+    });
+}
+
+/// The transpose of ApplyMLSRows: adds coefficients(j) values(i, c) to the
+/// support sites of each target i (atomically: supports overlap).
+template <typename Values, typename Dofs>
+void ApplyMLSRowsTranspose(
+  const SupportResults& supports,
+  const Kokkos::View<const Real*, DeviceMemorySpace>& rows,
+  const Values& values, const Dofs& dofs, int n_comp)
+{
+  const auto num_points = static_cast<LO>(supports.supports_ptr.extent(0)) - 1;
+  pcms::detail::ForEach(
+    "MLSPointEvaluator::EvaluateTranspose", num_points,
+    KOKKOS_LAMBDA(const LO i) {
+      for (int c = 0; c < n_comp; ++c) {
+        for (LO j = supports.supports_ptr[i]; j < supports.supports_ptr[i + 1];
+             ++j) {
+          Kokkos::atomic_add(&dofs(supports.supports_idx[j], c),
+                             rows(j) * values(i, c));
+        }
+      }
+    });
+}
+
+/// @brief Evaluates a point-cloud field at the bound points by MLS. The
+///        coefficient rows of the targets (each value is a weighted sum of
+///        the values at its supports, the same weights for every component)
+///        are computed once, when the evaluator is created, so Evaluate is a
+///        sparse matrix-vector product, EvaluateTranspose its transpose and
+///        GetMatrix the rows themselves.
 template <typename LayoutPolicy =
             pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
 class MLSPointEvaluator : public PointEvaluator<Real, LayoutPolicy>
@@ -141,10 +192,13 @@ public:
                     MLSOptions options,
                     std::shared_ptr<const FieldLayout> layout)
     : PointEvaluator<Real, LayoutPolicy>(binding, DifferentialOperator::Value,
-                                         std::move(layout)),
+                                         layout),
       binding_(std::move(binding)),
-      dim_(dim),
-      options_(options)
+      layout_(std::move(layout)),
+      rows_(pcms::detail::mls_coefficients(
+        binding_->SourceCoordinates(), binding_->TargetCoordinates(),
+        binding_->Supports(), dim, static_cast<LO>(options.degree),
+        options.basis, options.lambda, options.tol, options.decay_factor))
   {
   }
 
@@ -155,41 +209,56 @@ public:
     const Field<Real>& field,
     ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
-    const auto values = out.GetValues();
-    if (values.extent(1) != 1) {
-      throw pcms_error(
-        "MLSPointEvaluator: only scalar (num_components==1) evaluation is "
-        "supported in this phase");
+    ApplyMLSRows(binding_->Supports(), rows_,
+                 field.GetDOFHolderData().GetValues(), out.GetValues(),
+                 layout_->GetNumComponents());
+  }
+
+  [[nodiscard]] bool SupportsTranspose() const noexcept override
+  {
+    return true;
+  }
+
+  // Public for the same reason as EvaluateImpl. Single rank: the supports are
+  // sites of this rank's layout, whose DOFs are all owned.
+  void EvaluateTransposeImpl(
+    Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> values,
+    Field<Real>& functional) const override
+  {
+    const int n_comp = layout_->GetNumComponents();
+    Kokkos::View<Real**, DeviceMemorySpace> dofs(
+      "mls_transpose", layout_->GetNumDofHolder(), n_comp);
+    ApplyMLSRowsTranspose(binding_->Supports(), rows_, values, dofs, n_comp);
+    pcms::detail::AddToField(functional, dofs);
+  }
+
+  [[nodiscard]] bool SupportsMatrix() const noexcept override { return true; }
+
+  /// The rows, with the layout's global ids as columns (single rank).
+  PointMatrix<Real> GetMatrixImpl() const override
+  {
+    const auto& supports = binding_->Supports();
+    const auto gids_host = layout_->GetGidsHost();
+    Kokkos::View<GO*, HostMemorySpace> gids_h("mls_gids", gids_host.extent(0));
+    for (std::size_t i = 0; i < gids_h.extent(0); ++i) {
+      gids_h(i) = gids_host(i);
     }
-
-    const auto device_data = field.GetDOFHolderData().GetValues();
-    const int n_sources = static_cast<int>(device_data.size());
-
-    Kokkos::View<Real*, DeviceMemorySpace> source_values(
-      Kokkos::view_alloc(Kokkos::WithoutInitializing, "mls_source_values"),
-      n_sources);
-    Kokkos::parallel_for(
-      "CopyDeviceDataToSourceValues",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_sources),
-      KOKKOS_LAMBDA(int i) { source_values(i) = device_data(i, 0); });
-
-    auto result = pcms::detail::mls_interpolation(
-      source_values, binding_->SourceCoordinates(),
-      binding_->TargetCoordinates(), binding_->Supports(), dim_,
-      static_cast<LO>(options_.degree), options_.basis, options_.lambda,
-      options_.tol, options_.decay_factor);
-
-    const int n_targets = static_cast<int>(result.size());
-    Kokkos::parallel_for(
-      "CopyMLSResultToValues",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_targets),
-      KOKKOS_LAMBDA(int i) { values(i, 0) = result(i); });
+    const auto gids =
+      Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, gids_h);
+    Kokkos::View<GO*, DeviceMemorySpace> columns(
+      "mls_columns", supports.supports_idx.extent(0));
+    const auto idx = supports.supports_idx;
+    pcms::detail::ForEach(
+      "MLSPointEvaluator::GetMatrix", static_cast<LO>(columns.extent(0)),
+      KOKKOS_LAMBDA(const LO j) { columns(j) = gids(idx(j)); });
+    return PointMatrix<Real>{supports.supports_ptr, columns, rows_};
   }
 
 private:
   std::shared_ptr<const MLSBinding> binding_;
-  int dim_;
-  MLSOptions options_;
+  std::shared_ptr<const FieldLayout> layout_;
+  // one weight per support entry, aligned with the binding's supports
+  Kokkos::View<const Real*, DeviceMemorySpace> rows_;
 };
 
 } // namespace pcms::detail

@@ -170,6 +170,33 @@ struct RBF_CUBIC
 namespace pcms::detail
 {
 
+namespace
+{
+
+// Calls `f` with the radial basis function object of `bf`.
+template <typename F>
+auto WithRadialBasis(RadialBasisFunction bf, double decay_factor, F&& f)
+{
+  switch (bf) {
+    case RadialBasisFunction::RBF_GAUSSIAN:
+      return f(field::RBF_GAUSSIAN{decay_factor});
+    case RadialBasisFunction::RBF_C4: return f(field::RBF_C4{});
+    case RadialBasisFunction::RBF_CONST: return f(field::RBF_CONST{});
+    case RadialBasisFunction::NO_OP: return f(field::NoOp{});
+    case RadialBasisFunction::RBF_MULTIQUADRIC:
+      return f(field::RBF_MULTIQUADRIC{decay_factor});
+    case RadialBasisFunction::RBF_INVMULTIQUADRIC:
+      return f(field::RBF_INVMULTIQUADRIC{decay_factor});
+    case RadialBasisFunction::RBF_THINPLATESPLINE:
+      return f(field::RBF_THINPLATESPLINE{decay_factor});
+    case RadialBasisFunction::RBF_CUBIC:
+      return f(field::RBF_CUBIC{decay_factor});
+  }
+  return f(field::NoOp{});
+}
+
+} // namespace
+
 Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
   Kokkos::View<const Real*, DeviceMemorySpace> source_values,
   Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
@@ -177,55 +204,24 @@ Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
   const SupportResults& support, LO dim, LO degree, RadialBasisFunction bf,
   double lambda, double tol, double decay_factor)
 {
-  const auto nvertices_target =
-    static_cast<LO>(target_coordinates.size()) / dim;
-  Kokkos::View<Real*, DeviceMemorySpace> interpolated_values(
-    "approximated target values", nvertices_target);
+  return WithRadialBasis(bf, decay_factor, [&](auto rbf) {
+    return field::detail::mls_interpolation(source_values, source_coordinates,
+                                            target_coordinates, support, dim,
+                                            degree, rbf, lambda, tol);
+  });
+}
 
-  switch (bf) {
-    case RadialBasisFunction::RBF_GAUSSIAN:
-      interpolated_values = field::detail::mls_interpolation(
-        source_values, source_coordinates, target_coordinates, support, dim,
-        degree, field::RBF_GAUSSIAN{decay_factor}, lambda, tol);
-      break;
-    case RadialBasisFunction::RBF_C4:
-      interpolated_values = field::detail::mls_interpolation(
-        source_values, source_coordinates, target_coordinates, support, dim,
-        degree, field::RBF_C4{}, lambda, tol);
-      break;
-    case RadialBasisFunction::RBF_CONST:
-      interpolated_values = field::detail::mls_interpolation(
-        source_values, source_coordinates, target_coordinates, support, dim,
-        degree, field::RBF_CONST{}, lambda, tol);
-      break;
-    case RadialBasisFunction::NO_OP:
-      interpolated_values = field::detail::mls_interpolation(
-        source_values, source_coordinates, target_coordinates, support, dim,
-        degree, field::NoOp{}, lambda, tol);
-      break;
-    case RadialBasisFunction::RBF_MULTIQUADRIC:
-      interpolated_values = field::detail::mls_interpolation(
-        source_values, source_coordinates, target_coordinates, support, dim,
-        degree, field::RBF_MULTIQUADRIC{decay_factor}, lambda, tol);
-      break;
-    case RadialBasisFunction::RBF_INVMULTIQUADRIC:
-      interpolated_values = field::detail::mls_interpolation(
-        source_values, source_coordinates, target_coordinates, support, dim,
-        degree, field::RBF_INVMULTIQUADRIC{decay_factor}, lambda, tol);
-      break;
-    case RadialBasisFunction::RBF_THINPLATESPLINE:
-      interpolated_values = field::detail::mls_interpolation(
-        source_values, source_coordinates, target_coordinates, support, dim,
-        degree, field::RBF_THINPLATESPLINE{decay_factor}, lambda, tol);
-      break;
-    case RadialBasisFunction::RBF_CUBIC:
-      interpolated_values = field::detail::mls_interpolation(
-        source_values, source_coordinates, target_coordinates, support, dim,
-        degree, field::RBF_CUBIC{decay_factor}, lambda, tol);
-      break;
-  }
-
-  return interpolated_values;
+Kokkos::View<Real*, DeviceMemorySpace> mls_coefficients(
+  Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
+  Kokkos::View<const Real*, DeviceMemorySpace> target_coordinates,
+  const SupportResults& support, LO dim, LO degree, RadialBasisFunction bf,
+  double lambda, double tol, double decay_factor)
+{
+  return WithRadialBasis(bf, decay_factor, [&](auto rbf) {
+    return field::detail::mls_coefficients(source_coordinates,
+                                           target_coordinates, support, dim,
+                                           degree, rbf, lambda, tol);
+  });
 }
 
 } // namespace pcms::detail

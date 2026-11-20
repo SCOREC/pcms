@@ -20,8 +20,66 @@
 namespace pcms::uniform_grid
 {
 
+namespace detail
+{
+
+/// @brief The gradient of the multilinear (order 1) interpolant of the grid
+///        values, or zero for the piecewise constant (order 0) one: component
+///        c of the values has the partials along the axes at columns
+///        c * Dim + axis.
+template <unsigned Dim, typename Values, typename Dofs>
+void EvaluateGridGradient(UniformGrid<Dim> grid, int order,
+                          Kokkos::View<const LO*, DeviceMemorySpace> cells,
+                          Kokkos::View<const Real**, DeviceMemorySpace> t,
+                          Dofs dofs, Values values)
+{
+  const int num_components = dofs.extent(1);
+  pcms::detail::ForEach(
+    "uniform_grid_gradient", static_cast<LO>(cells.extent(0)),
+    KOKKOS_LAMBDA(const LO i) {
+      for (int k = 0; k < num_components * static_cast<int>(Dim); ++k) {
+        values(i, k) = 0;
+      }
+      if (order == 0) {
+        return;
+      }
+      // cell indices in axis order (GetDimensionedIndex gives them reversed),
+      // and the vertex numbering with the first axis fastest
+      const auto reversed = grid.GetDimensionedIndex(cells(i));
+      LO first_vertex = 0;
+      LO stride[Dim];
+      Real h[Dim];
+      LO next = 1;
+      for (unsigned d = 0; d < Dim; ++d) {
+        stride[d] = next;
+        next *= grid.divisions[d] + 1;
+        h[d] = grid.edge_length[d] / grid.divisions[d];
+        first_vertex += reversed[Dim - 1 - d] * stride[d];
+      }
+      for (int corner = 0; corner < (1 << Dim); ++corner) {
+        LO vertex = first_vertex;
+        for (unsigned d = 0; d < Dim; ++d) {
+          vertex += ((corner >> d) & 1) * stride[d];
+        }
+        for (unsigned axis = 0; axis < Dim; ++axis) {
+          Real weight = 1;
+          for (unsigned d = 0; d < Dim; ++d) {
+            const bool upper = (corner >> d) & 1;
+            weight *= d == axis ? (upper ? 1 : -1) / h[d]
+                                : (upper ? t(i, d) : 1 - t(i, d));
+          }
+          for (int c = 0; c < num_components; ++c) {
+            values(i, c * Dim + axis) += weight * dofs(vertex, c);
+          }
+        }
+      }
+    });
+}
+
+} // namespace detail
+
 /// @brief Evaluates order-0 (cell value) or order-1 (multilinear) fields on a
-///        uniform grid.
+///        uniform grid, and their gradients (DifferentialOperator::Gradient).
 /// @tparam Dim grid dimension
 /// @tparam LayoutPolicy layout of the output view
 template <unsigned Dim = 2,
@@ -34,9 +92,9 @@ public:
   /// @param binding cells of the query points
   UniformGridPointEvaluator(
     std::shared_ptr<const UniformGridFieldLayout<Dim>> layout,
-    std::shared_ptr<const pcms::detail::UniformGridBinding<Dim>> binding)
-    : PointEvaluator<Real, LayoutPolicy>(binding, DifferentialOperator::Value,
-                                         layout),
+    std::shared_ptr<const pcms::detail::UniformGridBinding<Dim>> binding,
+    DifferentialOperator op = DifferentialOperator::Value)
+    : PointEvaluator<Real, LayoutPolicy>(binding, op, layout),
       layout_(std::move(layout)),
       grid_(layout_->GetGrid()),
       binding_(std::move(binding))
@@ -63,6 +121,13 @@ public:
     // Every point has a (closest) cell, so all rows are computed; Evaluate
     // overwrites the rows of points outside the grid in FILL mode.
     auto cell_indices = binding_->CellIndices();
+
+    if (this->Operator() == DifferentialOperator::Gradient) {
+      detail::EvaluateGridGradient<Dim>(grid_, layout_->GetOrder(),
+                                        cell_indices, binding_->Parametric(),
+                                        dof_data, values);
+      return;
+    }
 
     if (layout_->GetOrder() == 0) {
       Kokkos::parallel_for(
@@ -168,18 +233,17 @@ public:
     std::shared_ptr<const UniformGridGeometry<Dim>> geometry,
     std::shared_ptr<const UniformGridFieldLayout<Dim>> layout)
     : pcms::detail::TypedPointEvaluatorFactory<Real, Bound>(
-        std::move(geometry)),
+        std::move(geometry), {DifferentialOperator::Gradient}),
       layout_(std::move(layout))
   {
   }
 
 protected:
   std::unique_ptr<PointEvaluator<Real>> CreateEvaluator(
-    std::shared_ptr<const Bound> bound,
-    DifferentialOperator /*op*/) const override
+    std::shared_ptr<const Bound> bound, DifferentialOperator op) const override
   {
-    return std::make_unique<UniformGridPointEvaluator<Dim>>(layout_,
-                                                            std::move(bound));
+    return std::make_unique<UniformGridPointEvaluator<Dim>>(
+      layout_, std::move(bound), op);
   }
 
 private:

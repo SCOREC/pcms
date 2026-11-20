@@ -106,9 +106,10 @@ TEST_CASE("1D piecewise-constant Lagrange evaluates the cell value")
   REQUIRE_THAT(values(0, 0), WithinAbs(Linear(0.5), Tol));
   REQUIRE_THAT(values(1, 0), WithinAbs(Linear(1.5), Tol));
   REQUIRE_THAT(values(2, 0), WithinAbs(Linear(3.5), Tol));
-  REQUIRE_THROWS(space->CreatePointEvaluator<Real>(
-    pcms::test::Bind(*space->GetGeometry(), {0.5}),
-    DifferentialOperator::Gradient));
+  // a piecewise constant has a zero gradient
+  const auto gradient =
+    EvaluateAt(*space, f, {0.5}, DifferentialOperator::Gradient);
+  REQUIRE(gradient(0, 0) == 0.0);
 }
 
 TEST_CASE("1D multi-component Lagrange")

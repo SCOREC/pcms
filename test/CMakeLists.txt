@@ -463,6 +463,7 @@ if(Catch2_FOUND)
       test_coordinate_transformation.cpp
       test_coordinate_metric.cpp
       test_embedding.cpp
+      test_embedded_acceptance.cpp
             test_eqdsk.cpp
       test_uniform_grid.cpp
       test_field_evaluation.cpp

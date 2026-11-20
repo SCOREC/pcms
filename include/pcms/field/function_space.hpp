@@ -28,12 +28,14 @@ namespace pcms
 // evaluator source that evaluates them at points, and the coordinate
 // interpretation. It produces Functions (a Field bound to this space).
 //
-// It is the one concrete space; backends differ in the components they hand
-// to its constructor, and the Create* factories (CreateLagrangeSpace, ...)
-// assemble them. A Function co-owns its space via shared_ptr (obtained through
-// enable_shared_from_this), so spaces are always shared-owned:
+// It is concrete: backends differ in the components they hand to its
+// constructor, and the Create* factories (CreateLagrangeSpace, ...) assemble
+// them. A kind with behaviour that is not a component derives from it and
+// overrides the virtuals: the creation of its field data and the validation of
+// wrapped field data. A Function co-owns its space via shared_ptr (obtained
+// through enable_shared_from_this), so spaces are always shared-owned:
 // CreateFunction throws for a space that is not.
-class FunctionSpace final
+class FunctionSpace
   : public PointEvaluatorFactory
   , public std::enable_shared_from_this<FunctionSpace>
 {
@@ -42,9 +44,6 @@ public:
   /// functions co-own their space. Backends build spaces this way; users call
   /// the Create* factories.
   /// @param layout the layout of the space's fields
-  /// @param create_field_data makes the data of a field of this space from a
-  ///        value type and basis (may throw for spaces whose fields hold no
-  ///        values in PCMS)
   /// @param evaluator the evaluator source that evaluates the fields at
   ///        points, or null for a space whose fields are not evaluated at
   ///        points
@@ -54,11 +53,9 @@ public:
   ///         source's geometry
   explicit FunctionSpace(
     std::shared_ptr<const FieldLayout> layout,
-    std::function<FieldDataVariant(Type, ValueBasis)> create_field_data,
     std::shared_ptr<const PointEvaluatorFactory> evaluator,
     std::shared_ptr<const Geometry> geometry)
     : layout_(std::move(layout)),
-      create_field_data_(std::move(create_field_data)),
       evaluator_(std::move(evaluator)),
       geometry_(std::move(geometry))
   {
@@ -117,6 +114,23 @@ public:
   [[nodiscard]] Function<T> CreateFunction(
     std::string name, std::unique_ptr<FieldData<T>> data) const;
 
+protected:
+  /// @brief Creates the data of a field of this space.
+  /// The default holds the values of the layout's DOF holders in a
+  /// SimpleFieldData; kinds with their own storage override it.
+  /// @throws pcms_error for a type the space has no fields of (a space whose
+  ///         fields hold no values in PCMS throws)
+  [[nodiscard]] virtual FieldDataVariant CreateFieldData(
+    Type storage_type, ValueBasis basis) const;
+
+  /// @brief Checks wrapped field data (CreateFunction(name, data)) before it
+  ///        becomes a field of this space. The default checks the size of the
+  ///        data's DOF values against the layout (data without DOFAccess has
+  ///        none); kinds with their own storage also check the data's type
+  ///        and call the default.
+  /// @throws pcms_error if the data is not a field data of this space
+  virtual void ValidateFieldData(const FieldDataVariant& data) const;
+
 private:
   /// @brief Creates the evaluator through the evaluator source.
   /// @throws pcms_error if the space has no evaluator source
@@ -149,7 +163,6 @@ private:
   FieldVariant CreateFieldImpl(FieldDataVariant data) const;
 
   std::shared_ptr<const FieldLayout> layout_;
-  std::function<FieldDataVariant(Type, ValueBasis)> create_field_data_;
   std::shared_ptr<const PointEvaluatorFactory> evaluator_;
   std::shared_ptr<const Geometry> geometry_;
 };

@@ -24,17 +24,21 @@ void bind_coordinate_map_module(py::module& m)
       },
       "The query points in the map's target coordinate system, read-only")
     .def("num_points", &BoundCoordinateMap::NumPoints)
-    .def("output_basis", &BoundCoordinateMap::OutputBasis, py::arg("stored"),
-         "The basis values stored in `stored` are re-expressed in")
+    .def(
+      "output_basis",
+      [](const BoundCoordinateMap& self, const ValueBasis& stored) {
+        return self.ValueTransform().OutputBasis(stored);
+      },
+      py::arg("stored"),
+      "The basis values stored in `stored` are re-expressed in")
     .def(
       "transform_values",
       [](const BoundCoordinateMap& self, PyValueView values) {
-        ValueBasis transformed;
+        const auto& transform = self.ValueTransform();
+        const ValueBasis transformed = transform.OutputBasis(values.basis);
         WithDeviceOutput(values.values, [&](auto out) {
-          transformed = self
-                          .TransformValues(ValueView<Real, DeviceMemorySpace>(
-                            values.basis, out))
-                          .GetBasis();
+          transform.Apply(ValueView<Real, DeviceMemorySpace>(values.basis, out),
+                          ValueView<Real, DeviceMemorySpace>(transformed, out));
         });
         return PyValueView{transformed, values.values};
       },

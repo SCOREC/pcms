@@ -2,6 +2,7 @@
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/backends/omega_h/adj_search.hpp"
 #include "pcms/utility/assert.hpp"
+#include "pcms/utility/dense_linear_algebra.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
 #include "pcms/utility/detail/profile.hpp"
 #include "pcms/utility/types.hpp"
@@ -254,21 +255,6 @@ SupportResults OmegaHGeometry::Neighbourhood(
 namespace
 {
 
-/// Determinant of a Dim x Dim matrix (Dim 2 or 3).
-/// (A function of its own: CUDA does not allow a device lambda to capture a
-/// variable for the first time inside an if constexpr.)
-template <int Dim>
-KOKKOS_INLINE_FUNCTION Real SimplexDeterminant(const Real (&j)[Dim][Dim])
-{
-  if constexpr (Dim == 2) {
-    return j[0][0] * j[1][1] - j[0][1] * j[1][0];
-  } else {
-    return j[0][0] * (j[1][1] * j[2][2] - j[1][2] * j[2][1]) -
-           j[0][1] * (j[1][0] * j[2][2] - j[1][2] * j[2][0]) +
-           j[0][2] * (j[1][0] * j[2][1] - j[1][1] * j[2][0]);
-  }
-}
-
 /// Per-element Jacobian J(e, d, i) = x_{i+1, d} - x_{0, d} of the affine
 /// simplex map and its determinant.
 template <int Dim>
@@ -286,7 +272,7 @@ CellJacobians SimplexJacobians(Omega_h::Mesh& mesh)
     Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, nelems),
     KOKKOS_LAMBDA(const LO e) {
       const LO v0 = elem_verts[e * (Dim + 1)];
-      Real j[Dim][Dim];
+      Real j[3][3] = {};
       for (int i = 0; i < Dim; ++i) {
         const LO vi = elem_verts[e * (Dim + 1) + i + 1];
         for (int d = 0; d < Dim; ++d) {
@@ -294,7 +280,7 @@ CellJacobians SimplexJacobians(Omega_h::Mesh& mesh)
           jacobian(e, d, i) = j[i][d];
         }
       }
-      determinant(e) = SimplexDeterminant<Dim>(j);
+      determinant(e) = pcms::detail::Determinant(j, Dim);
     });
   return CellJacobians{jacobian, determinant};
 }

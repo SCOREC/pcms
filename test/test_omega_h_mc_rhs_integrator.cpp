@@ -299,39 +299,19 @@ TEST_CASE(
 namespace
 {
 
-Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> SwapXYPoints(
-  const pcms::CoordinateView<pcms::DeviceMemorySpace>& query_points)
+// (x, y) -> (y, x)
+struct SwapXY
 {
-  const auto in = query_points.GetValues();
-  Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> out("swapped",
-                                                          in.extent(0), 2);
-  Kokkos::parallel_for(
-    "swap_xy",
-    Kokkos::RangePolicy<pcms::DeviceMemorySpace::execution_space>(
-      0, static_cast<pcms::LO>(in.extent(0))),
-    KOKKOS_LAMBDA(const pcms::LO i) {
-      out(i, 0) = in(i, 1);
-      out(i, 1) = in(i, 0);
-    });
-  return out;
-}
-
-class SwapXY final : public pcms::CoordinateMap
-{
-public:
-  SwapXY()
-    : CoordinateMap(pcms::csys::CreateCartesian(2),
-                    pcms::csys::CreateCartesian(2))
+  KOKKOS_FUNCTION void operator()(const Kokkos::Array<pcms::Real, 2>& x,
+                                  Kokkos::Array<pcms::Real, 2>& out,
+                                  Kokkos::Array<pcms::Real, 4>& jacobian) const
   {
-  }
-
-protected:
-  [[nodiscard]] std::unique_ptr<pcms::BoundCoordinateMap> BindImpl(
-    const pcms::CoordinateView<pcms::DeviceMemorySpace>& query_points)
-    const override
-  {
-    return std::make_unique<pcms::BoundCoordinateMap>(
-      GetTargetCoordinateSystem(), SwapXYPoints(query_points));
+    out[0] = x[1];
+    out[1] = x[0];
+    jacobian[0] = 0;
+    jacobian[1] = 1;
+    jacobian[2] = 1;
+    jacobian[3] = 0;
   }
 };
 
@@ -355,7 +335,9 @@ TEST_CASE("OmegaHControlVariateProjection through a coordinate map maps the "
 
   pcms::OmegaHControlVariateProjection projection(
     source_space, target_space, /*samples_per_element=*/4, /*seed=*/8675309,
-    pcms::MassMatrixType::Consistent, std::make_shared<SwapXY>());
+    pcms::MassMatrixType::Consistent,
+    pcms::CreateCoordinateMap(pcms::csys::CreateCartesian(2),
+                              pcms::csys::CreateCartesian(2), SwapXY{}));
   projection.Apply(source_field, target_field);
 
   const auto values = pcms::detail::FlattenToRank1View(

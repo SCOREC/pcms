@@ -91,7 +91,12 @@ inline void ValidateValueBasis(const ValueBasis& basis)
   }
 }
 
-inline void ValidateValueSemantics(const ValueBasis& basis, int num_components)
+/// @param blocks whether the values may hold several blocks of the basis's
+///        components per point (values at points, e.g. the gradient of a
+///        field with several scalar components) rather than exactly one (a
+///        field's data)
+inline void ValidateValueSemantics(const ValueBasis& basis, int num_components,
+                                   bool blocks = false)
 {
   ValidateValueBasis(basis);
   const int rank = basis.Rank();
@@ -102,11 +107,15 @@ inline void ValidateValueSemantics(const ValueBasis& basis, int num_components)
   for (int i = 0; i < rank; ++i) {
     expected *= basis.system->Dimension();
   }
-  if (num_components != expected) {
+  const bool valid = blocks
+                       ? num_components > 0 && num_components % expected == 0
+                       : num_components == expected;
+  if (!valid) {
     throw pcms_error("ValidateValueSemantics: rank-" + std::to_string(rank) +
                      " values on coordinate system '" +
                      std::string(basis.system->Kind()) + "' (dimension " +
                      std::to_string(basis.system->Dimension()) + ") require " +
+                     (blocks ? "a multiple of " : "") +
                      std::to_string(expected) + " components, got " +
                      std::to_string(num_components));
   }

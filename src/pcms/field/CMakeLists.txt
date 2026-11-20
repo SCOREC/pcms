@@ -1,6 +1,7 @@
 set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/field.hpp
         ../../../include/pcms/field/coordinate_map.hpp
+        ../../../include/pcms/field/value_transform.hpp
         ../../../include/pcms/field/value_view.hpp
         element_dispatch.hpp
         gid_permutation.hpp
@@ -16,6 +17,8 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/differential_operator.hpp
         ../../../include/pcms/field/gradient_source.hpp
         ../../../include/pcms/field/detail/transformed_point_evaluator.hpp
+        ../../../include/pcms/field/detail/coordinate_map.hpp
+        ../../../include/pcms/field/detail/value_transform.hpp
         ../../../include/pcms/field/detail/field_factory.hpp
         ../../../include/pcms/field/detail/field_layout.hpp
         ../../../include/pcms/field/detail/gradient_source.hpp

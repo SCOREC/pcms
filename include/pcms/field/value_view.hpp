@@ -154,7 +154,8 @@ public:
             Rank2View<ElementType, MemorySpace, LayoutPolicy> values)
     : basis_(std::move(basis)), values_(values)
   {
-    detail::ValidateValueSemantics(basis_, static_cast<int>(values_.extent(1)));
+    detail::ValidateValueSemantics(basis_, static_cast<int>(values_.extent(1)),
+                                   /*blocks=*/true);
   }
 
   template <typename OtherElement,

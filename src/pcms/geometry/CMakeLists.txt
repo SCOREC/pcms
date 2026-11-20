@@ -14,6 +14,7 @@ set(
         # Geometry::Bind binds coordinate maps; the map sits below the geometry
         # (its header stays in pcms/field), so it is compiled here
         ../field/coordinate_map.cpp
+        ../field/value_transform.cpp
 )
 add_library(pcms_geometry ${PCMS_GEOMETRY_SOURCES})
 add_library(pcms::geometry ALIAS pcms_geometry)

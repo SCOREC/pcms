@@ -20,6 +20,7 @@ set(
         ../../../include/pcms/utility/detail/uniform_grid.hpp
         ../../../include/pcms/utility/entity_types.hpp
         check.hpp
+        dense_linear_algebra.hpp
         mesh_geometry.hpp
         ../../../include/pcms/utility/memory_spaces.hpp
         mpi_type.hpp

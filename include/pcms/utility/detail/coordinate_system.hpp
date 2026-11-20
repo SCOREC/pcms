@@ -17,12 +17,6 @@ namespace pcms::detail
   return *a == *b;
 }
 
-[[nodiscard]] inline bool HasIdentityMetric(
-  const CoordinateSystem& system) noexcept
-{
-  return system.HasOrthogonalBasis() && system.HasUnitScaleFactors();
-}
-
 /// A Cartesian system whose dimension is not yet known ("cartesian
 /// (dimension deferred)"): ResolveCoordinateSystem replaces it by the
 /// Cartesian system of the data's dimension.

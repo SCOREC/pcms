@@ -130,7 +130,7 @@ void detail::CheckNeighbourhoodArguments(
                      std::string(geometry.GetCoordinateSystem()->Kind()) + "'");
   }
   // the searches measure Euclidean distances
-  if (!pcms::detail::HasIdentityMetric(*geometry.GetCoordinateSystem())) {
+  if (!geometry.GetCoordinateSystem()->IsOrthonormal()) {
     throw pcms_error(
       caller +
       ": requires a coordinate system whose metric is the "

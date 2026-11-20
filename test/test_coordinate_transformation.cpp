@@ -69,8 +69,8 @@ TEST_CASE("coordinate systems: structural equality")
   REQUIRE(pcms::csys::CreateCylindricalRThetaZ()->Dimension() == 3);
 
   // The analytic orthogonal coordinate systems are orthogonal
-  REQUIRE(pcms::csys::CreateCartesian(3)->HasOrthogonalBasis());
-  REQUIRE(pcms::csys::CreateCylindricalRThetaZ()->HasOrthogonalBasis());
+  REQUIRE(pcms::csys::CreateCartesian(3)->IsOrthogonal());
+  REQUIRE(pcms::csys::CreateCylindricalRThetaZ()->IsOrthogonal());
 }
 
 TEST_CASE("coordinate systems: ResolveCoordinateSystem resolves the deferred "

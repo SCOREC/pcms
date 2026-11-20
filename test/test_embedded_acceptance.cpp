@@ -272,7 +272,8 @@ TEST_CASE("BOUT++-like 2D grid: quadrature, induced metric and curvilinear "
     const auto space = pcms::CreateEmbeddedSpace(
       section.embedded, pcms::CreateLagrangeSpace(section.grid, 1, 2));
     auto e2 = space->CreateFunction<Real>(
-      "e2", pcms::values::Vector, section.embedded->GetParameterSystem());
+      "e2", {.system = section.embedded->GetParameterSystem(),
+             .variance = pcms::values::Vector});
     pcms::test::SetFieldComponents(e2, [](Real, Real, Real* out) {
       out[0] = 0.0;
       out[1] = 1.0;
@@ -437,8 +438,9 @@ TEST_CASE("BOUT++-like 3D grid: a given metric g^ij", "[embedding][acceptance]")
     pcms::CreateLagrangeSpace(geometry, 1, 3), Shifted::Position,
     pcms::csys::CreateCylindricalRThetaZ());
   const auto metric_space = pcms::CreateLagrangeSpace(geometry, 1, 9);
-  auto g_inv = std::make_shared<pcms::Function<Real>>(
-    metric_space->CreateFunction<Real>("g^ij", pcms::values::Tensor));
+  auto g_inv =
+    std::make_shared<pcms::Function<Real>>(metric_space->CreateFunction<Real>(
+      "g^ij", {.variance = pcms::values::Tensor}));
   pcms::test::SetFieldComponents(*g_inv, [](Real x, Real y, Real z, Real* out) {
     const Real xi[3] = {x, y, z};
     Shifted::InverseMetric(xi, out);

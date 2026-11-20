@@ -63,6 +63,8 @@ option(PCMS_ENABLE_OMEGA_H_MESHFIELDS
        "MeshFields Lagrange spaces on Omega_h meshes (needs OMEGA_H, MeshFields)" OFF)
 option(PCMS_ENABLE_PETSC
        "Assembled (PETSc) solves of the projections' mass systems (needs PETSc)" OFF)
+option(PCMS_ENABLE_UNITS
+       "Check field units on transfers, parsing and comparing them (needs LLNL/units)" OFF)
 option(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
        "Polynomial-reconstruction spaces on point clouds (needs KokkosKernels)" OFF)
 option(PCMS_ENABLE_XGC "XGC backend (needs OMEGA_H)" OFF)
@@ -225,6 +227,11 @@ if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
 endif()
 if(PCMS_ENABLE_PETSC)
   pcms_find_package(PETSC PETSc)
+endif()
+if(PCMS_ENABLE_UNITS)
+  # LLNL/units parses and compares field units (a private dependency of
+  # pcms::field)
+  pcms_find_package(UNITS units CONFIG)
 endif()
 if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
   # the MLS solve uses KokkosBatched

@@ -66,10 +66,12 @@ TEST_CASE("PointEvaluator::Evaluate gates on the source field's stored basis")
   auto mesh = BuildCylindricalMesh(lib, 6);
   auto space = BuildCylindricalSpace(mesh, 3);
   // Borrowed-basis storage: Cartesian components on a cylindrical-system space.
-  auto cartesian = space->CreateFunction<Real>("b", values::Vector,
-                                               pcms::csys::CreateCartesian(3));
-  auto cylindrical = space->CreateFunction<Real>("b_native", values::Vector,
-                                                 ComponentScaling::Physical);
+  auto cartesian =
+    space->CreateFunction<Real>("b", {.system = pcms::csys::CreateCartesian(3),
+                                      .variance = values::Vector});
+  auto cylindrical = space->CreateFunction<Real>(
+    "b_native",
+    {.scaling = ComponentScaling::Physical, .variance = values::Vector});
   pcms::test::SetFieldComponents(cartesian, [](Real, Real, Real, Real* out) {
     out[0] = 1.0;
     out[1] = 0.0;
@@ -105,8 +107,8 @@ TEST_CASE("tagged writes gate on the field's declaration")
   auto lib = Omega_h::Library{};
   auto mesh = BuildCylindricalMesh(lib, 6);
   auto space = BuildCylindricalSpace(mesh, 3);
-  auto b = space->CreateFunction<Real>("b", values::Vector,
-                                       ComponentScaling::Physical);
+  auto b = space->CreateFunction<Real>(
+    "b", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
   const int n = static_cast<int>(
     space->GetLayout()->GetDOFHolderCoordinates().GetValues().extent(0));
   std::vector<Real> data(static_cast<size_t>(n) * 3, 1.0);

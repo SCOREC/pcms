@@ -148,8 +148,8 @@ TEST_CASE("Interpolating a field and its gradient over one localization")
     pcms::uniform_grid::CreateGeometry(grid, source->GetCoordinateSystem()), 1,
     2);
   auto value = value_space->CreateFunction<Real>("f");
-  auto gradient =
-    gradient_space->CreateFunction<Real>("grad f", pcms::values::Covector);
+  auto gradient = gradient_space->CreateFunction<Real>(
+    "grad f", {.variance = pcms::values::Covector});
 
   const auto value_layout = value_space->GetLayout();
   const auto bound =

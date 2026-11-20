@@ -1,13 +1,12 @@
 #ifndef PCMS_TRANSFER_TRANSFER_OPERATOR_HPP
 #define PCMS_TRANSFER_TRANSFER_OPERATOR_HPP
 
+#include "pcms/field/field.hpp"
+#include "pcms/field/field_metadata.hpp"
 #include "pcms/utility/assert.hpp"
 
 namespace pcms
 {
-
-template <typename>
-class Field;
 
 template <typename T>
 class TransferOperator
@@ -15,7 +14,23 @@ class TransferOperator
 public:
   using value_type = T;
 
-  virtual void Apply(const Field<T>& source, Field<T>& target) const = 0;
+  /// @brief Writes `source` transferred to `target`, then gives `target` the
+  ///        units and extent it lacks from `source`.
+  /// @throws pcms_error if a field is Extensive, both have units and they
+  ///         differ (units are not converted), or `source` and `target`
+  ///         share their data
+  void Apply(const Field<T>& source, Field<T>& target) const
+  {
+    if (&source.GetData() == &target.GetData()) {
+      throw pcms_error("TransferOperator::Apply: source and target share "
+                       "their data");
+    }
+    detail::CheckExtent(source.GetMetadata(), target.GetMetadata(), false);
+    detail::CheckSameUnits(source.GetMetadata(), target.GetMetadata(),
+                           "transfer");
+    ApplyImpl(source, target);
+    detail::LearnMetadata(source.GetMetadata(), target.metadata_);
+  }
 
   /// @return whether ApplyTranspose is implemented
   [[nodiscard]] virtual bool SupportsTranspose() const noexcept
@@ -27,16 +42,34 @@ public:
   /// the DOF vectors, <A x, y> = <x, A^T y> (coefficient dot products). Its
   /// source is data on Apply's target layout (loads, sensitivities); its
   /// target is a functional on Apply's source layout, overwritten (unlike
-  /// PointEvaluator::EvaluateTranspose, which accumulates).
-  /// @throws pcms_error unless SupportsTranspose()
-  virtual void ApplyTranspose(const Field<T>& /*source*/,
-                              Field<T>& /*target*/) const
+  /// PointEvaluator::EvaluateTranspose, which accumulates). Metadata is
+  /// checked and learned as for Apply.
+  /// @throws pcms_error unless SupportsTranspose(), if a field is Intensive,
+  ///         the units differ, or `source` and `target` share their data
+  void ApplyTranspose(const Field<T>& source, Field<T>& target) const
+  {
+    if (&source.GetData() == &target.GetData()) {
+      throw pcms_error("TransferOperator::ApplyTranspose: source and target "
+                       "share their data");
+    }
+    detail::CheckExtent(source.GetMetadata(), target.GetMetadata(), true);
+    detail::CheckSameUnits(source.GetMetadata(), target.GetMetadata(),
+                           "transposed transfer");
+    ApplyTransposeImpl(source, target);
+    detail::LearnMetadata(source.GetMetadata(), target.metadata_);
+  }
+
+  virtual ~TransferOperator() noexcept = default;
+
+private:
+  virtual void ApplyImpl(const Field<T>& source, Field<T>& target) const = 0;
+
+  virtual void ApplyTransposeImpl(const Field<T>& /*source*/,
+                                  Field<T>& /*target*/) const
   {
     throw pcms_error("TransferOperator::ApplyTranspose: not supported by this "
                      "operator");
   }
-
-  virtual ~TransferOperator() noexcept = default;
 };
 
 } // namespace pcms

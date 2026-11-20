@@ -439,7 +439,9 @@ if(Catch2_FOUND)
       test_coordinate_metric.cpp
       test_embedding.cpp
       test_periodic_geometry.cpp
-      test_periodic_spaces.cpp)
+      test_periodic_spaces.cpp
+      test_field_metadata.cpp
+      test_units.cpp)
   if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
     list(APPEND PCMS_UNIT_TEST_SOURCES
          test_polynomial_reconstruction_mls_evaluation.cpp

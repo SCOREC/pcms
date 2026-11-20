@@ -10,6 +10,23 @@ namespace pcms::transfer
 namespace
 {
 
+// samples -= g. A free function: nvcc does not accept an extended lambda
+// inside a private member function (ApplyImpl).
+void SubtractInPlace(Kokkos::View<Real**, DeviceMemorySpace> samples,
+                     Kokkos::View<Real**, DeviceMemorySpace> g)
+{
+  const auto num_points = static_cast<LO>(samples.extent(0));
+  const auto num_components = static_cast<int>(samples.extent(1));
+  Kokkos::parallel_for(
+    "projection_residual",
+    Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_points),
+    KOKKOS_LAMBDA(const LO i) {
+      for (int c = 0; c < num_components; ++c) {
+        samples(i, c) -= g(i, c);
+      }
+    });
+}
+
 const Geometry& SourceGeometry(const PointEvaluatorFactory& source)
 {
   const auto geometry = source.GetGeometry();
@@ -66,8 +83,8 @@ GalerkinProjection::GalerkinProjection(
     target_space.GetLayout()->GetNumComponents());
 }
 
-void GalerkinProjection::Apply(const Field<Real>& source,
-                               Field<Real>& target) const
+void GalerkinProjection::ApplyImpl(const Field<Real>& source,
+                                   Field<Real>& target) const
 {
   const int num_components = target_space_->GetLayout()->GetNumComponents();
   if (source.GetLayout().GetNumComponents() != num_components ||
@@ -78,8 +95,6 @@ void GalerkinProjection::Apply(const Field<Real>& source,
   if (&target.GetLayout() != target_space_->GetLayout().get()) {
     throw pcms_error("GalerkinProjection::Apply: target field layout mismatch");
   }
-  const auto num_points = static_cast<LO>(samples_.extent(0));
-  // Shallow copy so the device lambda captures the view, not `this`.
   auto samples = samples_;
 
   // 1. f at the points, minus the control variate g there; the control
@@ -96,14 +111,7 @@ void GalerkinProjection::Apply(const Field<Real>& source,
       ValueView<Real, DeviceMemorySpace>(
         control_variate_->values.GetData().GetValueBasis(),
         pcms::MakeRank2View(g)));
-    Kokkos::parallel_for(
-      "projection_residual",
-      Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_points),
-      KOKKOS_LAMBDA(const LO i) {
-        for (int c = 0; c < num_components; ++c) {
-          samples(i, c) -= g(i, c);
-        }
-      });
+    SubtractInPlace(samples, g);
   }
 
   // 2. b = E^T (W f), 3. M x = b (x = M^-1 b for the lumped mass)
@@ -127,8 +135,8 @@ bool GalerkinProjection::SupportsTranspose() const noexcept
   return !control_variate_ && source_at_points_->SupportsTranspose();
 }
 
-void GalerkinProjection::ApplyTranspose(const Field<Real>& source,
-                                        Field<Real>& target) const
+void GalerkinProjection::ApplyTransposeImpl(const Field<Real>& source,
+                                            Field<Real>& target) const
 {
   if (!SupportsTranspose()) {
     throw pcms_error("GalerkinProjection::ApplyTranspose: needs a source "

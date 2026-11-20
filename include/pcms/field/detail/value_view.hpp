@@ -147,31 +147,38 @@ inline void ValidateValueSemantics(const ValueBasis& basis, int num_components,
   }
 }
 
-inline ValueBasis MakeValueBasis(
-  const std::shared_ptr<const CoordinateSystem>& space_system,
-  VarianceSignature variance,
-  std::shared_ptr<const CoordinateSystem> system, // null == the space's own
-  std::optional<ComponentScaling> scaling)
+/// @return the basis of a new field given none: scalar for one component,
+///         independent components (ValueKind::Array) for several
+inline ValueBasis DefaultValueBasis(int num_components)
 {
-  if (variance.Rank() == 0) {
-    return ValueBasis{};
+  return num_components > 1 ? ValueBasis{.kind = ValueKind::Array}
+                            : ValueBasis{};
+}
+
+/// @brief The basis of a new field: an unset system is the space's, an unset
+///        scaling is derived from the system.
+/// @throws pcms_error if the scaling is ambiguous and not stated
+inline ValueBasis ResolveValueBasis(
+  const std::shared_ptr<const CoordinateSystem>& space_system, ValueBasis basis)
+{
+  if (basis.Rank() == 0) {
+    return basis; // no components to scale
   }
-  if (system == nullptr) {
-    system = space_system;
+  if (basis.system == nullptr) {
+    basis.system = space_system;
   }
-  ComponentScaling resolved;
-  if (scaling.has_value()) {
-    resolved = *scaling;
-  } else if (auto derived = detail::DerivedComponentScaling(*system)) {
-    resolved = *derived;
-  } else {
+  if (!basis.scaling) {
+    basis.scaling = detail::DerivedComponentScaling(*basis.system);
+  }
+  if (!basis.scaling) {
     throw pcms_error(
-      "CreateFunction: coordinate system '" + std::string(system->Kind()) +
+      "CreateFunction: coordinate system '" +
+      std::string(basis.system->Kind()) +
       "' admits both physical and natural components and they differ, so "
-      "the scaling must be stated (pass ComponentScaling::Physical or "
-      "ComponentScaling::Natural)");
+      "the scaling must be stated (set ValueBasis::scaling to "
+      "ComponentScaling::Physical or ComponentScaling::Natural)");
   }
-  return ValueBasis{std::move(system), resolved, variance};
+  return basis;
 }
 
 /// @brief Basis of the gradient of values stored in `stored`.

@@ -331,8 +331,9 @@ void ValueTransform::Apply(ValueView<const Real, DeviceMemorySpace> in,
     CopyValues(in.GetValues(), out.GetValues());
     return;
   }
-  Run(in.GetBasis(), out.GetBasis().scaling, false, in.GetValues(),
-      out.GetValues());
+  Run(in.GetBasis(),
+      out.GetBasis().scaling.value_or(ComponentScaling::Physical), false,
+      in.GetValues(), out.GetValues());
 }
 
 void ValueTransform::ApplyTranspose(
@@ -349,8 +350,9 @@ void ValueTransform::ApplyTranspose(
     CopyValues(in.GetValues(), out.GetValues());
     return;
   }
-  Run(out.GetBasis(), in.GetBasis().scaling, true, in.GetValues(),
-      out.GetValues());
+  Run(out.GetBasis(),
+      in.GetBasis().scaling.value_or(ComponentScaling::Physical), true,
+      in.GetValues(), out.GetValues());
 }
 
 // Creates the transforms of the factories: against a map, along it, or a

@@ -139,7 +139,8 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     ::mfem::ParGridFunction gf2(&pfes);
     gf2 = 0.0;
     auto field2 = factory.CreateField<pcms::Real>(
-      "target", std::make_unique<pcms::MFEMVertexFieldData>(pfes, gf2));
+      {.name = "target"},
+      std::make_unique<pcms::MFEMVertexFieldData>(pfes, gf2));
     serializer.Deserialize(field2, pcms::detail::make_const_array_view(buffer),
                            pcms::detail::make_const_array_view(perm));
 

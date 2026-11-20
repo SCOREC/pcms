@@ -66,10 +66,10 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   std::uniform_real_distribution<double> uniform(-1.0, 1.0);
   const auto x = RandomDofs(*space->GetLayout(), rng);
 
-  auto field_basis = pcms::detail::MakeValueBasis(
-    space->GetCoordinateSystem(), variance, nullptr, std::nullopt);
-  if (variance.Rank() == 0) {
-    field_basis = pcms::test::ComponentsBasis(*space);
+  pcms::ValueBasis field_basis = pcms::test::ComponentsBasis(*space);
+  field_basis.variance = variance;
+  if (variance.Rank() > 0) {
+    field_basis.kind = pcms::ValueKind::Tensor;
   }
   auto field = space->CreateFunction<pcms::Real>("x", field_basis);
   SetDofs(field, x);
@@ -220,7 +220,8 @@ TEST_CASE("EvaluateTranspose through a coordinate map is the transpose of "
       geometry, 1, 3,
       pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
     const auto evaluator = space->CreatePointEvaluator<pcms::Real>(bound);
-    const auto f = space->CreateFunction<pcms::Real>("v", pcms::values::Vector);
+    const auto f = space->CreateFunction<pcms::Real>(
+      "v", {.variance = pcms::values::Vector});
     CHECK(evaluator->OutputBasis(f.GetData().GetValueBasis()).system->Kind() ==
           "cylindrical_rthetaz");
     CheckAdjoint(space, *evaluator, 17, pcms::values::Vector);
@@ -706,7 +707,8 @@ TEST_CASE("L2 inner products of vectors refuse systems with a varying "
   auto scalar = cylindrical->CreateFunction<pcms::Real>(
     "scalar", pcms::test::ComponentsBasis(*cylindrical));
   auto vector = cylindrical->CreateFunction<pcms::Real>(
-    "vector", pcms::values::Vector, pcms::ComponentScaling::Physical);
+    "vector", {.scaling = pcms::ComponentScaling::Physical,
+               .variance = pcms::values::Vector});
   CHECK_NOTHROW(product.Apply(scalar, scalar));
   CHECK_THROWS_AS(product.Apply(vector, vector), pcms::pcms_error);
 }

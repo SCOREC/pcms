@@ -27,7 +27,7 @@ Field<T> CreateField(const FieldFactory& factory, std::string name,
                      "created by pcms::xgc::CreateFieldFactory");
   }
   return xgc_factory->CreateField<T>(
-    std::move(name),
+    {.name = std::move(name)},
     std::make_unique<XGCFieldData<T>>(xgc_factory->GetXGCLayout(),
                                       std::move(basis), data, plane_comm));
 }

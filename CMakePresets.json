@@ -21,6 +21,7 @@
       "cacheVariables": { "PCMS_ENABLE_OMEGA_H_MESHFIELDS": "ON" }
     },
     { "name": "with-petsc", "hidden": true, "cacheVariables": { "PCMS_ENABLE_PETSC": "ON" } },
+    { "name": "with-units", "hidden": true, "cacheVariables": { "PCMS_ENABLE_UNITS": "ON" } },
     {
       "name": "with-polynomial-reconstruction",
       "hidden": true,
@@ -52,33 +53,34 @@
     {
       "name": "polynomial-reconstruction",
       "displayName": "Core and polynomial reconstruction (KokkosKernels)",
-      "inherits": ["base", "with-polynomial-reconstruction"]
+      "inherits": ["base", "with-units", "with-polynomial-reconstruction"]
     },
     {
       "name": "unstructured",
       "displayName": "Omega_h meshes with MeshFields spaces",
-      "inherits": ["base", "with-omega-h-meshfields"]
+      "inherits": ["base", "with-units", "with-omega-h-meshfields"]
     },
     {
       "name": "conservative",
       "displayName": "unstructured and the assembled projection solve (PETSc)",
-      "inherits": ["base", "with-omega-h-meshfields", "with-petsc"]
+      "inherits": ["base", "with-units", "with-omega-h-meshfields", "with-petsc"]
     },
     {
       "name": "coupling-core",
       "displayName": "Core and the coupler (redev, ADIOS2)",
-      "inherits": ["base", "with-coupler"]
+      "inherits": ["base", "with-units", "with-coupler"]
     },
     {
       "name": "coupling",
       "displayName": "Coupler with XGC and the C and Fortran client APIs",
-      "inherits": ["base", "with-coupler", "with-xgc", "with-c-fortran"]
+      "inherits": ["base", "with-units", "with-coupler", "with-xgc", "with-c-fortran"]
     },
     {
       "name": "full",
       "displayName": "Everything except MFEM",
       "inherits": [
         "base",
+        "with-units",
         "with-omega-h-meshfields",
         "with-petsc",
         "with-polynomial-reconstruction",

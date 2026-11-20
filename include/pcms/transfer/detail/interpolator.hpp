@@ -76,7 +76,13 @@ public:
   {
   }
 
-  void Apply(const Field<T>& source, Field<T>& target) const override
+  [[nodiscard]] bool SupportsTranspose() const noexcept override
+  {
+    return evaluator_->SupportsTranspose();
+  }
+
+private:
+  void ApplyImpl(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
     const auto& sd = source.GetData();
@@ -93,16 +99,12 @@ public:
     target.Synchronize();
   }
 
-  [[nodiscard]] bool SupportsTranspose() const noexcept override
-  {
-    return evaluator_->SupportsTranspose();
-  }
-
   /// The source evaluator's EvaluateTranspose: `source` holds data at the
   /// target's DOF holders (loads), `target` is a functional of the source
   /// space's layout. The totals of the loads are preserved when the
   /// interpolation reproduces constants.
-  void ApplyTranspose(const Field<T>& source, Field<T>& target) const override
+  void ApplyTransposeImpl(const Field<T>& source,
+                          Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
     if (&source.GetLayout() != target_space_->GetLayout().get()) {
@@ -116,7 +118,6 @@ public:
                                   target);
   }
 
-private:
   template <typename P>
   static P Require(P p, const char* what)
   {

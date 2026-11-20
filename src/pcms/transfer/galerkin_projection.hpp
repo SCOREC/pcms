@@ -37,18 +37,18 @@ public:
                      std::shared_ptr<const FunctionSpace> target_space,
                      ProjectionOptions options);
 
-  void Apply(const Field<Real>& source, Field<Real>& target) const override;
-
   /// Supported without a control variate when the source's evaluator at the
   /// quadrature points supports the transpose: P^T = S^T W E M^-1 (M is
   /// symmetric; the same solver), with S the source and E the target at the
   /// points. `source` is data on the target's layout, `target` a functional on
   /// the source space's layout.
   [[nodiscard]] bool SupportsTranspose() const noexcept override;
-  void ApplyTranspose(const Field<Real>& source,
-                      Field<Real>& target) const override;
 
 private:
+  void ApplyImpl(const Field<Real>& source, Field<Real>& target) const override;
+  void ApplyTransposeImpl(const Field<Real>& source,
+                          Field<Real>& target) const override;
+
   std::shared_ptr<const PointEvaluatorFactory> source_;
   std::shared_ptr<const FunctionSpace> target_space_;
   detail::LinearForm right_hand_side_;

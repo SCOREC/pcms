@@ -1,10 +1,13 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
 #include <pcms/field/function_spaces.hpp>
+#include <pcms/configuration.hpp>
+#include <pcms/field/field_metadata.hpp>
 #include <pcms/transfer/projection.hpp>
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
@@ -226,5 +229,48 @@ TEST_CASE("CreateControlVariateProjection through a coordinate map maps the "
     const double expected = 3.0 * coords_h(i, 1) - coords_h(i, 0) + 0.25;
     CAPTURE(i, expected, values[i]);
     CHECK(values[i] == Catch::Approx(expected).margin(1e-9));
+  }
+}
+
+TEST_CASE("the conservative and control variate projections check units",
+          "[projection][metadata]")
+{
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildUnitSquare(lib, 1);
+  auto target_mesh = pcms::test::BuildUnitSquare(lib, 0);
+  auto source_space = pcms::test::MakeP1Space(source_mesh);
+  auto target_space = pcms::test::MakeP1Space(target_mesh);
+  const auto conservative =
+    pcms::CreateConservativeProjection(source_space, target_space);
+  const auto control_variate =
+    pcms::CreateControlVariateProjection(source_space, target_space);
+
+  auto source = source_space->CreateFunction<pcms::Real>(
+    pcms::FieldMetadata{.name = "source", .units = pcms::Units::Parse("m^-3")});
+  pcms::test::SetField(
+    source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + y; });
+  const auto target_with = [&](const char* units) {
+    pcms::FieldMetadata metadata{.name = "target"};
+    if (units != nullptr) {
+      metadata.units = pcms::Units::Parse(units);
+    }
+    return target_space->CreateFunction<pcms::Real>(metadata);
+  };
+  for (const auto* projection : {conservative.get(), control_variate.get()}) {
+    auto same = target_with("1/m^3");
+    REQUIRE_NOTHROW(projection->Apply(source, same));
+    auto unknown = target_with(nullptr);
+    REQUIRE_NOTHROW(projection->Apply(source, unknown));
+    REQUIRE(unknown.GetMetadata().units.has_value());
+#ifdef PCMS_ENABLE_UNITS
+    auto scaled = target_with("cm^-3");
+    REQUIRE_THROWS_WITH(
+      projection->Apply(source, scaled),
+      Catch::Matchers::ContainsSubstring("differ in scale or offset"));
+    auto kelvin = target_with("K");
+    REQUIRE_THROWS_WITH(
+      projection->Apply(source, kelvin),
+      Catch::Matchers::ContainsSubstring("different dimensions"));
+#endif
   }
 }

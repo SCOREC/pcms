@@ -106,9 +106,9 @@ TEST_CASE("Serializing an XGC field preserves inactive field entries")
   std::iota(data.begin(), data.end(), 0.0);
   const auto original = data;
   auto field = factory.CreateField<pcms::Real>(
-    "", std::make_unique<pcms::xgc::XGCFieldData<pcms::Real>>(
-          factory.GetXGCLayout(), pcms::ValueBasis{},
-          pcms::detail::make_array_view(data), MPI_COMM_SELF));
+    {.name = ""}, std::make_unique<pcms::xgc::XGCFieldData<pcms::Real>>(
+                    factory.GetXGCLayout(), pcms::ValueBasis{},
+                    pcms::detail::make_array_view(data), MPI_COMM_SELF));
   pcms::detail::FieldSerializer<pcms::Real> serializer;
 
   // Entries outside the overlap region are not exchanged.

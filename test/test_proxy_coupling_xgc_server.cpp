@@ -68,9 +68,9 @@ void xgc_coupler(MPI_Comm comm, Omega_h::Mesh& mesh, std::string_view cpn_file)
     auto function_space =
       pcms::XGCFieldFactory(rc, static_cast<pcms::LO>(mesh.nverts()), ss.str());
     auto field = function_space.CreateField<pcms::GO>(
-      ss.str(), std::make_unique<pcms::XGCFieldData<pcms::GO>>(
-                  function_space.GetXGCLayout(), pcms::ValueBasis{},
-                  pcms::detail::make_array_view(data[i]), comm));
+      {.name = ss.str()}, std::make_unique<pcms::XGCFieldData<pcms::GO>>(
+                            function_space.GetXGCLayout(), pcms::ValueBasis{},
+                            pcms::detail::make_array_view(data[i]), comm));
     fields.push_back(application->AddField(std::move(field)));
   }
 
@@ -189,8 +189,8 @@ void omegah_coupler(MPI_Comm comm, Omega_h::Mesh& mesh,
       pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH,
                             .layout_name = ss.str()});
     auto field = factory->CreateFunction<GO>(
-      ss.str(), std::make_unique<pcms::OmegaHFieldData<GO>>(
-                  factory->GetLayout(), pcms::ValueBasis{}));
+      {.name = ss.str()}, std::make_unique<pcms::OmegaHFieldData<GO>>(
+                            factory->GetLayout(), pcms::ValueBasis{}));
     fields.push_back(application->AddField(std::move(field)));
   }
   do {

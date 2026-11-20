@@ -11,6 +11,8 @@
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/transfer/forms.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
+#include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/linear_solver.hpp>
 #include "field_test_utils.hpp"
 #include <cmath>
@@ -487,8 +489,11 @@ TEST_CASE("projection: both solve methods and the lumped mass",
   CHECK(max_difference < 1e-11);
   std::printf("[projection] MatrixFree vs Assembled: max difference %.2e\n",
               max_difference);
-  // the lumped projection is another operator
-  CHECK(std::isfinite(pcms::NormInf(lumped)));
+  // the lumped projection is another operator, but it has the integral of the
+  // consistent one (1^T M_L x = 1^T b = 1^T M x)
+  const pcms::L2Integral integral(target_space);
+  CHECK(integral.Apply(lumped) ==
+        Catch::Approx(integral.Apply(direct)).epsilon(1e-10));
   // MaxIterations too small to converge is an error
   CHECK_THROWS(pcms::CreateProjection(
                  source_space, target_space,
@@ -518,4 +523,23 @@ TEST_CASE("FunctionSpace::CreateQuadrature is exact for products of two "
     }
     CHECK(total == Catch::Approx(1.0).epsilon(1e-13));
   }
+}
+
+TEST_CASE("L2 inner products of vectors refuse systems with a varying "
+          "metric",
+          "[quadrature][l2]")
+{
+  // The weights carry the volume factor, so scalars are fine; the metric
+  // inner product of vectors is not applied yet (S5).
+  Omega_h::Library lib;
+  auto mesh = pcms::test::BuildUnitCube(lib, 1);
+  const auto cylindrical = pcms::CreateLagrangeSpace(
+    pcms::omega_h::CreateGeometry(mesh, pcms::csys::CreateCylindricalRThetaZ()),
+    1, 3, pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+  const pcms::L2InnerProduct product(cylindrical, cylindrical);
+  auto scalar = cylindrical->CreateFunction<pcms::Real>("scalar");
+  auto vector = cylindrical->CreateFunction<pcms::Real>(
+    "vector", pcms::values::Vector, pcms::ComponentScaling::Physical);
+  CHECK_NOTHROW(product.Apply(scalar, scalar));
+  CHECK_THROWS_AS(product.Apply(vector, vector), pcms::pcms_error);
 }

@@ -499,6 +499,7 @@ if(Catch2_FOUND)
       test_quadrature.cpp
       test_galerkin_projection.cpp
       test_bilinear_form.cpp
+      test_l2_inner_product.cpp
       test_fourier_space.cpp
       test_monte_carlo_projection.cpp
       test_mesh_intersection_field_transfer.cpp

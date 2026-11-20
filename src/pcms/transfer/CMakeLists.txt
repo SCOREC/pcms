@@ -1,5 +1,6 @@
 set(PCMS_FIELD_TRANSFER_HEADERS
     ../../../include/pcms/transfer/interpolator.hpp
+    ../../../include/pcms/transfer/l2_inner_product.hpp
     forms.hpp
     ../../../include/pcms/transfer/copy.hpp
     ../../../include/pcms/transfer/detail/copy.hpp
@@ -13,6 +14,7 @@ set(PCMS_FIELD_TRANSFER_HEADERS
 set(PCMS_FIELD_TRANSFER_SOURCES
     interpolator.cpp
     forms.cpp
+    l2_inner_product.cpp
     projection.cpp)
 
 

@@ -285,6 +285,14 @@ private:
 namespace pcms::omega_h
 {
 
+/// Jacobian J(e, d, i) = x_{i+1, d} - x_{0, d} of the affine map of each
+/// element from its reference simplex, and their determinants.
+struct CellJacobians
+{
+  Kokkos::View<const Real***, DeviceMemorySpace> jacobian;
+  Kokkos::View<const Real*, DeviceMemorySpace> determinant;
+};
+
 /// Geometry of a 2D or 3D Omega_h simplex mesh with
 /// straight-sided elements. The containing-element search over the mesh is
 /// built by the first Bind or Neighbourhood, which costs about as much as a
@@ -355,10 +363,12 @@ public:
     const NeighbourhoodOptions& options,
     const OwnerHints& owners = {}) const override;
 
-  /// The per-element constant Jacobian of the affine simplex map, computed
-  /// for all elements on the first call.
-  [[nodiscard]] DifferentialView Differential(
-    const BoundPoints& bound) const override;
+  /// The per-element constant Jacobian of the affine simplex map from the
+  /// reference element, computed for all elements on the first call: what
+  /// the kind's quadratures take the element measures from. (The geometric
+  /// factors of the bound points are the coordinate system's: the binding picks
+  /// no element.)
+  [[nodiscard]] CellJacobians CellJacobian() const;
 
 protected:
   [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
@@ -376,13 +386,13 @@ private:
   Omega_h::Read<Omega_h::I8> owned_mask_;
   std::shared_ptr<const CoordinateSystem> system_;
   SearchOptions search_options_;
-  // The search and Differential are built once, lazily; the geometry is const
-  // and shared, hence the once_flags. These are the mutable members and they
-  // are caches.
+  // The search and the cell Jacobians are built once, lazily; the geometry is
+  // const and shared, hence the once_flags. These are the mutable members and
+  // they are caches.
   mutable std::once_flag search_once_;
   mutable std::unique_ptr<GridPointSearchVariant> search_;
-  mutable std::once_flag differential_once_;
-  mutable DifferentialView differential_;
+  mutable std::once_flag jacobian_once_;
+  mutable CellJacobians cell_jacobians_;
 };
 
 /// The grid search over a mesh, with options.divisions divisions per axis when

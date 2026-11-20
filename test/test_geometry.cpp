@@ -96,10 +96,10 @@ std::shared_ptr<const FunctionSpace> MakeSpace(
 /// x_{i+1} - x_0 for the element's vertices x_0, ..., x_Dim.
 template <int Dim>
 void CheckJacobianRows(Omega_h::Mesh& mesh,
-                       const pcms::DifferentialView& differential, LO e)
+                       const pcms::omega_h::CellJacobians& cells, LO e)
 {
-  const auto jacobian = Kokkos::create_mirror_view_and_copy(
-    HostMemorySpace(), differential.jacobian);
+  const auto jacobian =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), cells.jacobian);
   const auto elem_verts = Omega_h::HostRead<Omega_h::LO>(mesh.ask_elem_verts());
   const auto coords = Omega_h::HostRead<Omega_h::Real>(mesh.coords());
   const LO v0 = elem_verts[(Dim + 1) * e];
@@ -107,7 +107,7 @@ void CheckJacobianRows(Omega_h::Mesh& mesh,
     const LO vi = elem_verts[(Dim + 1) * e + i + 1];
     for (int d = 0; d < Dim; ++d) {
       CAPTURE(e, i, d);
-      REQUIRE_THAT(jacobian(e, i, d),
+      REQUIRE_THAT(jacobian(e, d, i),
                    WithinAbs(coords[Dim * vi + d] - coords[Dim * v0 + d],
                              pcms::test::ExactTol));
     }
@@ -404,49 +404,82 @@ TEST_CASE("Correct owner hints give the search's bind")
   }
 }
 
-TEST_CASE("Differential gives the element measure")
+TEST_CASE("The cell Jacobian gives the element measure")
 {
   auto lib = Omega_h::Library{};
   SECTION("triangles")
   {
     auto mesh = pcms::test::BuildSquareMesh(lib, 5);
     auto geometry = MakeGeometry(mesh);
-    const auto pts = pcms::test::StandardEvalCoords2D();
-    const auto differential =
-      geometry->Differential(*pcms::test::Bind(*geometry, pts));
-    REQUIRE(differential.per_element);
-    REQUIRE(differential.jacobian.extent(0) ==
-            static_cast<size_t>(mesh.nelems()));
-    const auto det = Kokkos::create_mirror_view_and_copy(
-      HostMemorySpace(), differential.determinant);
+    const auto cells =
+      dynamic_cast<const pcms::omega_h::OmegaHGeometry&>(*geometry)
+        .CellJacobian();
+    REQUIRE(cells.jacobian.extent(0) == static_cast<size_t>(mesh.nelems()));
+    const auto det =
+      Kokkos::create_mirror_view_and_copy(HostMemorySpace(), cells.determinant);
     const auto measures =
       Omega_h::HostRead<Omega_h::Real>(Omega_h::measure_elements_real(&mesh));
     for (LO e = 0; e < mesh.nelems(); ++e) {
       CAPTURE(e);
       REQUIRE_THAT(det(e) / 2.0, WithinAbs(measures[e], pcms::test::ExactTol));
     }
-    CheckJacobianRows<2>(mesh, differential, mesh.nelems() / 2);
-    // the BoundPoints must be one of this geometry
-    auto other = MakeGeometry(mesh);
-    REQUIRE_THROWS_WITH(geometry->Differential(*pcms::test::Bind(*other, pts)),
-                        ContainsSubstring("belongs to another geometry"));
+    CheckJacobianRows<2>(mesh, cells, mesh.nelems() / 2);
   }
   SECTION("tetrahedra")
   {
     auto mesh = pcms::test::BuildUnitCube(lib, 2);
     auto geometry = pcms::CreateGeometry(mesh, pcms::csys::CreateCartesian(3));
-    const auto differential =
-      geometry->Differential(*pcms::test::Bind(*geometry, {0.5, 0.5, 0.5}));
-    const auto det = Kokkos::create_mirror_view_and_copy(
-      HostMemorySpace(), differential.determinant);
+    const auto cells =
+      dynamic_cast<const pcms::omega_h::OmegaHGeometry&>(*geometry)
+        .CellJacobian();
+    const auto det =
+      Kokkos::create_mirror_view_and_copy(HostMemorySpace(), cells.determinant);
     const auto measures =
       Omega_h::HostRead<Omega_h::Real>(Omega_h::measure_elements_real(&mesh));
     for (LO e = 0; e < mesh.nelems(); ++e) {
       CAPTURE(e);
       REQUIRE_THAT(det(e) / 6.0, WithinAbs(measures[e], pcms::test::ExactTol));
     }
-    CheckJacobianRows<3>(mesh, differential, mesh.nelems() - 1);
+    CheckJacobianRows<3>(mesh, cells, mesh.nelems() - 1);
   }
+}
+
+TEST_CASE(
+  "The geometric factors of bound points default to the coordinate system's")
+{
+  auto lib = Omega_h::Library{};
+  auto mesh = pcms::test::BuildSquareMesh(lib, 5);
+  // the unit square as the (R, Z) plane: J = I, g = I, volume factor R
+  const auto geometry =
+    pcms::CreateGeometry(mesh, pcms::csys::CreateCylindricalRZ());
+  const auto bound = pcms::test::Bind(*geometry, {0.25, 0.5, 0.75, 0.1});
+  REQUIRE(bound->NumPoints() == 2);
+  Kokkos::View<Real**, DeviceMemorySpace> out("factors", 2, 9);
+  const auto jacobian = bound->Jacobian();
+  const auto metric = bound->Metric();
+  const auto volume = bound->VolumeFactor();
+  Kokkos::parallel_for(
+    "copy", Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, 2),
+    KOKKOS_LAMBDA(const LO p) {
+      for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+          out(p, 2 * i + j) = jacobian(p, i, j);
+          out(p, 4 + 2 * i + j) = metric(p, i, j);
+        }
+      }
+      out(p, 8) = volume(p);
+    });
+  const auto host = Kokkos::create_mirror_view_and_copy(HostMemorySpace(), out);
+  for (LO p = 0; p < 2; ++p) {
+    CAPTURE(p);
+    for (int k = 0; k < 4; ++k) {
+      const Real identity = k == 0 || k == 3 ? 1.0 : 0.0;
+      CHECK(host(p, k) == identity);
+      CHECK(host(p, 4 + k) == identity);
+    }
+  }
+  CHECK(host(0, 8) == 0.25);
+  CHECK(host(1, 8) == 0.75);
 }
 
 TEST_CASE("Search options are honoured")

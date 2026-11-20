@@ -36,7 +36,7 @@ struct InitCoordsFunctor
 /// @param rows indices of the points to copy
 /// @param axis the coordinate to copy
 /// @param out the coordinates of the listed points
-inline void GatherPoints(Kokkos::View<const Real**, DeviceMemorySpace> points,
+inline void GatherPoints(Rank2View<const Real, DeviceMemorySpace> points,
                          Kokkos::View<const LO*, DeviceMemorySpace> rows,
                          int axis, Kokkos::View<Real*, DeviceMemorySpace> out)
 {
@@ -86,7 +86,7 @@ public:
           0, grid_.divisions[d] + 1),
         detail::InitCoordsFunctor{x_coords_[d], grid_.bot_left[d],
                                   grid_.edge_length[d] / grid_.divisions[d]});
-      detail::GatherPoints(binding->LocatedPointValues(), found_, d,
+      detail::GatherPoints(binding->LocatedPoints().GetValues(), found_, d,
                            eval_x_[d]);
     }
     // The selector picks f, then df/dx_d, then the second derivatives.

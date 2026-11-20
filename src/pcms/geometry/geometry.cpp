@@ -113,11 +113,6 @@ SupportResults Geometry::Neighbourhood(CoordinateView<DeviceMemorySpace>, int,
                    "neighbourhood search");
 }
 
-DifferentialView Geometry::Differential(const BoundPoints&) const
-{
-  return {};
-}
-
 void detail::CheckNeighbourhoodArguments(
   const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& coords,
   const NeighbourhoodOptions& options, const std::string& caller)

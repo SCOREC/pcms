@@ -98,7 +98,6 @@ OmegaHLagrangeLayout::OmegaHLagrangeLayout(
     num_components_(num_components)
 {
   PCMS_FUNCTION_TIMER;
-  SetCoordinateSystem(geometry->GetCoordinateSystem());
   int entity_dim = EntityDimForOrder(order_, mesh_.dim());
 
   // the mask is per vertex: it applies to the DOF holders of an order-1

@@ -230,7 +230,6 @@ MeshFieldsAdapterLayout::MeshFieldsAdapterLayout(
     owned_host_("", class_dims_.size())
 {
   PCMS_FUNCTION_TIMER;
-  SetCoordinateSystem(geometry->GetCoordinateSystem());
   LO total_ents = GetNumEnts();
 
   const std::string& global_id_name = geometry->GetGlobalIdName();

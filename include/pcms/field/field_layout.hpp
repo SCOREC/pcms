@@ -107,15 +107,12 @@ public:
 
   virtual EntOffsetsArray GetEntOffsets() const = 0;
 
+  /// @return the coordinate system of the layout's geometry; of a layout
+  ///         without a geometry (an empty layout, a bare point cloud, XGC),
+  ///         the one it was given (SetCoordinateSystem)
+  /// @throws pcms_error if the layout has neither
   [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
-  GetCoordinateSystem() const
-  {
-    if (system_ == nullptr) {
-      throw pcms_error("FieldLayout::GetCoordinateSystem: layout has no "
-                       "coordinate system set");
-    }
-    return system_;
-  }
+  GetCoordinateSystem() const;
 
   virtual CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const = 0;
 
@@ -157,6 +154,7 @@ protected:
     geometry_ = std::move(geometry);
   }
 
+  /// Sets the coordinate system of a layout that has no geometry.
   void SetCoordinateSystem(
     std::shared_ptr<const CoordinateSystem> coordinate_system)
   {

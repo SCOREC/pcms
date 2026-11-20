@@ -92,7 +92,6 @@ OmegaHEntityLayout::OmegaHEntityLayout(std::shared_ptr<const Geometry> geometry,
     owned_(BuildOwned(mesh_, entity_dim)),
     owned_host_("owned_host", owned_.size())
 {
-  SetCoordinateSystem(geometry->GetCoordinateSystem());
   SetGeometry(std::move(geometry));
   PCMS_ALWAYS_ASSERT(entity_dim_ >= 0 && entity_dim_ <= dimension_);
 

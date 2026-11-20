@@ -80,7 +80,6 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
     owned_host_("owned_host", CountDofHolders())
 {
   PCMS_FUNCTION_TIMER;
-  SetCoordinateSystem(geometry->GetCoordinateSystem());
   PCMS_ALWAYS_ASSERT(order_ == 0 || order_ == 1);
 
   LO num_dofs = CountDofHolders();

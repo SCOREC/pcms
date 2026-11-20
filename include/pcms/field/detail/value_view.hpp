@@ -167,9 +167,13 @@ inline ValueBasis MakeValueBasis(
   if (system == nullptr) {
     throw pcms_error("GradientBasis: derivatives require a coordinate system");
   }
-  const ComponentScaling scaling = system->IsOrthogonal()
-                                     ? ComponentScaling::Physical
-                                     : ComponentScaling::Natural;
+  // the partials along the coordinates: natural components, physical ones
+  // where they coincide (PointEvaluatorFactory::CreatePointEvaluator scales
+  // the others)
+  const ComponentScaling scaling =
+    system->IsOrthogonal() && !HasScaleFactors(*system)
+      ? ComponentScaling::Physical
+      : ComponentScaling::Natural;
   if (stored.Rank() == 0) {
     return ValueBasis{std::move(system), scaling, values::Covector,
                       stored.parity};

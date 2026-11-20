@@ -120,6 +120,18 @@ std::unique_ptr<PointEvaluator<T>> PointEvaluatorFactory::CreatePointEvaluator(
 {
   auto evaluator = CreateUntransformedPointEvaluator<T>(*this, bound, op);
   std::vector<detail::LazyValueTransform> transforms;
+  const auto& system = bound->GetGeometry()->GetCoordinateSystem();
+  if (evaluator->Operator() == DifferentialOperator::Gradient &&
+      detail::HasScaleFactors(*system)) {
+    // the kinds write partials along the coordinates, natural components;
+    // physical ones divide them by the scale factors of the coordinate system's
+    // metric at the located points (in the factors of a geometry whose
+    // parameter coordinates are its coordinate system's)
+    const auto scale = std::make_shared<const ValueTransform>(
+      detail::Scale(system, bound->Metric(), ComponentScaling::Physical));
+    transforms.emplace_back(
+      [scale]() -> const ValueTransform& { return *scale; });
+  }
   if (const auto& map = bound->GetBoundMap()) {
     transforms.emplace_back(
       [map]() -> const ValueTransform& { return map->ValueTransform(); });

@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <Kokkos_Core.hpp>
+#include <pcms/field/function_space.hpp>
+#include <pcms/field/layout/empty.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/utility/coordinate_systems/parameter.hpp>
@@ -124,4 +126,145 @@ TEST_CASE("Parameter systems are labels without a metric",
   CHECK_THROWS(pcms::csys::CreateParameterSystem("x", 0));
   CHECK_THROWS(pcms::csys::CreateParameterSystem("x", 2, {1.0}));
   CHECK_THROWS(pcms::csys::CreateParameterSystem("x", 1, {-1.0}));
+}
+
+namespace
+{
+
+class Data final : public pcms::FieldData<Real>
+{
+public:
+  pcms::FieldValueType GetValueType() const override
+  {
+    return pcms::FieldValueType::Scalar;
+  }
+  const pcms::ValueBasis& GetValueBasis() const override { return basis_; }
+
+private:
+  pcms::ValueBasis basis_;
+};
+
+class BoundAll final : public pcms::BoundPoints
+{
+public:
+  BoundAll(std::shared_ptr<const pcms::Geometry> geometry,
+           const pcms::BindRequest& request)
+    : BoundPoints(std::move(geometry), request)
+  {
+  }
+
+protected:
+  void RebindImpl() override {}
+};
+
+// All of (R, theta, Z) space.
+class Everywhere final : public pcms::Geometry
+{
+public:
+  Everywhere() : system_(pcms::csys::CreateCylindricalRThetaZ()) {}
+  const std::shared_ptr<const pcms::CoordinateSystem>& GetCoordinateSystem()
+    const noexcept override
+  {
+    return system_;
+  }
+
+protected:
+  std::shared_ptr<pcms::BoundPoints> BindImpl(
+    const pcms::BindRequest& request) const override
+  {
+    return std::make_shared<BoundAll>(shared_from_this(), request);
+  }
+
+private:
+  std::shared_ptr<const pcms::CoordinateSystem> system_;
+};
+
+// The partials of f = 2R + 3 theta - Z along the coordinates: (2, 3, -1).
+class PartialsEvaluator final : public pcms::PointEvaluator<Real>
+{
+public:
+  PartialsEvaluator(std::shared_ptr<const pcms::BoundPoints> bound,
+                    std::shared_ptr<const pcms::FieldLayout> layout)
+    : PointEvaluator(std::move(bound), pcms::DifferentialOperator::Gradient,
+                     std::move(layout))
+  {
+  }
+
+  void EvaluateImpl(
+    const pcms::Field<Real>&,
+    pcms::ValueView<Real, DeviceMemorySpace> values) const override
+  {
+    const auto out = values.GetValues();
+    pcms::detail::ForEach(
+      "partials", static_cast<LO>(out.extent(0)), KOKKOS_LAMBDA(const LO p) {
+        out(p, 0) = 2.0;
+        out(p, 1) = 3.0;
+        out(p, 2) = -1.0;
+      });
+  }
+};
+
+class PartialsFactory final : public pcms::PointEvaluatorFactory
+{
+public:
+  PartialsFactory(std::shared_ptr<const pcms::Geometry> geometry,
+                  std::shared_ptr<const pcms::FieldLayout> layout)
+    : geometry_(std::move(geometry)), layout_(std::move(layout))
+  {
+  }
+  std::shared_ptr<const pcms::Geometry> GetGeometry() const noexcept override
+  {
+    return geometry_;
+  }
+  bool Supports(pcms::DifferentialOperator op) const noexcept override
+  {
+    return op == pcms::DifferentialOperator::Gradient;
+  }
+
+protected:
+  pcms::PointEvaluatorVariant CreatePointEvaluatorImpl(
+    pcms::Type, std::shared_ptr<const pcms::BoundPoints> bound,
+    pcms::DifferentialOperator) const override
+  {
+    return std::unique_ptr<pcms::PointEvaluator<Real>>(
+      std::make_unique<PartialsEvaluator>(std::move(bound), layout_));
+  }
+
+private:
+  std::shared_ptr<const pcms::Geometry> geometry_;
+  std::shared_ptr<const pcms::FieldLayout> layout_;
+};
+
+class PartialsSpace final : public pcms::FunctionSpace
+{
+public:
+  using pcms::FunctionSpace::FunctionSpace;
+};
+
+} // namespace
+
+TEST_CASE("Gradients in cylindrical coordinates have physical components",
+          "[coordinate_system][metric][gradient]")
+{
+  const auto layout = std::make_shared<pcms::field::EmptyFieldLayout>(
+    pcms::csys::CreateCylindricalRThetaZ(), 1);
+  const auto geometry = std::make_shared<Everywhere>();
+  const auto space = std::make_shared<PartialsSpace>(
+    layout, std::make_shared<PartialsFactory>(geometry, layout), geometry);
+  const auto f = space->CreateFunction<Real>("f", std::make_unique<Data>());
+  const auto bound =
+    pcms::test::Bind(*geometry, {2.0, 0.3, 1.0, 4.0, -1.0, 0.0});
+  const auto evaluator = space->CreatePointEvaluator<Real>(
+    bound, pcms::DifferentialOperator::Gradient);
+  Kokkos::View<Real**, DeviceMemorySpace> values("gradient", 2, 3);
+  evaluator->Evaluate(f, pcms::ValueView<Real, DeviceMemorySpace>(
+                           evaluator->OutputBasis(f.GetData().GetValueBasis()),
+                           pcms::MakeRank2View(values)));
+  const auto host =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), values);
+  // (dR, dtheta / R, dZ)
+  CHECK_THAT(host(0, 0), WithinAbs(2.0, pcms::test::ExactTol));
+  CHECK_THAT(host(0, 1), WithinAbs(3.0 / 2.0, pcms::test::ExactTol));
+  CHECK_THAT(host(0, 2), WithinAbs(-1.0, pcms::test::ExactTol));
+  CHECK_THAT(host(1, 1), WithinAbs(3.0 / 4.0, pcms::test::ExactTol));
 }

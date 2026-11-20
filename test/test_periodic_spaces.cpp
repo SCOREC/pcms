@@ -1,6 +1,7 @@
 #include "periodic_test_utils.hpp"
 #include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/transfer/forms.hpp>
+#include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/projection.hpp>
 #include <pcms/transfer/linear_solver.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
@@ -335,5 +336,34 @@ TEST_CASE("Periodic spaces: Fourier projection reproduces the analytic "
     for (std::size_t q = 0; q < pts.size(); ++q) {
       CHECK(v[q][0] == Catch::Approx(f(pts[q][0])).margin(2e-3));
     }
+  }
+}
+
+TEST_CASE("Periodic Lagrange: the matrix-free projection onto a refined "
+          "space conserves the integral",
+          "[periodic][projection]")
+{
+  // the target cells halve the source cells, so the natural quadrature of
+  // the target integrates (source) x (target basis) exactly and the
+  // projection of a field whose space holds the constants keeps its integral
+  const auto source_space =
+    pcms::CreatePeriodicLagrangeSpace(Periodic(8, 3.0, 1.0));
+  const auto target_space =
+    pcms::CreatePeriodicLagrangeSpace(Periodic(16, 3.0, 1.0));
+  auto source = source_space->CreateFunction<Real>();
+  SetDofs(source, {1, 4, -2, 0.5, 3, 7, -1, 2});
+  const Real expected = pcms::L2Integral(source_space).Apply(source);
+  CHECK(expected == Catch::Approx(3.0 / 8 * 14.5).epsilon(1e-14));
+  const pcms::L2Integral integral(target_space);
+  for (const auto mass :
+       {pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped}) {
+    CAPTURE(static_cast<int>(mass));
+    pcms::ProjectionOptions options;
+    options.mass_matrix_type = mass;
+    options.solve.relative_tolerance = 1e-14;
+    auto target = target_space->CreateFunction<Real>();
+    pcms::CreateProjection(source_space, target_space, options)
+      ->Apply(source, target);
+    CHECK(integral.Apply(target) == Catch::Approx(expected).epsilon(1e-13));
   }
 }

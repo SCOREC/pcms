@@ -423,7 +423,9 @@ if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
   # unit tests of the core (no Omega_h): splines and differential operators on
-  # uniform grids
+  # uniform grids, coordinate systems and maps, embedded and periodic
+  # geometries and their spaces, and the projections with the matrix-free
+  # solve
   set(PCMS_UNIT_TEST_SOURCES
       unit_test_main.cpp
       test_bounding_box.cpp
@@ -432,7 +434,12 @@ if(Catch2_FOUND)
       test_error_handling.cpp
       test_spline_interpolator.cpp
       test_derivatives.cpp
-      test_uniform_grid_1d.cpp)
+      test_uniform_grid_1d.cpp
+      test_coordinate_transformation.cpp
+      test_coordinate_metric.cpp
+      test_embedding.cpp
+      test_periodic_geometry.cpp
+      test_periodic_spaces.cpp)
   if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
     list(APPEND PCMS_UNIT_TEST_SOURCES
          test_polynomial_reconstruction_mls_evaluation.cpp
@@ -460,9 +467,6 @@ if(Catch2_FOUND)
     list(
       APPEND
       PCMS_UNIT_TEST_SOURCES
-      test_coordinate_transformation.cpp
-      test_coordinate_metric.cpp
-      test_embedding.cpp
       test_embedded_acceptance.cpp
             test_eqdsk.cpp
       test_uniform_grid.cpp
@@ -481,8 +485,6 @@ if(Catch2_FOUND)
       test_bound_points.cpp
       test_query_points.cpp
       test_geometry.cpp
-      test_periodic_geometry.cpp
-      test_periodic_spaces.cpp
       test_product_geometry.cpp
       test_product_space.cpp)
   endif()

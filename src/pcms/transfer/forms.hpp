@@ -42,6 +42,10 @@ public:
   void Assemble(ValueView<const Real, DeviceMemorySpace> samples,
                 Field<Real>& functional) const;
 
+  /// W samples, in a scratch the form owns (valid until the next call)
+  [[nodiscard]] ValueView<const Real, DeviceMemorySpace> Weight(
+    ValueView<const Real, DeviceMemorySpace> samples) const;
+
   [[nodiscard]] const std::shared_ptr<const FunctionSpace>& Space()
     const noexcept
   {

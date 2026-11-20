@@ -39,6 +39,15 @@ public:
 
   void Apply(const Field<Real>& source, Field<Real>& target) const override;
 
+  /// Supported without a control variate when the source's evaluator at the
+  /// quadrature points supports the transpose: P^T = S^T W E M^-1 (M is
+  /// symmetric; the same solver), with S the source and E the target at the
+  /// points. `source` is data on the target's layout, `target` a functional on
+  /// the source space's layout.
+  [[nodiscard]] bool SupportsTranspose() const noexcept override;
+  void ApplyTranspose(const Field<Real>& source,
+                      Field<Real>& target) const override;
+
 private:
   std::shared_ptr<const PointEvaluatorFactory> source_;
   std::shared_ptr<const FunctionSpace> target_space_;
@@ -65,6 +74,7 @@ private:
   };
   std::optional<ControlVariate> control_variate_;
   mutable Function<Real> functional_;
+  mutable Function<Real> coefficients_; // M^-1 b, for the transpose
   mutable Kokkos::View<Real**, DeviceMemorySpace> samples_; // [points][comps]
 };
 

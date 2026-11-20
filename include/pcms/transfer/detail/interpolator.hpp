@@ -2,6 +2,7 @@
 #define PCMS_TRANSFER_DETAIL_INTERPOLATOR_HPP
 
 #include "pcms/field/field.hpp"
+#include "pcms/field/detail/field_ops.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
@@ -90,6 +91,29 @@ public:
                                    written, MakeRank2View(target_values_)));
     target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
     target.Synchronize();
+  }
+
+  [[nodiscard]] bool SupportsTranspose() const noexcept override
+  {
+    return evaluator_->SupportsTranspose();
+  }
+
+  /// The source evaluator's EvaluateTranspose: `source` holds data at the
+  /// target's DOF holders (loads), `target` is a functional of the source
+  /// space's layout. The totals of the loads are preserved when the
+  /// interpolation reproduces constants.
+  void ApplyTranspose(const Field<T>& source, Field<T>& target) const override
+  {
+    PCMS_FUNCTION_TIMER;
+    if (&source.GetLayout() != target_space_->GetLayout().get()) {
+      throw pcms_error("Interpolator::ApplyTranspose: the source must be a "
+                       "field of the target space's layout");
+    }
+    detail::SetZero(target);
+    evaluator_->EvaluateTranspose(ValueView<const T, DeviceMemorySpace>(
+                                    target.GetData().GetValueBasis(),
+                                    source.GetDOFHolderData().GetValues()),
+                                  target);
   }
 
 private:

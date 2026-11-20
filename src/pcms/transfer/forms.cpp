@@ -106,20 +106,25 @@ LinearForm::LinearForm(std::shared_ptr<const FunctionSpace> space,
     layout.GetNumComponents());
 }
 
-void LinearForm::Assemble(ValueView<const Real, DeviceMemorySpace> samples,
-                          Field<Real>& functional) const
+ValueView<const Real, DeviceMemorySpace> LinearForm::Weight(
+  ValueView<const Real, DeviceMemorySpace> samples) const
 {
   if (samples.extent(0) != weighted_.extent(0) ||
       samples.extent(1) != weighted_.extent(1)) {
     throw std::invalid_argument(
-      "LinearForm::Assemble: samples must be shaped [points][components]");
+      "LinearForm: samples must be shaped [points][components]");
   }
   ApplyWeights(quadrature_.weights, samples.GetValues(), weighted_);
+  return ValueView<const Real, DeviceMemorySpace>(
+    samples.GetBasis(), MakeConstRank2View(weighted_));
+}
+
+void LinearForm::Assemble(ValueView<const Real, DeviceMemorySpace> samples,
+                          Field<Real>& functional) const
+{
+  const auto weighted = Weight(samples);
   functional.SetDOFHolderDataUnchecked(MakeConstRank2View(zeros_));
-  evaluator_->EvaluateTranspose(
-    ValueView<const Real, DeviceMemorySpace>(samples.GetBasis(),
-                                             MakeConstRank2View(weighted_)),
-    functional);
+  evaluator_->EvaluateTranspose(weighted, functional);
 }
 
 BilinearForm::BilinearForm(std::shared_ptr<const FunctionSpace> space,

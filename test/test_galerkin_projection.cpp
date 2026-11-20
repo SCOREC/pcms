@@ -11,6 +11,7 @@
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/transfer/forms.hpp>
+#include <pcms/transfer/interpolator.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/linear_solver.hpp>
@@ -523,6 +524,112 @@ TEST_CASE("FunctionSpace::CreateQuadrature is exact for products of two "
     }
     CHECK(total == Catch::Approx(1.0).epsilon(1e-13));
   }
+}
+
+// ---------------------------------------------------------------------------
+// ApplyTranspose
+// ---------------------------------------------------------------------------
+
+namespace
+{
+
+// <P a, b> and <a, P^T b> for random coefficients a (of the source space) and
+// b (of the target space)
+std::pair<double, double> AdjointPair(
+  const pcms::TransferOperator<pcms::Real>& op,
+  const std::shared_ptr<const pcms::FunctionSpace>& source_space,
+  const std::shared_ptr<const pcms::FunctionSpace>& target_space)
+{
+  REQUIRE(op.SupportsTranspose());
+  std::mt19937 rng(21);
+  auto a = source_space->CreateFunction<pcms::Real>();
+  auto b = target_space->CreateFunction<pcms::Real>();
+  SetDofs(a, RandomDofs(*source_space->GetLayout(), rng));
+  SetDofs(b, RandomDofs(*target_space->GetLayout(), rng));
+  auto pa = target_space->CreateFunction<pcms::Real>();
+  op.Apply(a, pa);
+  auto ptb = source_space->CreateFunction<pcms::Real>();
+  op.ApplyTranspose(b, ptb);
+  return {pcms::Dot(pa, b), pcms::Dot(a, ptb)};
+}
+
+} // namespace
+
+TEST_CASE("ApplyTranspose of an interpolator is its adjoint, and preserves "
+          "totals",
+          "[transfer][adjoint]")
+{
+  Omega_h::Library lib;
+  const int dim = GENERATE(2, 3);
+  const int components = GENERATE(1, 2);
+  auto source_mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 4)
+                              : pcms::test::BuildUnitCube(lib, 3);
+  auto target_mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 3)
+                              : pcms::test::BuildUnitCube(lib, 2);
+  const auto options =
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH};
+  const auto source_space = pcms::CreateLagrangeSpace(MakeGeometry(source_mesh),
+                                                      1, components, options);
+  const auto target_space = pcms::CreateLagrangeSpace(MakeGeometry(target_mesh),
+                                                      1, components, options);
+  const auto interpolator =
+    pcms::CreateInterpolator<pcms::Real>(source_space, target_space);
+  const auto [lhs, rhs] =
+    AdjointPair(*interpolator, source_space, target_space);
+  CHECK(lhs == Catch::Approx(rhs).epsilon(1e-12));
+
+  // loads: P1 reproduces constants, so the loads sum to the same total
+  auto loads = target_space->CreateFunction<pcms::Real>();
+  Host2D ones("ones", target_space->GetLayout()->GetNumDofHolder(), components);
+  Kokkos::deep_copy(ones, 1.0);
+  SetDofs(loads, ones);
+  auto distributed = source_space->CreateFunction<pcms::Real>();
+  interpolator->ApplyTranspose(loads, distributed);
+  const auto values = distributed.GetDOFHolderDataHost().GetValues();
+  double total = 0;
+  for (std::size_t i = 0;
+       i < static_cast<std::size_t>(values.extent(0)) * values.extent(1); ++i) {
+    total += values.data_handle()[i];
+  }
+  CHECK(total == Catch::Approx(ones.size()).epsilon(1e-12));
+}
+
+TEST_CASE("ApplyTranspose of a projection is its adjoint, for both solve "
+          "methods",
+          "[transfer][adjoint][projection]")
+{
+  Omega_h::Library lib;
+  const int target_order = GENERATE(0, 1);
+  const bool assembled = GENERATE(false, true);
+  const bool lumped = GENERATE(false, true);
+  CAPTURE(target_order, assembled, lumped);
+  auto source_mesh = pcms::test::BuildSquareMesh(lib, 5);
+  auto target_mesh = pcms::test::BuildSquareMesh(lib, 3);
+  const auto options =
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH};
+  const auto source_space =
+    pcms::CreateLagrangeSpace(MakeGeometry(source_mesh), 1, 2, options);
+  const auto target_space = pcms::CreateLagrangeSpace(MakeGeometry(target_mesh),
+                                                      target_order, 2, options);
+  pcms::ProjectionOptions projection_options;
+  if (assembled) {
+    projection_options.solve.method =
+      pcms::LinearSolveOptions::Method::Assembled;
+  }
+  if (lumped) {
+    projection_options.mass_matrix_type = pcms::MassMatrixType::Lumped;
+  }
+  const auto projection =
+    pcms::CreateProjection(source_space, target_space, projection_options);
+  const auto [lhs, rhs] = AdjointPair(*projection, source_space, target_space);
+  CHECK(lhs == Catch::Approx(rhs).epsilon(1e-10));
+  // a control variate is not supported
+  const auto control_variate =
+    pcms::CreateControlVariateProjection(source_space, target_space);
+  CHECK_FALSE(control_variate->SupportsTranspose());
+  auto b = target_space->CreateFunction<pcms::Real>();
+  auto out = source_space->CreateFunction<pcms::Real>();
+  CHECK_THROWS(control_variate->ApplyTranspose(b, out));
 }
 
 TEST_CASE("L2 inner products of vectors refuse systems with a varying "

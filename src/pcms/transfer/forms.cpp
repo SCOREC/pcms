@@ -1,4 +1,5 @@
 #include "pcms/transfer/forms.hpp"
+#include "pcms/field/holder_of_gid.hpp"
 #include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
@@ -10,48 +11,10 @@
 namespace pcms::transfer::detail
 {
 
-// Maps the global id of a DOF holder (of a layout without ghosts) to the
-// holder: a binary search in the sorted gids.
-struct HolderOfGid
-{
-  Kokkos::View<GO*, DeviceMemorySpace> sorted;
-  Kokkos::View<LO*, DeviceMemorySpace> holders;
-
-  KOKKOS_INLINE_FUNCTION LO operator()(GO gid) const
-  {
-    LO lo = 0;
-    LO hi = static_cast<LO>(sorted.extent(0));
-    while (lo < hi) {
-      const LO mid = lo + (hi - lo) / 2;
-      if (sorted(mid) < gid) {
-        lo = mid + 1;
-      } else {
-        hi = mid;
-      }
-    }
-    return holders(lo);
-  }
-};
+using pcms::detail::MakeHolderOfGid;
 
 namespace
 {
-
-HolderOfGid MakeHolderOfGid(const FieldLayout& layout)
-{
-  const auto gids = layout.GetGidsHost();
-  std::vector<LO> order(gids.extent(0));
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(),
-            [&](LO a, LO b) { return gids(a) < gids(b); });
-  Kokkos::View<GO*, HostMemorySpace> sorted("sorted_gids", order.size());
-  Kokkos::View<LO*, HostMemorySpace> holders("sorted_holders", order.size());
-  for (std::size_t i = 0; i < order.size(); ++i) {
-    sorted(i) = gids(order[i]);
-    holders(i) = order[i];
-  }
-  return {Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, sorted),
-          Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, holders)};
-}
 
 void ApplyWeights(const Kokkos::View<const Real*, DeviceMemorySpace>& weights,
                   const Rank2View<const Real, DeviceMemorySpace>& values,

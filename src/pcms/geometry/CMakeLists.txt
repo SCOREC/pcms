@@ -5,6 +5,7 @@ set(
         ../../../include/pcms/geometry/quadrature.hpp
         ../../../include/pcms/geometry/supports.hpp
         ../../../include/pcms/geometry/periodic_geometry.hpp
+        ../../../include/pcms/geometry/product_geometry.hpp
         ../../../include/pcms/geometry/detail/bound_points.hpp
         ../../../include/pcms/geometry/detail/geometry.hpp
         ../../../include/pcms/geometry/detail/quadrature.hpp

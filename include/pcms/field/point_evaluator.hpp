@@ -99,15 +99,16 @@ public:
     EvaluateTransposeImpl(values.GetValues(), functional);
   }
 
-  /// @return whether GetMatrix and the Value operator are supported
+  /// @return whether GetMatrix is supported
   [[nodiscard]] virtual bool SupportsMatrix() const noexcept { return false; }
 
   /// @brief The evaluation as a sparse matrix E: component c of the values is
-  ///        E times component c of the DOFs.
+  ///        E times component c of the DOFs. For the Gradient operator, row
+  ///        p * d + j holds partial j of point p (d the output columns).
   /// @throws pcms_error if the matrix is not supported
   [[nodiscard]] PointMatrix<T> GetMatrix() const
   {
-    if (!SupportsMatrix() || op_ != DifferentialOperator::Value) {
+    if (!SupportsMatrix()) {
       throw pcms_error("PointEvaluator::GetMatrix: not supported");
     }
     return GetMatrixImpl();

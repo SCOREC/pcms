@@ -166,10 +166,10 @@ void bind_create_field_module(py::module& m)
     .def(
       "set_dof_holder_data",
       [](Field<Real>& self, const NumpyInput<Real>& data) {
-        RequireScalarForPlainArray("set_dof_holder_data",
-                                   self.GetData().GetValueBasis());
+        const ValueBasis& basis = self.GetData().GetValueBasis();
+        RequireScalarForPlainArray("set_dof_holder_data", basis);
         self.SetDOFHolderDataHost(ValueView<const Real, HostMemorySpace>(
-          ValueBasis{},
+          basis,
           NumpyToHostComponentView<Real>(data, PerEntityComponents(data))));
       },
       py::arg("data"),
@@ -458,15 +458,21 @@ void bind_create_field_module(py::module& m)
       [](const Immutable<FunctionSpace>& self, std::string name,
          VarianceSignature variance,
          const std::optional<Immutable<CoordinateSystem>>& system,
-         std::optional<ComponentScaling> scaling) {
-        return self.ptr->CreateFunction<Real>(
-          std::move(name), variance, system ? system->ptr : nullptr, scaling);
+         std::optional<ComponentScaling> scaling, ValueKind kind) {
+        auto basis = pcms::detail::MakeValueBasis(
+          self.ptr->GetCoordinateSystem(), variance,
+          system ? system->ptr : nullptr, scaling);
+        basis.kind = kind;
+        return self.ptr->CreateFunction<Real>(std::move(name),
+                                              std::move(basis));
       },
       py::arg("name") = "", py::arg("variance") = values::Scalar,
       py::arg("system") = py::none(), py::arg("scaling") = py::none(),
+      py::arg("kind") = ValueKind::Tensor,
       "Create a Function in this space. Vector and tensor values are in "
       "`system`'s basis (default: this space's coordinate system), with "
-      "`scaling` required when that system admits both scalings.")
+      "`scaling` required when that system admits both scalings; a space "
+      "with several independent components takes kind=ValueKind.Array.")
     .def("get_layout",
          [](const Immutable<FunctionSpace>& self) {
            return Immutable<FieldLayout>{self.ptr->GetLayout()};

@@ -671,7 +671,8 @@ TEST_CASE("UniformGrid Order-1 multi-component field evaluation")
   auto field_space = pcms::CreateLagrangeSpace(
     pcms::uniform_grid::CreateGeometry(grid, pcms::detail::DeferredCartesian()),
     1, num_components);
-  auto field = field_space->CreateFunction<pcms::Real>();
+  auto field = field_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*field_space));
 
   // Vertex layout:
   //   v6---v7---v8
@@ -697,7 +698,7 @@ TEST_CASE("UniformGrid Order-1 multi-component field evaluation")
   pcms::LO num_vertices = (grid.divisions[0] + 1) * (grid.divisions[1] + 1);
   field.SetDOFHolderDataHost(
     pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
-      pcms::ValueBasis{},
+      field.GetData().GetValueBasis(),
       pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
         data.data(), num_vertices, num_components)));
 
@@ -748,7 +749,8 @@ TEST_CASE("UniformGrid Order-0 multi-component field (regression)")
   auto field_space = pcms::CreateLagrangeSpace(
     pcms::uniform_grid::CreateGeometry(grid, pcms::detail::DeferredCartesian()),
     0, num_components);
-  auto field = field_space->CreateFunction<pcms::Real>();
+  auto field = field_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*field_space));
 
   // Set cell values (4 cells, 2 components each)
   std::vector<pcms::Real> data = {
@@ -760,7 +762,7 @@ TEST_CASE("UniformGrid Order-0 multi-component field (regression)")
 
   field.SetDOFHolderDataHost(
     pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
-      pcms::ValueBasis{},
+      field.GetData().GetValueBasis(),
       pcms::Rank2View<const pcms::Real, pcms::HostMemorySpace>(
         data.data(), 4, num_components)));
 

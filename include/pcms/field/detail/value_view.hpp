@@ -39,7 +39,9 @@ namespace pcms::detail
                                          const ValueBasis& b) noexcept
 {
   if (a.Rank() == 0 && b.Rank() == 0) {
-    return true;
+    return a.kind == b.kind &&
+           (a.kind != ValueKind::Coordinates ||
+            detail::SameCoordinateSystem(a.system, b.system));
   }
   if (a.Rank() != b.Rank() ||
       !detail::SameCoordinateSystem(a.system, b.system) ||
@@ -67,6 +69,14 @@ inline void CheckWrittenValueBasis(const char* context,
 
 inline void ValidateValueBasis(const ValueBasis& basis)
 {
+  if (basis.kind != ValueKind::Tensor && basis.Rank() != 0) {
+    throw pcms_error("ValidateValueBasis: coordinates and arrays have no "
+                     "variance");
+  }
+  if (basis.kind == ValueKind::Coordinates && basis.system == nullptr) {
+    throw pcms_error("ValidateValueBasis: coordinates are points of a "
+                     "coordinate system");
+  }
   if (basis.Rank() == 0) {
     return;
   }
@@ -100,7 +110,23 @@ inline void ValidateValueSemantics(const ValueBasis& basis, int num_components,
 {
   ValidateValueBasis(basis);
   const int rank = basis.Rank();
+  if (basis.kind == ValueKind::Coordinates &&
+      num_components != basis.system->Dimension()) {
+    throw pcms_error("ValidateValueSemantics: coordinates of '" +
+                     std::string(basis.system->Kind()) + "' require " +
+                     std::to_string(basis.system->Dimension()) +
+                     " components, got " + std::to_string(num_components));
+  }
+  if (basis.kind != ValueKind::Tensor) {
+    return;
+  }
   if (rank == 0) {
+    if (!blocks && num_components != 1) {
+      throw pcms_error("ValidateValueSemantics: a scalar has one component, "
+                       "got " +
+                       std::to_string(num_components) +
+                       " (use ValueKind::Array for independent components)");
+    }
     return;
   }
   int expected = 1;

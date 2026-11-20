@@ -74,6 +74,11 @@ void bind_value_view_module(py::module& m)
     .value("Natural", ComponentScaling::Natural,
            "Components on the unscaled coordinate basis");
 
+  py::enum_<ValueKind>(m, "ValueKind", "What the components of a value are")
+    .value("Tensor", ValueKind::Tensor)
+    .value("Coordinates", ValueKind::Coordinates)
+    .value("Array", ValueKind::Array);
+
   py::enum_<FieldValueType>(m, "FieldValueType")
     .value("Scalar", FieldValueType::Scalar)
     .value("Vector", FieldValueType::Vector)
@@ -119,12 +124,15 @@ void bind_value_view_module(py::module& m)
     "The basis a value's components are expressed in. The default is the "
     "scalar basis.")
     .def(py::init([](const std::optional<Immutable<CoordinateSystem>>& system,
-                     ComponentScaling scaling, VarianceSignature variance) {
-           return ValueBasis{system ? system->ptr : nullptr, scaling, variance};
+                     ComponentScaling scaling, VarianceSignature variance,
+                     ValueKind kind) {
+           return ValueBasis{system ? system->ptr : nullptr, scaling, variance,
+                             Parity::Even, kind};
          }),
          py::arg("system") = py::none(),
          py::arg("scaling") = ComponentScaling::Physical,
-         py::arg("variance") = VarianceSignature{})
+         py::arg("variance") = VarianceSignature{},
+         py::arg("kind") = ValueKind::Tensor)
     .def_property(
       "system", [](const ValueBasis& self) { return ToPython(self.system); },
       [](ValueBasis& self,
@@ -133,6 +141,7 @@ void bind_value_view_module(py::module& m)
       })
     .def_readwrite("scaling", &ValueBasis::scaling)
     .def_readwrite("variance", &ValueBasis::variance)
+    .def_readwrite("kind", &ValueBasis::kind)
     .def("rank", &ValueBasis::Rank)
     .def(
       "__eq__",

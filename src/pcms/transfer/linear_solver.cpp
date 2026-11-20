@@ -87,10 +87,10 @@ LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
   const auto space = form_.Form().Space();
   const auto& layout = *space->GetLayout();
   if (options_.method == LinearSolveOptions::Method::MatrixFree) {
-    diagonal_.emplace(space->CreateFunction<Real>());
+    diagonal_.emplace(ScratchFunction(*space));
     cg_ = std::make_unique<CgScratch>(
-      CgScratch{space->CreateFunction<Real>(), space->CreateFunction<Real>(),
-                space->CreateFunction<Real>(), space->CreateFunction<Real>()});
+      CgScratch{ScratchFunction(*space), ScratchFunction(*space),
+                ScratchFunction(*space), ScratchFunction(*space)});
     zeros_ = Kokkos::View<Real**, DeviceMemorySpace>("linear_solver_zeros",
                                                      layout.GetNumDofHolder(),
                                                      layout.GetNumComponents());

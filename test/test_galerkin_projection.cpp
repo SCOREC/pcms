@@ -62,7 +62,12 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   std::uniform_real_distribution<double> uniform(-1.0, 1.0);
   const auto x = RandomDofs(*space->GetLayout(), rng);
 
-  auto field = space->CreateFunction<pcms::Real>("x", variance);
+  auto field_basis = pcms::detail::MakeValueBasis(
+    space->GetCoordinateSystem(), variance, nullptr, std::nullopt);
+  if (variance.Rank() == 0) {
+    field_basis = pcms::test::ComponentsBasis(*space);
+  }
+  auto field = space->CreateFunction<pcms::Real>("x", field_basis);
   SetDofs(field, x);
   const auto basis = evaluator.OutputBasis(field.GetData().GetValueBasis());
   const int num_values =
@@ -89,7 +94,8 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   const pcms::ValueView<const pcms::Real, pcms::DeviceMemorySpace> y_view(
     basis, pcms::MakeConstRank2View(y_device));
 
-  auto functional = space->CreateFunction<pcms::Real>("functional", variance);
+  auto functional =
+    space->CreateFunction<pcms::Real>("functional", field_basis);
   evaluator.EvaluateTranspose(y_view, functional);
   const auto e_x_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, e_x);
@@ -227,8 +233,10 @@ TEST_CASE("EvaluateTranspose checks its arguments", "[adjoint]")
   const auto other_space = pcms::test::MakeP1Space(geometry);
   const auto bound = pcms::test::Bind(*geometry, RandomPoints(2, 4, 1));
   const auto evaluator = space->CreatePointEvaluator<pcms::Real>(bound);
-  auto functional = space->CreateFunction<pcms::Real>();
-  auto foreign = other_space->CreateFunction<pcms::Real>();
+  auto functional =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
+  auto foreign = other_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*other_space));
   const auto basis = functional.GetData().GetValueBasis();
   Device2D values("v", 4, 1);
   Device2D wrong_shape("d", 3, 1);
@@ -254,8 +262,10 @@ TEST_CASE("field operations: Scale, Axpy, Dot, norms and the pairing",
   std::mt19937 rng(7);
   const auto a = RandomDofs(*space->GetLayout(), rng);
   const auto b = RandomDofs(*space->GetLayout(), rng);
-  auto x = space->CreateFunction<pcms::Real>();
-  auto y = space->CreateFunction<pcms::Real>();
+  auto x =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
+  auto y =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
   SetDofs(x, a);
   SetDofs(y, b);
   double dot = 0, xx = 0, inf = 0;
@@ -268,7 +278,8 @@ TEST_CASE("field operations: Scale, Axpy, Dot, norms and the pairing",
   CHECK(pcms::Apply(x, y) == Catch::Approx(dot).epsilon(1e-14));
   CHECK(pcms::Norm2(x) == Catch::Approx(std::sqrt(xx)).epsilon(1e-14));
   CHECK(pcms::NormInf(x) == Catch::Approx(inf).epsilon(1e-14));
-  auto w = space->CreateFunction<pcms::Real>();
+  auto w =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
   Host2D twos("w", a.extent(0), 1);
   Kokkos::deep_copy(twos, 2.0);
   SetDofs(w, twos);
@@ -324,8 +335,10 @@ TEST_CASE("CreateProjection with a reference-rule quadrature reproduces fields "
   const auto target_space = pcms::CreateLagrangeSpace(
     target_geometry, target_order, 1,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
-  auto source = source_space->CreateFunction<pcms::Real>();
-  auto target = target_space->CreateFunction<pcms::Real>();
+  auto source = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
+  auto target = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
   pcms::test::SetFieldComponents(
     source, [](pcms::Real x, pcms::Real y, pcms::Real* out) { out[0] = 2.0; });
   pcms::ProjectionOptions options;
@@ -353,8 +366,10 @@ TEST_CASE("CreateProjection projects several components at once",
     pcms::CreateLagrangeSpace(source_geometry, 1, 2, options);
   const auto target_space =
     pcms::CreateLagrangeSpace(target_geometry, 1, 2, options);
-  auto source = source_space->CreateFunction<pcms::Real>();
-  auto target = target_space->CreateFunction<pcms::Real>();
+  auto source = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
+  auto target = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
   pcms::test::SetFieldComponents(
     source, [](pcms::Real x, pcms::Real y, pcms::Real* out) {
       out[0] = x + y;
@@ -400,10 +415,13 @@ SolveComparison CompareSolvers(
     form, pcms::LinearSolveOptions{
             .method = pcms::LinearSolveOptions::Method::Assembled});
   std::mt19937 rng(5);
-  auto b = space->CreateFunction<pcms::Real>();
+  auto b =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
   SetDofs(b, RandomDofs(*space->GetLayout(), rng));
-  auto x_free = space->CreateFunction<pcms::Real>();
-  auto x_direct = space->CreateFunction<pcms::Real>();
+  auto x_free =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
+  auto x_direct =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
   const int iterations = matrix_free.Solve(b, x_free);
   assembled.Solve(b, x_direct);
   const double scale = pcms::NormInf(x_direct);
@@ -468,13 +486,15 @@ TEST_CASE("projection: both solve methods and the lumped mass",
   const auto source_geometry = MakeGeometry(source_mesh);
   const auto source_space = pcms::test::MakeP1Space(source_geometry);
   const auto target_space = pcms::test::MakeP1Space(target_mesh);
-  auto source = source_space->CreateFunction<pcms::Real>();
+  auto source = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
   pcms::test::SetField(
     source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) {
       return std::sin(4 * x) * std::cos(3 * y);
     });
   const auto project = [&](pcms::ProjectionOptions options) {
-    auto target = target_space->CreateFunction<pcms::Real>();
+    auto target = target_space->CreateFunction<pcms::Real>(
+      "", pcms::test::ComponentsBasis(*target_space));
     pcms::CreateProjection(source_space, target_space, options)
       ->Apply(source, target);
     return target;
@@ -542,13 +562,17 @@ std::pair<double, double> AdjointPair(
 {
   REQUIRE(op.SupportsTranspose());
   std::mt19937 rng(21);
-  auto a = source_space->CreateFunction<pcms::Real>();
-  auto b = target_space->CreateFunction<pcms::Real>();
+  auto a = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
+  auto b = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
   SetDofs(a, RandomDofs(*source_space->GetLayout(), rng));
   SetDofs(b, RandomDofs(*target_space->GetLayout(), rng));
-  auto pa = target_space->CreateFunction<pcms::Real>();
+  auto pa = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
   op.Apply(a, pa);
-  auto ptb = source_space->CreateFunction<pcms::Real>();
+  auto ptb = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
   op.ApplyTranspose(b, ptb);
   return {pcms::Dot(pa, b), pcms::Dot(a, ptb)};
 }
@@ -579,11 +603,13 @@ TEST_CASE("ApplyTranspose of an interpolator is its adjoint, and preserves "
   CHECK(lhs == Catch::Approx(rhs).epsilon(1e-12));
 
   // loads: P1 reproduces constants, so the loads sum to the same total
-  auto loads = target_space->CreateFunction<pcms::Real>();
+  auto loads = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
   Host2D ones("ones", target_space->GetLayout()->GetNumDofHolder(), components);
   Kokkos::deep_copy(ones, 1.0);
   SetDofs(loads, ones);
-  auto distributed = source_space->CreateFunction<pcms::Real>();
+  auto distributed = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
   interpolator->ApplyTranspose(loads, distributed);
   const auto values = distributed.GetDOFHolderDataHost().GetValues();
   double total = 0;
@@ -627,8 +653,10 @@ TEST_CASE("ApplyTranspose of a projection is its adjoint, for both solve "
   const auto control_variate =
     pcms::CreateControlVariateProjection(source_space, target_space);
   CHECK_FALSE(control_variate->SupportsTranspose());
-  auto b = target_space->CreateFunction<pcms::Real>();
-  auto out = source_space->CreateFunction<pcms::Real>();
+  auto b = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
+  auto out = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
   CHECK_THROWS(control_variate->ApplyTranspose(b, out));
 }
 
@@ -644,7 +672,8 @@ TEST_CASE("L2 inner products of vectors refuse systems with a varying "
     pcms::omega_h::CreateGeometry(mesh, pcms::csys::CreateCylindricalRThetaZ()),
     1, 3, pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
   const pcms::L2InnerProduct product(cylindrical, cylindrical);
-  auto scalar = cylindrical->CreateFunction<pcms::Real>("scalar");
+  auto scalar = cylindrical->CreateFunction<pcms::Real>(
+    "scalar", pcms::test::ComponentsBasis(*cylindrical));
   auto vector = cylindrical->CreateFunction<pcms::Real>(
     "vector", pcms::values::Vector, pcms::ComponentScaling::Physical);
   CHECK_NOTHROW(product.Apply(scalar, scalar));

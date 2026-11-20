@@ -115,6 +115,14 @@ public:
     std::shared_ptr<const CoordinateSystem> system,
     std::optional<ComponentScaling> scaling = std::nullopt) const;
 
+  /// @brief Creates a Function whose values are in `basis`, e.g.
+  ///        ValueBasis::Coordinates(coordinate system) for a position.
+  /// @throws pcms_error if the space is not owned by a std::shared_ptr, or
+  ///         the basis does not fit the space's number of components
+  template <typename T>
+  [[nodiscard]] Function<T> CreateFunction(std::string name,
+                                           ValueBasis basis) const;
+
   // Expert API: wrap externally constructed field data into a Function for this
   // space. The space validates backend-specific field-data type and storage
   // size compatibility.
@@ -195,6 +203,20 @@ Function<T> FunctionSpace::CreateFunction(
   auto owner = Owner();
   ValueBasis basis = detail::MakeValueBasis(GetCoordinateSystem(), variance,
                                             std::move(system), scaling);
+  detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
+  Field<T> field = std::get<Field<T>>(
+    CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
+  return WrapFunction<T>(std::move(name), std::move(field.layout_),
+                         std::move(field.data_), std::move(owner));
+}
+
+template <typename T>
+Function<T> FunctionSpace::CreateFunction(std::string name,
+                                          ValueBasis basis) const
+{
+  static_assert(detail::is_supported_field_type_v<T>,
+                "T is not a supported field type");
+  auto owner = Owner();
   detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
   Field<T> field = std::get<Field<T>>(
     CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));

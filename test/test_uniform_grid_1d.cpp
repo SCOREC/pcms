@@ -114,7 +114,7 @@ TEST_CASE("1D piecewise-constant Lagrange evaluates the cell value")
 TEST_CASE("1D multi-component Lagrange")
 {
   const auto space = pcms::CreateLagrangeSpace(MakeGeometry(0.0, 1.0, 4), 1, 2);
-  auto f = space->CreateFunction<Real>("f");
+  auto f = space->CreateFunction<Real>("f", {.kind = pcms::ValueKind::Array});
   pcms::test::SetFieldComponents(f, [](Real x, Real* out) {
     out[0] = x;
     out[1] = 2.0 - x;

@@ -551,7 +551,8 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
     geometry, 1, 2,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
 
-  auto field = factory->CreateFunction<Real>();
+  auto field =
+    factory->CreateFunction<Real>("", pcms::test::ComponentsBasis(*factory));
   auto layout = factory->GetLayout();
   REQUIRE(layout->GetNumComponents() == 2);
   int num_dof = layout->GetNumDofHolder();
@@ -572,8 +573,9 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (2) evaluation")
   }
   field.SetDOFHolderDataHost(
     pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
-      pcms::ValueBasis{}, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-                            host_data.data(), num_dof, 2)));
+      field.GetData().GetValueBasis(),
+      pcms::Rank2View<const Real, pcms::HostMemorySpace>(host_data.data(),
+                                                         num_dof, 2)));
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;
@@ -606,7 +608,8 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
     geometry, 1, 3,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::MeshFields});
 
-  auto field = factory->CreateFunction<Real>();
+  auto field =
+    factory->CreateFunction<Real>("", pcms::test::ComponentsBasis(*factory));
   auto layout = factory->GetLayout();
   REQUIRE(layout->GetNumComponents() == 3);
   int num_dof = layout->GetNumDofHolder();
@@ -628,8 +631,9 @@ TEST_CASE("PointEvaluator: MeshFields order-1 multi-component (3) evaluation")
   }
   field.SetDOFHolderDataHost(
     pcms::ValueView<const pcms::Real, pcms::HostMemorySpace>(
-      pcms::ValueBasis{}, pcms::Rank2View<const Real, pcms::HostMemorySpace>(
-                            host_data.data(), num_dof, 3)));
+      field.GetData().GetValueBasis(),
+      pcms::Rank2View<const Real, pcms::HostMemorySpace>(host_data.data(),
+                                                         num_dof, 3)));
 
   auto pts = pcms::test::StandardEvalCoords2D();
   int n = static_cast<int>(pts.size()) / 2;

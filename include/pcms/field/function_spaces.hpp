@@ -51,11 +51,11 @@ struct LagrangeOptions
   LagrangeOptions options = {});
 
 /// @brief A cubic (1D) or bicubic (2D) spline space on a uniform-grid
-///        geometry.
+///        geometry; each component is splined on its own.
 /// @throws pcms_error if `geometry` is null or not a 1D or 2D uniform-grid
 ///         geometry
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateSplineSpace(
-  std::shared_ptr<const Geometry> geometry);
+  std::shared_ptr<const Geometry> geometry, int num_components = 1);
 
 #ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
 /// An MLS reconstruction space on a point-cloud geometry (its sites are the

@@ -66,7 +66,7 @@ private:
                    std::shared_ptr<const FunctionSpace> target_space,
                    std::shared_ptr<const BoundPoints> at_holders)
       : interpolator(std::move(source), target_space, std::move(at_holders)),
-        values(target_space->CreateFunction<Real>())
+        values(detail::ScratchFunction(*target_space))
     {
     }
     pcms::detail::Interpolator<Real> interpolator;

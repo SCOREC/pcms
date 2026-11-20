@@ -47,6 +47,8 @@ public:
   {
     return pcms::FieldValueType::Scalar;
   }
+  explicit MockData(ValueBasis basis = {}) : basis_(std::move(basis)) {}
+
   const ValueBasis& GetValueBasis() const override { return basis_; }
 
 private:
@@ -208,8 +210,10 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
   const auto interpolator =
     pcms::CreateInterpolator<Real>(source, target, on_plane);
 
-  auto f = source->CreateFunction<Real>("f", std::make_unique<MockData>());
-  auto g = target->CreateFunction<Real>("g");
+  auto f = source->CreateFunction<Real>(
+    "f", std::make_unique<MockData>(pcms::test::ComponentsBasis(*source)));
+  auto g =
+    target->CreateFunction<Real>("g", pcms::test::ComponentsBasis(*target));
   interpolator->Apply(f, g);
 
   const auto coords = pcms::test::CopyCoordinatesToHost(

@@ -107,6 +107,19 @@ enum class Parity
   Odd
 };
 
+/// @brief What the components of a value are.
+enum class ValueKind : std::uint8_t
+{
+  /// components of a tensor of the variance's rank on the coordinates of
+  /// `system`, transformed by J or J^-T per index; rank 0 is one component
+  Tensor,
+  /// a point of `system`, one component per coordinate, moved by the
+  /// coordinate map
+  Coordinates,
+  /// any number of components, never transformed
+  Array
+};
+
 /// Basis the components of a value are expressed in: coordinate system,
 /// component scaling, index variance and parity. Curl produces Odd output;
 /// reflections negate Odd values.
@@ -116,8 +129,23 @@ struct ValueBasis
   ComponentScaling scaling = ComponentScaling::Physical;
   VarianceSignature variance{};
   Parity parity = Parity::Even;
+  ValueKind kind = ValueKind::Tensor;
 
   [[nodiscard]] int Rank() const noexcept { return variance.Rank(); }
+
+  /// @brief The basis of values that are points of `system`: the position of
+  ///        an embedded geometry.
+  ///
+  /// The Gradient of a Function with this basis is the Jacobian of the map
+  /// it describes, [component][derivative]: column j * (parameter dimension)
+  /// + i is d x_j / d xi_i.
+  [[nodiscard]] static ValueBasis Coordinates(
+    std::shared_ptr<const CoordinateSystem> system)
+  {
+    return ValueBasis{std::move(system), ComponentScaling::Natural,
+                      VarianceSignature{}, Parity::Even,
+                      ValueKind::Coordinates};
+  }
 
   friend bool operator==(const ValueBasis&, const ValueBasis&) = default;
 };

@@ -147,7 +147,7 @@ void BilinearForm::Apply(const Field<Real>& u, Field<Real>& functional) const
 
 void BilinearForm::AssembleLumped(Field<Real>& lumped) const
 {
-  auto ones = form_.Space()->CreateFunction<Real>();
+  auto ones = ScratchFunction(*form_.Space());
   const auto& layout = *form_.Space()->GetLayout();
   Kokkos::View<Real**, DeviceMemorySpace> values(
     "bilinear_form_ones", layout.GetNumDofHolder(), layout.GetNumComponents());

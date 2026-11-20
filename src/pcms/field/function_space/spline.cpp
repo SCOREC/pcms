@@ -22,10 +22,11 @@ namespace
 
 template <unsigned Dim>
 std::shared_ptr<const FunctionSpace> CreateUniformGridSplineSpace(
-  std::shared_ptr<const UniformGridGeometry<Dim>> grid_geometry)
+  std::shared_ptr<const UniformGridGeometry<Dim>> grid_geometry,
+  int num_components)
 {
-  auto layout =
-    std::make_shared<UniformGridFieldLayout<Dim>>(grid_geometry, 1, 1);
+  auto layout = std::make_shared<UniformGridFieldLayout<Dim>>(
+    grid_geometry, num_components, 1);
   auto evaluator_factory =
     std::make_shared<UniformGridSplineEvaluatorFactory<Dim>>(
       std::move(grid_geometry), layout);
@@ -36,21 +37,23 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridSplineSpace(
 } // namespace
 
 std::shared_ptr<const FunctionSpace> CreateSplineSpace(
-  std::shared_ptr<const Geometry> geometry)
+  std::shared_ptr<const Geometry> geometry, int num_components)
 {
   if (geometry == nullptr) {
     throw pcms_error("CreateSplineSpace: the geometry must not be null");
   }
-  if (auto space = VisitUniformGrid(
-        geometry,
-        []<unsigned Dim>(std::shared_ptr<const UniformGridGeometry<Dim>> grid)
-          -> std::shared_ptr<const FunctionSpace> {
-          if constexpr (Dim == 3) {
-            return nullptr;
-          } else {
-            return CreateUniformGridSplineSpace(std::move(grid));
-          }
-        })) {
+  if (auto space =
+        VisitUniformGrid(geometry,
+                         [num_components]<unsigned Dim>(
+                           std::shared_ptr<const UniformGridGeometry<Dim>> grid)
+                           -> std::shared_ptr<const FunctionSpace> {
+                           if constexpr (Dim == 3) {
+                             return nullptr;
+                           } else {
+                             return CreateUniformGridSplineSpace(
+                               std::move(grid), num_components);
+                           }
+                         })) {
     return space;
   }
   throw pcms_error(

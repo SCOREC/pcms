@@ -38,8 +38,8 @@ GalerkinProjection::GalerkinProjection(
     target_space_(std::move(target_space_ptr)),
     right_hand_side_(target_space_, MakeQuadrature(*target_space_, options)),
     mass_(target_space_, target_space_->CreateQuadrature()),
-    functional_(target_space_->CreateFunction<Real>()),
-    coefficients_(target_space_->CreateFunction<Real>())
+    functional_(detail::ScratchFunction(*target_space_)),
+    coefficients_(detail::ScratchFunction(*target_space_))
 {
   const Geometry& source_geometry = SourceGeometry(*source_);
   const FunctionSpace& target_space = *target_space_;
@@ -50,7 +50,7 @@ GalerkinProjection::GalerkinProjection(
       source_geometry, right_hand_side_.GetQuadrature(), options.to_source));
   if (options.mass_matrix_type == MassMatrixType::Lumped) {
     lumped_ =
-      std::make_unique<Function<Real>>(target_space.CreateFunction<Real>());
+      std::make_unique<Function<Real>>(detail::ScratchFunction(target_space));
     mass_.AssembleLumped(*lumped_);
   } else {
     solver_ = std::make_unique<detail::LinearSolver>(mass_, options.solve);

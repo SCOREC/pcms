@@ -30,13 +30,16 @@ void CheckBindArguments(const Geometry& geometry,
         "'; it must take the query coordinate system to the geometry's '" +
         std::string(system->Kind()) + "'");
     }
-  } else if (!pcms::detail::SameCoordinateSystem(query_system, system)) {
+  } else if (!pcms::detail::SameCoordinateSystem(query_system, system) &&
+             !pcms::detail::SameCoordinateSystem(
+               query_system, geometry.GetParameterSystem())) {
     throw pcms_error("Geometry::Bind: query coordinate system '" +
                      std::string(query_system->Kind()) +
                      "' is not the geometry's coordinate system '" +
                      std::string(system->Kind()) +
                      "'; pass a CoordinateMap from one to the other as "
-                     "Bind's map argument");
+                     "Bind's map argument, or points in the geometry's "
+                     "parameter system");
   }
   if (policy.mode == OutOfBoundsMode::NEAREST_BOUNDARY &&
       !geometry.SupportsNearestBoundary()) {

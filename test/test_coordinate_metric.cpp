@@ -268,3 +268,64 @@ TEST_CASE("Gradients in cylindrical coordinates have physical components",
   CHECK_THAT(host(0, 2), WithinAbs(-1.0, pcms::test::ExactTol));
   CHECK_THAT(host(1, 1), WithinAbs(3.0 / 4.0, pcms::test::ExactTol));
 }
+
+namespace
+{
+
+// A geometry that exposes its parameter space: it records the system of the
+// points BindImpl is asked to locate.
+class Parametrized final : public pcms::Geometry
+{
+public:
+  mutable std::shared_ptr<const pcms::CoordinateSystem> last_bind_system;
+
+  Parametrized()
+    : system_(pcms::csys::CreateCylindricalRZ()),
+      parameter_(pcms::csys::CreateParameterSystem("xi", 2))
+  {
+  }
+  const std::shared_ptr<const pcms::CoordinateSystem>& GetCoordinateSystem()
+    const noexcept override
+  {
+    return system_;
+  }
+  std::shared_ptr<const pcms::CoordinateSystem> GetParameterSystem()
+    const noexcept override
+  {
+    return parameter_;
+  }
+
+protected:
+  std::shared_ptr<pcms::BoundPoints> BindImpl(
+    const pcms::BindRequest& request) const override
+  {
+    last_bind_system = request.coords.GetCoordinateSystem();
+    return std::make_shared<BoundAll>(shared_from_this(), request);
+  }
+
+private:
+  std::shared_ptr<const pcms::CoordinateSystem> system_;
+  std::shared_ptr<const pcms::CoordinateSystem> parameter_;
+};
+
+} // namespace
+
+TEST_CASE("Geometries expose their parameter space",
+          "[geometry][parameter_system]")
+{
+  const auto plain = std::make_shared<Everywhere>();
+  CHECK(plain->TopologicalDimension() == 3);
+  CHECK(plain->GetParameterSystem() == nullptr);
+
+  const auto geometry = std::make_shared<Parametrized>();
+  CHECK(geometry->TopologicalDimension() == 2);
+  // points in the parameter system are located directly
+  const auto bound = geometry->Bind(
+    pcms::test::MakeCoords(pcms::test::CreateDeviceRank2View({0.5, 0.5}, 2),
+                           geometry->GetParameterSystem()));
+  CHECK(*geometry->last_bind_system == *geometry->GetParameterSystem());
+  CHECK(bound->NumPoints() == 1);
+  // physical points are located as before
+  const auto physical = pcms::test::Bind(*geometry, {1.0, 0.5});
+  CHECK(*geometry->last_bind_system == *geometry->GetCoordinateSystem());
+}

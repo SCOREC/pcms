@@ -55,7 +55,9 @@ struct OwnerHints
 struct BindRequest
 {
   /// points to locate, in the geometry's coordinate system: the query points,
-  /// or their images under `map`; may be released after BindImpl returns
+  /// or their images under `map`; or, for a bind in the geometry's parameter
+  /// system (GetParameterSystem), the query points, which the kind locates
+  /// directly; may be released after BindImpl returns
   CoordinateView<DeviceMemorySpace> coords;
   /// out-of-bounds policy of the evaluators created from the BoundPoints
   OutOfBoundsPolicy policy;

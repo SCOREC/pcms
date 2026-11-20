@@ -460,6 +460,7 @@ if(Catch2_FOUND)
       APPEND
       PCMS_UNIT_TEST_SOURCES
       test_coordinate_transformation.cpp
+      test_coordinate_metric.cpp
             test_eqdsk.cpp
       test_uniform_grid.cpp
       test_field_evaluation.cpp

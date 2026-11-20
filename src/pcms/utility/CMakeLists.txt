@@ -5,6 +5,7 @@ set(
         ../../../include/pcms/utility/coordinate_view.hpp
         ../../../include/pcms/utility/coordinate_systems/cartesian.hpp
         ../../../include/pcms/utility/coordinate_systems/cylindrical.hpp
+        ../../../include/pcms/utility/coordinate_systems/parameter.hpp
         ../../../include/pcms/utility/assert.hpp
         ../../../include/pcms/utility/bounding_box.hpp
         ../../../include/pcms/utility/detail/common.hpp

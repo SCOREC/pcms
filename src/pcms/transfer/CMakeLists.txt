@@ -1,5 +1,6 @@
 set(PCMS_FIELD_TRANSFER_HEADERS
     ../../../include/pcms/transfer/interpolator.hpp
+    forms.hpp
     ../../../include/pcms/transfer/copy.hpp
     ../../../include/pcms/transfer/detail/copy.hpp
     ../../../include/pcms/transfer/detail/interpolator.hpp
@@ -11,6 +12,7 @@ set(PCMS_FIELD_TRANSFER_HEADERS
 
 set(PCMS_FIELD_TRANSFER_SOURCES
     interpolator.cpp
+    forms.cpp
     projection.cpp)
 
 
@@ -23,36 +25,17 @@ if(PCMS_ENABLE_OMEGA_H)
       ../backends/omega_h/mesh_intersection.cpp)
 endif()
 
-if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
-  list(APPEND PCMS_FIELD_TRANSFER_HEADERS
-      mass_matrix_integrator.hpp)
-endif()
-
 if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
-      linear_form_integrator.hpp
-      bilinear_form_integrator.hpp
-      conservative_projection_solver.hpp
-      omega_h_conservative_projection.hpp
-      omega_h_intersection_rhs_integrator.hpp
-      omega_h_mass_integrator.hpp
-      omega_h_mc_rhs_integrator.hpp
-      omega_h_control_variate_projection.hpp
-      petsc_utils.hpp
-      omega_h_intersection_quadrature.hpp
-      forms.hpp
+      galerkin_projection.hpp
       linear_solver.hpp
+      omega_h_intersection_quadrature.hpp
+      petsc_utils.hpp
       omega_h_form_integrator_utils.hpp)
   list(APPEND PCMS_FIELD_TRANSFER_SOURCES
-      conservative_projection_solver.cpp
-      omega_h_conservative_projection.cpp
-      omega_h_intersection_rhs_integrator.cpp
-      omega_h_mass_integrator.cpp
-      omega_h_mc_rhs_integrator.cpp
-      omega_h_control_variate_projection.cpp
-      omega_h_intersection_quadrature.cpp
-      forms.cpp
+      galerkin_projection.cpp
       linear_solver.cpp
+      omega_h_intersection_quadrature.cpp
       petsc_utils.cpp)
 endif()
 

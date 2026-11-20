@@ -6,11 +6,15 @@
 #include <Omega_h_mesh.hpp>
 #include <pcms/field/field_ops.hpp>
 #include <pcms/field/function_spaces.hpp>
+#include <pcms/transfer/projection.hpp>
 #include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
+#include <pcms/transfer/forms.hpp>
+#include <pcms/transfer/linear_solver.hpp>
 #include "field_test_utils.hpp"
 #include <cmath>
+#include <cstdio>
 #include <map>
 #include <random>
 #include <vector>
@@ -277,6 +281,220 @@ TEST_CASE("field operations: Scale, Axpy, Dot, norms and the pairing",
   // fields of another layout are refused
   auto other = pcms::test::MakeP1Space(mesh)->CreateFunction<pcms::Real>();
   CHECK_THROWS_AS(pcms::Dot(x, other), pcms::pcms_error);
+}
+
+namespace
+{
+
+std::vector<double> FieldValues(const pcms::Field<pcms::Real>& field)
+{
+  const auto values =
+    pcms::detail::FlattenToRank1View(field.GetDOFHolderDataHost().GetValues());
+  return std::vector<double>(values.data_handle(),
+                             values.data_handle() + values.size());
+}
+
+std::shared_ptr<const pcms::omega_h::OmegaHGeometry> MakeGeometry(
+  Omega_h::Mesh& mesh)
+{
+  return std::dynamic_pointer_cast<const pcms::omega_h::OmegaHGeometry>(
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian()));
+}
+
+} // namespace
+
+TEST_CASE("CreateProjection with a reference-rule quadrature reproduces fields "
+          "of the target space exactly",
+          "[quadrature][projection]")
+{
+  Omega_h::Library lib;
+  const int dim = GENERATE(2, 3);
+  const int target_order = GENERATE(0, 1);
+  CAPTURE(dim, target_order);
+  auto source_mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 5)
+                              : pcms::test::BuildUnitCube(lib, 3);
+  auto target_mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 3)
+                              : pcms::test::BuildUnitCube(lib, 2);
+  const auto source_geometry = MakeGeometry(source_mesh);
+  const auto target_geometry = MakeGeometry(target_mesh);
+  const auto source_space = pcms::test::MakeP1Space(source_geometry);
+  const auto target_space = pcms::CreateLagrangeSpace(
+    target_geometry, target_order, 1,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+  auto source = source_space->CreateFunction<pcms::Real>();
+  auto target = target_space->CreateFunction<pcms::Real>();
+  pcms::test::SetFieldComponents(
+    source, [](pcms::Real x, pcms::Real y, pcms::Real* out) { out[0] = 2.0; });
+  pcms::ProjectionOptions options;
+  options.quadrature =
+    pcms::CreateGaussQuadrature(target_space->GetGeometry(), 2);
+  auto projection = pcms::CreateProjection(source_space, target_space, options);
+  projection->Apply(source, target);
+  // a constant is in both spaces: the projection is the constant
+  for (const double value : FieldValues(target)) {
+    CHECK(value == Catch::Approx(2.0).margin(1e-10));
+  }
+}
+
+TEST_CASE("CreateProjection projects several components at once",
+          "[quadrature][projection]")
+{
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildSquareMesh(lib, 5);
+  auto target_mesh = pcms::test::BuildSquareMesh(lib, 3);
+  const auto source_geometry = MakeGeometry(source_mesh);
+  const auto target_geometry = MakeGeometry(target_mesh);
+  const auto options =
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH};
+  const auto source_space =
+    pcms::CreateLagrangeSpace(source_geometry, 1, 2, options);
+  const auto target_space =
+    pcms::CreateLagrangeSpace(target_geometry, 1, 2, options);
+  auto source = source_space->CreateFunction<pcms::Real>();
+  auto target = target_space->CreateFunction<pcms::Real>();
+  pcms::test::SetFieldComponents(
+    source, [](pcms::Real x, pcms::Real y, pcms::Real* out) {
+      out[0] = x + y;
+      out[1] = 2 * x - y + 0.5;
+    });
+  auto projection = pcms::CreateProjection(source_space, target_space, {});
+  projection->Apply(source, target);
+  const auto values = FieldValues(target);
+  const auto coords = pcms::test::CopyCoordinatesToHost(
+    target_space->GetLayout()->GetDOFHolderCoordinates().GetValues());
+  REQUIRE(values.size() == 2 * coords.extent(0));
+  for (std::size_t i = 0; i < coords.extent(0); ++i) {
+    CHECK(values[2 * i] ==
+          Catch::Approx(coords(i, 0) + coords(i, 1)).margin(1e-10));
+    CHECK(values[2 * i + 1] ==
+          Catch::Approx(2 * coords(i, 0) - coords(i, 1) + 0.5).margin(1e-10));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The solvers: MatrixFree against Assembled
+// ---------------------------------------------------------------------------
+
+namespace
+{
+
+// The max difference of the two solves of M x = b for a random functional b,
+// and the CG iterations
+struct SolveComparison
+{
+  double max_difference; // relative to the largest entry
+  int iterations;
+  int unknowns;
+};
+
+SolveComparison CompareSolvers(
+  const std::shared_ptr<const pcms::FunctionSpace>& space)
+{
+  using namespace pcms::transfer::detail;
+  const BilinearForm form(space, space->CreateQuadrature());
+  LinearSolver matrix_free(form, pcms::LinearSolveOptions{});
+  LinearSolver assembled(
+    form, pcms::LinearSolveOptions{
+            .method = pcms::LinearSolveOptions::Method::Assembled});
+  std::mt19937 rng(5);
+  auto b = space->CreateFunction<pcms::Real>();
+  SetDofs(b, RandomDofs(*space->GetLayout(), rng));
+  auto x_free = space->CreateFunction<pcms::Real>();
+  auto x_direct = space->CreateFunction<pcms::Real>();
+  const int iterations = matrix_free.Solve(b, x_free);
+  assembled.Solve(b, x_direct);
+  const double scale = pcms::NormInf(x_direct);
+  pcms::Axpy(-1.0, x_direct, x_free);
+  return {pcms::NormInf(x_free) / scale, iterations,
+          space->GetLayout()->GetNumDofHolder() *
+            space->GetLayout()->GetNumComponents()};
+}
+
+} // namespace
+
+TEST_CASE("matrix-free Jacobi-PCG matches the assembled direct solve",
+          "[quadrature][solver]")
+{
+  Omega_h::Library lib;
+  for (const int n : {4, 8, 16}) {
+    auto mesh = pcms::test::BuildSquareMesh(lib, n);
+    const auto result = CompareSolvers(pcms::test::MakeP1Space(mesh));
+    CHECK(result.max_difference < 1e-11);
+    std::printf("[solver] P1 %dx%d square, %d unknowns: CG iterations = %d, "
+                "relative max |x_cg - x_lu| = %.2e\n",
+                n, n, result.unknowns, result.iterations,
+                result.max_difference);
+  }
+  {
+    auto mesh = pcms::test::BuildSquareMesh(lib, 8);
+    const auto result = CompareSolvers(pcms::test::MakeP0Space(mesh));
+    CHECK(result.max_difference < 1e-11);
+    std::printf("[solver] P0 8x8 square, %d unknowns: CG iterations = %d, "
+                "relative max |x_cg - x_lu| = %.2e\n",
+                result.unknowns, result.iterations, result.max_difference);
+  }
+  {
+    auto mesh = pcms::test::BuildSquareMesh(lib, 8);
+    auto geometry =
+      pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
+    const auto space = pcms::CreateLagrangeSpace(
+      geometry, 1, 3,
+      pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+    const auto result = CompareSolvers(space);
+    CHECK(result.max_difference < 1e-11);
+    std::printf("[solver] P1 8x8 square, 3 components, %d unknowns: CG "
+                "iterations = %d, relative max |x_cg - x_lu| = %.2e\n",
+                result.unknowns, result.iterations, result.max_difference);
+  }
+  {
+    auto mesh = pcms::test::BuildUnitCube(lib, 3);
+    const auto result = CompareSolvers(pcms::test::MakeP1Space(mesh));
+    CHECK(result.max_difference < 1e-11);
+    std::printf("[solver] P1 3D cube, %d unknowns: CG iterations = %d, "
+                "relative max |x_cg - x_lu| = %.2e\n",
+                result.unknowns, result.iterations, result.max_difference);
+  }
+}
+
+TEST_CASE("projection: both solve methods and the lumped mass",
+          "[quadrature][projection]")
+{
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildSquareMesh(lib, 6);
+  auto target_mesh = pcms::test::BuildSquareMesh(lib, 4);
+  const auto source_geometry = MakeGeometry(source_mesh);
+  const auto source_space = pcms::test::MakeP1Space(source_geometry);
+  const auto target_space = pcms::test::MakeP1Space(target_mesh);
+  auto source = source_space->CreateFunction<pcms::Real>();
+  pcms::test::SetField(
+    source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) {
+      return std::sin(4 * x) * std::cos(3 * y);
+    });
+  const auto project = [&](pcms::ProjectionOptions options) {
+    auto target = target_space->CreateFunction<pcms::Real>();
+    pcms::CreateProjection(source_space, target_space, options)
+      ->Apply(source, target);
+    return target;
+  };
+  auto free = project({});
+  auto direct = project(pcms::ProjectionOptions{
+    .solve = {.method = pcms::LinearSolveOptions::Method::Assembled}});
+  auto lumped = project(
+    pcms::ProjectionOptions{.mass_matrix_type = pcms::MassMatrixType::Lumped});
+  auto difference = project({});
+  pcms::Axpy(-1.0, direct, difference);
+  const double max_difference = pcms::NormInf(difference);
+  CHECK(max_difference < 1e-11);
+  std::printf("[projection] MatrixFree vs Assembled: max difference %.2e\n",
+              max_difference);
+  // the lumped projection is another operator
+  CHECK(std::isfinite(pcms::NormInf(lumped)));
+  // MaxIterations too small to converge is an error
+  CHECK_THROWS(pcms::CreateProjection(
+                 source_space, target_space,
+                 pcms::ProjectionOptions{
+                   .solve = {.relative_tolerance = 1e-14, .max_iterations = 1}})
+                 ->Apply(source, free));
 }
 
 TEST_CASE("FunctionSpace::CreateQuadrature is exact for products of two "

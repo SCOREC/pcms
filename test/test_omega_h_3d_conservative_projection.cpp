@@ -6,8 +6,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
 
-#include <pcms/transfer/omega_h_conservative_projection.hpp>
-#include <pcms/transfer/omega_h_control_variate_projection.hpp>
+#include <pcms/transfer/projection.hpp>
 #include <pcms/transfer/copy.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
@@ -21,8 +20,6 @@
 namespace pcms
 {
 using omega_h::CreateGeometry;
-using transfer::OmegaHConservativeProjection;
-using transfer::OmegaHControlVariateProjection;
 } // namespace pcms
 
 TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
@@ -41,7 +38,8 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space);
+  auto projection =
+    pcms::CreateConservativeProjection(source_space, target_space);
 
   SECTION("constant field is preserved and conserved")
   {
@@ -49,7 +47,7 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
     pcms::test::SetField(
       source, KOKKOS_LAMBDA(pcms::Real, pcms::Real, pcms::Real) { return c; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     const auto target_values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
@@ -70,7 +68,7 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) reproduces constant and "
         return 1.0 + x + 2.0 * y + 3.0 * z;
       });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     const auto target_values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
@@ -109,10 +107,10 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) refuses spaces in "
   auto cartesian_target = pcms::test::MakeP1Space(target_mesh);
 
   REQUIRE_THROWS_WITH(
-    pcms::OmegaHConservativeProjection(source_space, cartesian_target),
+    pcms::CreateConservativeProjection(source_space, cartesian_target),
     Catch::Matchers::ContainsSubstring("source space must use the Cartesian"));
   REQUIRE_THROWS_WITH(
-    pcms::OmegaHConservativeProjection(cartesian_source, target_space),
+    pcms::CreateConservativeProjection(cartesian_source, target_space),
     Catch::Matchers::ContainsSubstring("target space must use the Cartesian"));
 }
 
@@ -131,14 +129,15 @@ TEST_CASE("OmegaHConservativeProjection (3D tets) conserves the integral for a "
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space);
+  auto projection =
+    pcms::CreateConservativeProjection(source_space, target_space);
 
   pcms::test::SetField(
     source, KOKKOS_LAMBDA(pcms::Real x, pcms::Real y, pcms::Real z) {
       return 1.0 + x + 2.0 * y + 3.0 * z;
     });
 
-  projection.Apply(source, target);
+  projection->Apply(source, target);
 
   REQUIRE(pcms::test::IntegrateP0Field(target_mesh, target) ==
           Catch::Approx(pcms::test::IntegrateP1Field(source_mesh, source))
@@ -212,7 +211,7 @@ TEST_CASE("Interpolation transfer (3D tets) reproduces a linear field",
 // onto the target space as a control variate, so a field already representable
 // in the target P1 space (an affine function) is reproduced exactly and its
 // integral conserved, even with very few stochastic samples.
-TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
+TEST_CASE("CreateControlVariateProjection (3D tets) is exact for target-space "
           "fields",
           "[transfer][monte_carlo][3d]")
 {
@@ -232,9 +231,9 @@ TEST_CASE("OmegaHControlVariateProjection (3D tets) is exact for target-space "
       return 1.0 + x + 2.0 * y + 3.0 * z;
     });
 
-  pcms::OmegaHControlVariateProjection projection(
-    source_space, target_space, /*samples_per_element=*/8, /*seed=*/12345);
-  projection.Apply(source, target);
+  auto projection = pcms::CreateControlVariateProjection(
+    source_space, target_space, {.samples_per_element = 8, .seed = 12345});
+  projection->Apply(source, target);
 
   const auto target_values =
     pcms::detail::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());

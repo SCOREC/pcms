@@ -9,7 +9,7 @@
 
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/transfer/mass_matrix_type.hpp>
-#include <pcms/transfer/omega_h_conservative_projection.hpp>
+#include <pcms/transfer/projection.hpp>
 #include <pcms/utility/arrays.hpp>
 
 #include <cstddef>
@@ -19,7 +19,6 @@
 
 namespace pcms
 {
-using transfer::OmegaHConservativeProjection;
 } // namespace pcms
 
 namespace
@@ -40,9 +39,10 @@ std::vector<pcms::Real> CoveragePerTargetElement(Omega_h::Mesh& source_mesh,
 
   // Lumped: for a P0 target the mass matrix is diagonal either way, so this
   // is an exact division by the element volume and adds no error of its own.
-  pcms::OmegaHConservativeProjection projection(source_space, target_space,
-                                                pcms::MassMatrixType::Lumped);
-  projection.Apply(source, target);
+  auto projection = pcms::CreateConservativeProjection(
+    source_space, target_space,
+    {.mass_matrix_type = pcms::MassMatrixType::Lumped});
+  projection->Apply(source, target);
 
   const auto values =
     pcms::detail::FlattenToRank1View(target.GetDOFHolderDataHost().GetValues());

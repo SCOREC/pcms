@@ -152,7 +152,7 @@ void bind_transfer_field_module(py::module& m)
           .to_source = to_source ? to_source->ptr : nullptr});
     },
     py::arg("source"), py::arg("target_space"), py::arg("samples_per_element"),
-    py::arg("seed") = std::uint64_t(8675309),
+    py::arg("seed") = DefaultQuadratureSeed,
     py::arg("mass_matrix_type") = MassMatrixType::Consistent,
     py::arg("to_source") = py::none(),
     "Create a Monte Carlo (control-variate) conservative projection onto an "

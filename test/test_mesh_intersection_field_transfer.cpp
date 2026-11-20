@@ -6,7 +6,7 @@
 #include <Omega_h_library.hpp>
 #include <Omega_h_shape.hpp>
 
-#include <pcms/transfer/omega_h_conservative_projection.hpp>
+#include <pcms/transfer/projection.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
 #include "field_test_utils.hpp"
@@ -17,7 +17,6 @@
 
 namespace pcms
 {
-using transfer::OmegaHConservativeProjection;
 using utility::get_entity_centroids;
 } // namespace pcms
 
@@ -60,7 +59,8 @@ TEST_CASE("OmegaHConservativeProjection reproduces constant and linear fields",
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space);
+  auto projection =
+    pcms::CreateConservativeProjection(source_space, target_space);
 
   SECTION("constant field is preserved and conserved")
   {
@@ -68,7 +68,7 @@ TEST_CASE("OmegaHConservativeProjection reproduces constant and linear fields",
     pcms::test::SetField(
       source, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return c; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     const auto target_values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
@@ -87,7 +87,7 @@ TEST_CASE("OmegaHConservativeProjection reproduces constant and linear fields",
     pcms::test::SetField(
       source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + y; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     const auto target_values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
@@ -123,14 +123,14 @@ TEST_CASE("OmegaHConservativeProjection conserves the integral",
     GENERATE(pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped);
   CAPTURE(static_cast<int>(mass_type));
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space,
-                                                mass_type);
+  auto projection = pcms::CreateConservativeProjection(
+    source_space, target_space, {.mass_matrix_type = mass_type});
 
   pcms::test::SetField(
     source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) {
       return x * x + x * y + 0.5 * y * y;
     });
-  projection.Apply(source, target);
+  projection->Apply(source, target);
   REQUIRE(pcms::test::IntegrateP1Field(target_mesh, target) ==
           Catch::Approx(pcms::test::IntegrateP1Field(source_mesh, source))
             .margin(1e-12));
@@ -140,7 +140,7 @@ TEST_CASE("OmegaHConservativeProjection conserves the integral",
   pcms::test::SetField(
     source,
     OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return 2.0 * x - y + 0.5; });
-  projection.Apply(source, target);
+  projection->Apply(source, target);
   REQUIRE(pcms::test::IntegrateP1Field(target_mesh, target) ==
           Catch::Approx(pcms::test::IntegrateP1Field(source_mesh, source))
             .margin(1e-12));
@@ -164,8 +164,9 @@ TEST_CASE("OmegaHConservativeProjection with lumped mass reproduces constants, "
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space,
-                                                pcms::MassMatrixType::Lumped);
+  auto projection = pcms::CreateConservativeProjection(
+    source_space, target_space,
+    {.mass_matrix_type = pcms::MassMatrixType::Lumped});
 
   SECTION("constant field is preserved and conserved")
   {
@@ -173,7 +174,7 @@ TEST_CASE("OmegaHConservativeProjection with lumped mass reproduces constants, "
     pcms::test::SetField(
       source, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return c; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     const auto target_values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
@@ -192,7 +193,7 @@ TEST_CASE("OmegaHConservativeProjection with lumped mass reproduces constants, "
     pcms::test::SetField(
       source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + y; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     REQUIRE(pcms::test::IntegrateP1Field(target_mesh, target) ==
             Catch::Approx(pcms::test::IntegrateP1Field(source_mesh, source))
@@ -227,7 +228,7 @@ TEST_CASE("OmegaHConservativeProjection with lumped mass reproduces constants, "
         return (1.0 - x) * (1.0 - y);
       });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     pcms::test::RequireBoundedBy(target, source);
     REQUIRE(pcms::test::IntegrateP1Field(target_mesh, target) ==
@@ -257,8 +258,9 @@ TEST_CASE("OmegaHConservativeProjection writes reordered target GIDs in local "
   pcms::test::SetField(
     source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + 2.0 * y; });
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space);
-  projection.Apply(source, target);
+  auto projection =
+    pcms::CreateConservativeProjection(source_space, target_space);
+  projection->Apply(source, target);
 
   const auto target_values = target.GetDOFHolderDataHost().GetValues();
   const auto target_coords =
@@ -295,8 +297,9 @@ TEST_CASE("OmegaHConservativeProjection maps sparse target GIDs to active "
   pcms::test::SetField(
     source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + 2.0 * y; });
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space);
-  projection.Apply(source, target);
+  auto projection =
+    pcms::CreateConservativeProjection(source_space, target_space);
+  projection->Apply(source, target);
 
   const auto target_values = target.GetDOFHolderDataHost().GetValues();
   const auto target_coords =
@@ -331,7 +334,8 @@ TEST_CASE("OmegaHConservativeProjection P0 source to P1 target",
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space);
+  auto projection =
+    pcms::CreateConservativeProjection(source_space, target_space);
 
   SECTION("constant field is preserved and conserved")
   {
@@ -339,7 +343,7 @@ TEST_CASE("OmegaHConservativeProjection P0 source to P1 target",
     pcms::test::SetField(
       source, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return c; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     const auto target_values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
@@ -359,7 +363,7 @@ TEST_CASE("OmegaHConservativeProjection P0 source to P1 target",
       source,
       OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + 2.0 * y; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     REQUIRE(pcms::test::IntegrateP1Field(target_mesh, target) ==
             Catch::Approx(pcms::test::IntegrateP0Field(source_mesh, source))
@@ -387,7 +391,8 @@ TEST_CASE("OmegaHConservativeProjection P1 source to P0 target",
   auto source = source_space->CreateFunction<pcms::Real>();
   auto target = target_space->CreateFunction<pcms::Real>();
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space);
+  auto projection =
+    pcms::CreateConservativeProjection(source_space, target_space);
 
   SECTION("constant field is preserved and conserved")
   {
@@ -395,7 +400,7 @@ TEST_CASE("OmegaHConservativeProjection P1 source to P0 target",
     pcms::test::SetField(
       source, OMEGA_H_LAMBDA(pcms::Real, pcms::Real) { return c; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     const auto target_values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
@@ -416,7 +421,7 @@ TEST_CASE("OmegaHConservativeProjection P1 source to P0 target",
       source,
       OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + 2.0 * y; });
 
-    projection.Apply(source, target);
+    projection->Apply(source, target);
 
     const auto target_values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());

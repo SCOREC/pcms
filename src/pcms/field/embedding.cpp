@@ -82,6 +82,40 @@ void InduceMetric(View<3, const Real, DeviceMemorySpace> jacobian,
     });
 }
 
+// The covariant metric g_ab of the parameter system from the values of a
+// given metric, [point][a * dp + b] (g^ab, inverted, if `contravariant`), and
+// its volume factor sqrt(det g).
+void GivenMetric(DeviceView<const Real**> values, bool contravariant,
+                 DeviceView<Real***> metric, DeviceView<Real*> volume)
+{
+  const int dp = metric.extent(1);
+  detail::ForEach(
+    "embedding_given_metric", static_cast<LO>(metric.extent(0)),
+    KOKKOS_LAMBDA(const LO p) {
+      Real g[3][3] = {};
+      for (int a = 0; a < dp; ++a) {
+        for (int b = 0; b < dp; ++b) {
+          g[a][b] = values(p, a * dp + b);
+        }
+      }
+      if (contravariant) {
+        Real inverse[3][3] = {};
+        detail::Invert(g, dp, inverse);
+        for (int a = 0; a < dp; ++a) {
+          for (int b = 0; b < dp; ++b) {
+            g[a][b] = inverse[a][b];
+          }
+        }
+      }
+      for (int a = 0; a < dp; ++a) {
+        for (int b = 0; b < dp; ++b) {
+          metric(p, a, b) = g[a][b];
+        }
+      }
+      volume(p) = Kokkos::sqrt(detail::Determinant(g, dp));
+    });
+}
+
 struct Evaluation
 {
   DeviceView<Real**> mapped;    // [point][coordinate system dimension]
@@ -519,17 +553,24 @@ public:
   {
     if (!pushforward_) {
       const auto jacobian = Jacobian();
-      pushforward_.emplace(
-        detail::Pushforward(jacobian, position_.ParameterSystem(),
-                            position_.System(), system_->Metric()));
+      if (system_ == nullptr && position_.System()->HasMetric()) {
+        // a given metric: the coordinate system's is not bound yet
+        system_ = position_.System()->Bind(MakeConstRank2View(mapped_));
+      }
+      pushforward_.emplace(detail::Pushforward(
+        jacobian, position_.ParameterSystem(), position_.System(),
+        system_ != nullptr ? system_->Metric() : detail::MetricView{}));
     }
     return *pushforward_;
   }
 
 protected:
   EmbeddedBound(std::shared_ptr<const Geometry> geometry,
-                const BindRequest& request, Position position)
-    : BoundPoints(std::move(geometry), request), position_(std::move(position))
+                const BindRequest& request, Position position,
+                std::shared_ptr<const Function<Real>> metric)
+    : BoundPoints(std::move(geometry), request),
+      position_(std::move(position)),
+      metric_(std::move(metric))
   {
   }
 
@@ -547,19 +588,31 @@ protected:
   }
 
   // J from the Gradient of the position at the parameter coordinates of the
-  // points, and the metric J^T G J it induces
+  // points, and the given metric there or the metric J^T G J the position
+  // induces
   [[nodiscard]] detail::GeometricFactors ComputeFactors() const override
   {
     auto e = position_.Evaluate(MakeConstRank2View(xi_));
     const auto n = xi_.extent(0);
     const int dp = position_.ParameterSystem()->Dimension();
     const int dt = position_.System()->Dimension();
-    system_ = position_.System()->Bind(MakeConstRank2View(e.mapped));
-    DeviceView<Real***> metric("induced_metric", n, dp, dp);
-    DeviceView<Real*> volume("induced_volume_factor", n);
-    InduceMetric(
-      View<3, const Real, DeviceMemorySpace>(e.jacobian.data(), n, dt, dp),
-      *system_, metric, volume);
+    DeviceView<Real***> metric("parameter_metric", n, dp, dp);
+    DeviceView<Real*> volume("parameter_volume_factor", n);
+    if (metric_ != nullptr) {
+      const ValueBasis basis = metric_->GetData().GetValueBasis();
+      DeviceView<Real**> values("given_metric", n,
+                                static_cast<std::size_t>(dp) * dp);
+      metric_->GetSpace().CreatePointEvaluator<Real>(inner_)->Evaluate(
+        *metric_,
+        ValueView<Real, DeviceMemorySpace>(basis, MakeRank2View(values)));
+      GivenMetric(values, basis.variance[0] == Variance::Contravariant, metric,
+                  volume);
+    } else {
+      system_ = position_.System()->Bind(MakeConstRank2View(e.mapped));
+      InduceMetric(
+        View<3, const Real, DeviceMemorySpace>(e.jacobian.data(), n, dt, dp),
+        *system_, metric, volume);
+    }
     mapped_ = e.mapped;
     return detail::GeometricFactors(
       static_cast<LO>(n), e.jacobian,
@@ -569,6 +622,7 @@ protected:
 
 private:
   Position position_;
+  std::shared_ptr<const Function<Real>> metric_;
   std::shared_ptr<const BoundPoints> inner_;
   DeviceView<Real**> xi_;
   mutable DeviceView<Real**> mapped_;
@@ -767,7 +821,7 @@ public:
   EmbeddedBinding(std::shared_ptr<const EmbeddedGeometry> geometry,
                   const detail::EmbeddedSearch& search,
                   const BindRequest& request)
-    : EmbeddedBound(geometry, request, search.position),
+    : EmbeddedBound(geometry, request, search.position, geometry->GetMetric()),
       geometry_(std::move(geometry)),
       search_(search)
   {
@@ -872,9 +926,11 @@ private:
 EmbeddedGeometry::EmbeddedGeometry(
   std::shared_ptr<const Geometry> parameter,
   std::shared_ptr<const Function<Real>> position,
+  std::shared_ptr<const Function<Real>> metric,
   std::shared_ptr<const detail::EmbeddedSearch> search)
   : parameter_(std::move(parameter)),
     position_(std::move(position)),
+    metric_(std::move(metric)),
     system_(position_->GetData().GetValueBasis().system),
     search_(std::move(search))
 {
@@ -935,6 +991,19 @@ std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
                      "axis of the position's coordinate system by a positive "
                      "length");
   }
+  if (const auto& metric = options.metric) {
+    const ValueBasis& basis = metric->GetData().GetValueBasis();
+    if (metric->GetSpace().GetGeometry() != parameter_geometry ||
+        basis.Rank() != 2 ||
+        !detail::SameCoordinateSystem(basis.system,
+                                      checked.ParameterSystem()) ||
+        basis.variance[0] != basis.variance[1]) {
+      throw pcms_error("CreateEmbeddedGeometry: the metric must be a Function "
+                       "on the parameter geometry of rank 2 in the parameter "
+                       "system, with both indices covariant (g_ij) or both "
+                       "contravariant (g^ij)");
+    }
+  }
   if (detail::SameCoordinateSystem(checked.ParameterSystem(),
                                    checked.System())) {
     throw pcms_error(
@@ -957,8 +1026,9 @@ std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
     throw pcms_error("CreateEmbeddedGeometry: only 2D and 3D uniform-grid "
                      "parameter geometries are supported");
   }
-  return std::shared_ptr<const EmbeddedGeometry>(new EmbeddedGeometry(
-    std::move(parameter_geometry), checked.Get(), std::move(search)));
+  return std::shared_ptr<const EmbeddedGeometry>(
+    new EmbeddedGeometry(std::move(parameter_geometry), checked.Get(),
+                         std::move(options.metric), std::move(search)));
 }
 
 std::shared_ptr<const FunctionSpace> CreateEmbeddedSpace(

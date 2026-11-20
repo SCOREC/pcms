@@ -195,6 +195,7 @@ TEST_CASE("An embedded geometry locates physical points by inverting the "
   CHECK(f.embedded->TopologicalDimension() == 2);
   CHECK(*f.embedded->GetParameterSystem() == *f.grid->GetCoordinateSystem());
   CHECK(f.embedded->GetPosition() == f.position);
+  CHECK(f.embedded->GetMetric() == nullptr);
 
   std::vector<Real> physical;
   std::vector<Real> expected;
@@ -617,4 +618,128 @@ TEST_CASE("Embedded geometries refuse what they cannot do",
              {Annulus::Rc + 0.8, 0.2}, f.embedded->GetCoordinateSystem(), 2)
              .coordinate_view);
   CHECK(again->NumPoints() == 1);
+}
+
+namespace
+{
+
+// The affine map x = A xi + b into Cartesian (x, y): its induced metric is
+// A^T A, constant, so a P1 metric Function represents it exactly.
+constexpr Real A[2][2] = {{2.0, 0.5}, {0.3, 1.5}};
+
+std::array<Real, 2> Affine(Real xi1, Real xi2)
+{
+  return {1.0 + A[0][0] * xi1 + A[0][1] * xi2,
+          -2.0 + A[1][0] * xi1 + A[1][1] * xi2};
+}
+
+// A^T A, scaled
+std::array<Real, 4> InducedMetric(Real scale)
+{
+  std::array<Real, 4> g{};
+  for (int a = 0; a < 2; ++a) {
+    for (int b = 0; b < 2; ++b) {
+      g[2 * a + b] = scale * (A[0][a] * A[0][b] + A[1][a] * A[1][b]);
+    }
+  }
+  return g;
+}
+
+// A constant metric Function on the grid: `g` (covariant) or its inverse
+// (contravariant).
+std::shared_ptr<const pcms::Function<Real>> ConstantMetric(
+  const std::shared_ptr<const pcms::Geometry>& grid, std::array<Real, 4> g,
+  bool contravariant)
+{
+  const auto space = pcms::CreateLagrangeSpace(grid, 1, 4);
+  const auto variance =
+    contravariant ? pcms::VarianceSignature{pcms::Variance::Contravariant,
+                                            pcms::Variance::Contravariant}
+                  : pcms::VarianceSignature{pcms::Variance::Covariant,
+                                            pcms::Variance::Covariant};
+  if (contravariant) {
+    const Real det = g[0] * g[3] - g[1] * g[2];
+    g = {g[3] / det, -g[1] / det, -g[2] / det, g[0] / det};
+  }
+  auto metric = std::make_shared<pcms::Function<Real>>(
+    space->CreateFunction<Real>("g", variance));
+  pcms::test::SetFieldComponents(*metric, [g](Real, Real, Real* out) {
+    for (int k = 0; k < 4; ++k) {
+      out[k] = g[k];
+    }
+  });
+  return metric;
+}
+
+std::vector<Real> QuadratureWeights(
+  const std::shared_ptr<const pcms::Geometry>& geometry)
+{
+  const auto weights = Kokkos::create_mirror_view_and_copy(
+    pcms::HostMemorySpace(), pcms::CreateGaussQuadrature(geometry, 2).weights);
+  return std::vector<Real>(weights.data(), weights.data() + weights.size());
+}
+
+} // namespace
+
+TEST_CASE("An embedded geometry uses a given metric",
+          "[embedding][embedded_geometry][metric]")
+{
+  const auto grid = pcms::test::MakeUnitSquareGrid(4);
+  const auto position = pcms::test::MakeSplinePosition(
+    grid, Affine, pcms::csys::CreateCartesian(2));
+  const auto induced = pcms::CreateEmbeddedGeometry(grid, position);
+  const auto induced_weights = QuadratureWeights(induced);
+  Real area = 0;
+  for (const Real w : induced_weights) {
+    area += w;
+  }
+  // |det A|
+  CHECK_THAT(area, WithinAbs(2.85, 1e-12));
+
+  for (const bool contravariant : {false, true}) {
+    CAPTURE(contravariant);
+    // the induced metric, given, reproduces the induced weights
+    const auto metric = ConstantMetric(grid, InducedMetric(1.0), contravariant);
+    const auto same =
+      pcms::CreateEmbeddedGeometry(grid, position, {.metric = metric});
+    CHECK(same->GetMetric() == metric);
+    const auto same_weights = QuadratureWeights(same);
+    REQUIRE(same_weights.size() == induced_weights.size());
+    for (std::size_t i = 0; i < same_weights.size(); ++i) {
+      CHECK_THAT(same_weights[i], WithinAbs(induced_weights[i], 1e-12));
+    }
+    // another metric is the one used: four times the metric, twice the
+    // lengths, four times the areas
+    const auto other = pcms::CreateEmbeddedGeometry(
+      grid, position,
+      {.metric = ConstantMetric(grid, InducedMetric(4.0), contravariant)});
+    const auto weights = QuadratureWeights(other);
+    for (std::size_t i = 0; i < weights.size(); ++i) {
+      CHECK_THAT(weights[i], WithinAbs(4 * induced_weights[i], 1e-12));
+    }
+    const auto bound = other->Bind(pcms::test::CreateDeviceCoordinateView(
+                                     {0.3, 0.6}, other->GetParameterSystem(), 2)
+                                     .coordinate_view);
+    const auto factors = FactorsOnHost(*bound);
+    const auto expected = InducedMetric(4.0);
+    for (int k = 0; k < 4; ++k) {
+      CHECK_THAT(factors.metric(0, k), WithinAbs(expected[k], 1e-12));
+    }
+  }
+  SECTION("a metric that is not one of the parameter system is refused")
+  {
+    const auto space = pcms::CreateLagrangeSpace(grid, 1, 4);
+    const auto mixed =
+      std::make_shared<pcms::Function<Real>>(space->CreateFunction<Real>(
+        "g", pcms::VarianceSignature{pcms::Variance::Contravariant,
+                                     pcms::Variance::Covariant}));
+    CHECK_THROWS_WITH(
+      pcms::CreateEmbeddedGeometry(grid, position, {.metric = mixed}),
+      ContainsSubstring("rank 2 in the parameter system"));
+    const auto other = ConstantMetric(pcms::test::MakeUnitSquareGrid(2),
+                                      InducedMetric(1.0), false);
+    CHECK_THROWS_WITH(
+      pcms::CreateEmbeddedGeometry(grid, position, {.metric = other}),
+      ContainsSubstring("rank 2 in the parameter system"));
+  }
 }

@@ -310,7 +310,49 @@ struct Shifted
     x[1] = xi[2] + 0.5 * xi[0] + 0.3 * xi[1] + 0.4 * xi[0] * xi[1];
     x[2] = 0.1 * xi[0] + 0.3 * xi[1] + 0.05 * xi[0] * xi[1];
   }
+  // the inverse g^ab of the induced metric g = J^T G J, G = diag(1, R^2, 1)
+  static void InverseMetric(const Real* xi, Real* g_inv)
+  {
+    Real x[3];
+    Position(xi, x);
+    // d x_j / d xi_a
+    const Real j[3][3] = {{0.4 + 0.05 * xi[1], 0.1 + 0.05 * xi[0], 0.0},
+                          {0.5 + 0.4 * xi[1], 0.3 + 0.4 * xi[0], 1.0},
+                          {0.1 + 0.05 * xi[1], 0.3 + 0.05 * xi[0], 0.0}};
+    const Real scale[3] = {1.0, x[0] * x[0], 1.0};
+    Real g[3][3] = {};
+    for (int a = 0; a < 3; ++a) {
+      for (int b = 0; b < 3; ++b) {
+        for (int k = 0; k < 3; ++k) {
+          g[a][b] += scale[k] * j[k][a] * j[k][b];
+        }
+      }
+    }
+    const Real det = g[0][0] * (g[1][1] * g[2][2] - g[1][2] * g[2][1]) -
+                     g[0][1] * (g[1][0] * g[2][2] - g[1][2] * g[2][0]) +
+                     g[0][2] * (g[1][0] * g[2][1] - g[1][1] * g[2][0]);
+    for (int a = 0; a < 3; ++a) {
+      for (int b = 0; b < 3; ++b) {
+        // the cofactor of g[b][a]
+        const int r0 = (b + 1) % 3, r1 = (b + 2) % 3;
+        const int c0 = (a + 1) % 3, c1 = (a + 2) % 3;
+        g_inv[3 * a + b] =
+          (g[r0][c0] * g[r1][c1] - g[r0][c1] * g[r1][c0]) / det;
+      }
+    }
+  }
 };
+
+Real TotalWeight(const std::shared_ptr<const pcms::Geometry>& geometry)
+{
+  const auto weights = Kokkos::create_mirror_view_and_copy(
+    pcms::HostMemorySpace(), pcms::CreateGaussQuadrature(geometry, 2).weights);
+  Real sum = 0;
+  for (std::size_t i = 0; i < weights.extent(0); ++i) {
+    sum += weights(i);
+  }
+  return sum;
+}
 
 } // namespace
 
@@ -378,4 +420,60 @@ TEST_CASE("BOUT++-like 3D grid: toroidal shift, periodic phi and a wedge "
       CHECK_THAT(k, WithinAbs(std::round(k), 1e-6));
     }
   }
+}
+
+TEST_CASE("BOUT++-like 3D grid: a given metric g^ij", "[embedding][acceptance]")
+{
+  // as a reader of a grid file builds it: the logical grid, the position
+  // (R, z + shift, Z) and the contravariant metric in index components
+  const Real wedge = 2 * std::numbers::pi / 5;
+  pcms::UniformGrid<3> grid;
+  grid.bot_left = {0.0, 0.0, 0.0};
+  grid.edge_length = {1.0, 1.0, wedge};
+  grid.divisions = {8, 8, 8};
+  const auto logical = pcms::csys::CreateParameterSystem("bout_index", 3);
+  const auto geometry = pcms::uniform_grid::CreateGeometry(grid, logical);
+  const auto position = pcms::test::MakePositionFunction(
+    pcms::CreateLagrangeSpace(geometry, 1, 3), Shifted::Position,
+    pcms::csys::CreateCylindricalRThetaZ());
+  const auto metric_space = pcms::CreateLagrangeSpace(geometry, 1, 9);
+  auto g_inv = std::make_shared<pcms::Function<Real>>(
+    metric_space->CreateFunction<Real>("g^ij", pcms::values::Tensor));
+  pcms::test::SetFieldComponents(*g_inv, [](Real x, Real y, Real z, Real* out) {
+    const Real xi[3] = {x, y, z};
+    Shifted::InverseMetric(xi, out);
+  });
+  const auto given = pcms::CreateEmbeddedGeometry(
+    geometry, position,
+    {.symmetry = pcms::TranslationSymmetry{1, wedge}, .metric = g_inv});
+  const auto induced = pcms::CreateEmbeddedGeometry(
+    geometry, position, {.symmetry = pcms::TranslationSymmetry{1, wedge}});
+  CHECK(given->GetMetric() == g_inv);
+  CHECK(given->GetPosition() == position);
+  CHECK(*given->GetParameterSystem() == *logical);
+  // at the vertices the given metric is the induced one: so are the volume
+  // factors (between them it is interpolated, which is not the induced one)
+  const std::vector<Real> vertices = {0.25, 0.5, 0.0, 0.75, 0.125, 0.5};
+  const auto at = pcms::test::CreateDeviceCoordinateView(vertices, logical, 3);
+  const auto given_bound = given->Bind(at.coordinate_view);
+  const auto induced_bound = induced->Bind(at.coordinate_view);
+  Kokkos::View<Real**, DeviceMemorySpace> volumes("volumes", 2, 2);
+  const auto given_volume = given_bound->VolumeFactor();
+  const auto induced_volume = induced_bound->VolumeFactor();
+  Kokkos::parallel_for(
+    "copy", Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, 2),
+    KOKKOS_LAMBDA(const pcms::LO p) {
+      volumes(p, 0) = given_volume(p);
+      volumes(p, 1) = induced_volume(p);
+    });
+  const auto host =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), volumes);
+  for (int p = 0; p < 2; ++p) {
+    CAPTURE(p);
+    CHECK_THAT(host(p, 0), WithinRel(host(p, 1), 1e-10));
+  }
+  // and the quadrature uses the given metric: the volume of the wedge
+  // differs from the induced one by the interpolation of g^ij
+  CHECK(std::abs(TotalWeight(given) - TotalWeight(induced)) >
+        1e-3 * TotalWeight(induced));
 }

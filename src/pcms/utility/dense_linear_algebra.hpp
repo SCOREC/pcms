@@ -58,6 +58,26 @@ KOKKOS_INLINE_FUNCTION void Solve(Real (&m)[3][3], int n, Real (&b)[3])
   }
 }
 
+// The inverse of m, column by column.
+KOKKOS_INLINE_FUNCTION void Invert(const Real (&m)[3][3], int n,
+                                   Real (&inverse)[3][3])
+{
+  for (int c = 0; c < n; ++c) {
+    Real a[3][3] = {};
+    Real column[3] = {};
+    for (int i = 0; i < n; ++i) {
+      for (int j = 0; j < n; ++j) {
+        a[i][j] = m[i][j];
+      }
+    }
+    column[c] = 1;
+    Solve(a, n, column);
+    for (int i = 0; i < n; ++i) {
+      inverse[i][c] = column[i];
+    }
+  }
+}
+
 } // namespace pcms::detail
 
 #endif // PCMS_UTILITY_DENSE_LINEAR_ALGEBRA_HPP

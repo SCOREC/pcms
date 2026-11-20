@@ -49,6 +49,13 @@ struct EmbeddingOptions
   /// reduced coordinates as their located points. The reduction replaces the
   /// period of the axis, so a symmetry must divide it; none by default
   std::optional<TranslationSymmetry> symmetry;
+  /// the metric of the parameter system, if it is given rather than induced
+  /// by the position: a rank-2 Function on the parameter geometry in the
+  /// parameter system, g_ij (both indices covariant) or its inverse g^ij (both
+  /// contravariant, inverted at the points). Its volume factor is sqrt(det
+  /// g), so a metric given for a coordinate system reduced by a symmetry must
+  /// include the ignored direction. Null: the metric induced by the position
+  std::shared_ptr<const Function<Real>> metric;
 };
 
 /// @brief A geometry whose cells are those of a parameter geometry and whose
@@ -84,6 +91,14 @@ public:
     return position_;
   }
 
+  /// @return the metric given at creation (EmbeddingOptions::metric), or
+  ///         null when it is induced by the position
+  [[nodiscard]] const std::shared_ptr<const Function<Real>>& GetMetric()
+    const noexcept
+  {
+    return metric_;
+  }
+
 protected:
   [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override;
@@ -98,10 +113,12 @@ private:
 
   EmbeddedGeometry(std::shared_ptr<const Geometry> parameter,
                    std::shared_ptr<const Function<Real>> position,
+                   std::shared_ptr<const Function<Real>> metric,
                    std::shared_ptr<const detail::EmbeddedSearch> search);
 
   std::shared_ptr<const Geometry> parameter_;
   std::shared_ptr<const Function<Real>> position_;
+  std::shared_ptr<const Function<Real>> metric_;
   std::shared_ptr<const CoordinateSystem> system_;
   std::shared_ptr<const detail::EmbeddedSearch> search_;
 };
@@ -117,9 +134,10 @@ private:
 /// the parameter coordinates, so the evaluators of spaces on the parameter
 /// geometry evaluate unchanged
 /// (CreateEmbeddedSpace). The geometric factors at the points are J, the
-/// Gradient of the position, and the metric it induces, g = J^T G J (G the
-/// coordinate system's metric at the image); their volume factor is the
-/// physical volume per unit of parameter volume. The geometry does not support
+/// Gradient of the position, and the given metric (EmbeddingOptions::metric)
+/// or the one the position induces, g = J^T G J (G the coordinate system's
+/// metric at the image); their volume factor is the physical volume per unit
+/// of parameter volume. The geometry does not support
 /// OutOfBoundsMode::NEAREST_BOUNDARY, and a Rebind searches anew.
 /// @param parameter_geometry a uniform-grid geometry (the cells are boxes in
 ///        the parameter space), whose coordinate system is a parameter system
@@ -127,12 +145,14 @@ private:
 ///        coordinate system
 /// @param position a Function on `parameter_geometry` with a
 ///        ValueBasis::Coordinates basis, whose space evaluates Gradient
-/// @param options the options of the search and the symmetry
+/// @param options the options of the search, the symmetry and the metric
 /// @throws pcms_error if the geometry is not a 2D or 3D uniform grid, the
 ///         position is not a Function of coordinates on it with a Gradient,
-///         the parameter system is the position's coordinate system, or the
+///         the parameter system is the position's coordinate system, the
 ///         symmetry has an axis outside the coordinate system or a
-///         non-positive length
+///         non-positive length, or the metric is not a rank-2 Function on the
+///         parameter geometry in the parameter system with indices of one
+///         variance
 [[nodiscard]] std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
   std::shared_ptr<const Geometry> parameter_geometry,
   std::shared_ptr<const Function<Real>> position,

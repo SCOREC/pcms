@@ -45,6 +45,7 @@ set(PCMS_FIELD_SOURCES
         layout/empty.cpp
         function_space/lagrange.cpp
         function_space/spline.cpp
+        function_space/periodic.cpp
 )
 list(APPEND PCMS_FIELD_HEADERS
 )

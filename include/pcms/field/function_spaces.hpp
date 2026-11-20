@@ -15,6 +15,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace pcms
 {
@@ -56,6 +57,37 @@ struct LagrangeOptions
 ///         geometry
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateSplineSpace(
   std::shared_ptr<const Geometry> geometry, int num_components = 1);
+
+/// @name 1D spaces on a periodic geometry (CreatePeriodicGeometry)
+/// Scalar, Real, with Value and Gradient evaluation, EvaluateTranspose and
+/// GetMatrix. DOF holder i is the node i of the geometry's cells (Hermite:
+/// holder 2 i is the value and 2 i + 1 the derivative of node i; Fourier:
+/// holders have no positions).
+/// @throws pcms_error if `geometry` is not periodic (the spline also if it has
+///         fewer than 3 cells)
+/// @{
+
+/// Piecewise linear (Lagrange order 1) on the cells.
+[[nodiscard]] std::shared_ptr<const FunctionSpace> CreatePeriodicLagrangeSpace(
+  std::shared_ptr<const Geometry> geometry);
+
+/// Cubic Hermite: the value and derivative of each node.
+[[nodiscard]] std::shared_ptr<const FunctionSpace> CreatePeriodicHermiteSpace(
+  std::shared_ptr<const Geometry> geometry);
+
+/// The periodic cubic spline of the node values (C2; its coefficients are
+/// solved internally, the DOFs are grid values).
+[[nodiscard]] std::shared_ptr<const FunctionSpace> CreatePeriodicSplineSpace(
+  std::shared_ptr<const Geometry> geometry);
+
+/// Real Fourier series: for each m of `modes` the DOFs cos(m stride theta)
+/// and, for m > 0, sin(m stride theta), in the order of the list, theta =
+/// 2 pi (x - origin) / period; `stride` is nfp for fields periodic in a field
+/// period.
+[[nodiscard]] std::shared_ptr<const FunctionSpace> CreateFourierSpace(
+  std::shared_ptr<const Geometry> geometry, std::vector<int> modes,
+  int stride = 1);
+/// @}
 
 #ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
 /// An MLS reconstruction space on a point-cloud geometry (its sites are the

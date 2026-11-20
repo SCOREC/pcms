@@ -21,8 +21,13 @@ struct MonteCarloRule
   std::uint64_t seed;
 };
 
+struct TrapezoidRule
+{
+  int num_points;
+};
+
 /// @brief The rule a quadrature factory asks a geometry for.
-using QuadratureRule = std::variant<GaussRule, MonteCarloRule>;
+using QuadratureRule = std::variant<GaussRule, MonteCarloRule, TrapezoidRule>;
 
 /// @brief The quadrature of `geometry` by `rule`, for the factories and the
 ///        kinds built on other geometries.

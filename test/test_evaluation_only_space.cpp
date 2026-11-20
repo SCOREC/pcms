@@ -109,7 +109,7 @@ public:
       throw pcms::pcms_error("MockEvaluator: not a field of this source");
     }
     const auto out = values.GetValues();
-    const auto points = Bound().LocatedPointValues();
+    const auto points = Bound().LocatedPoints().GetValues();
     Kokkos::parallel_for(
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
         0, static_cast<LO>(points.extent(0))),

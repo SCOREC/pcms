@@ -271,23 +271,23 @@ TEST_CASE("A rebind reuses the BoundPoints only when nothing else holds it")
 
   auto bound = pcms::test::Bind(*geometry, a);
   const BoundPoints* address = bound.get();
-  const Real* storage = bound->LocatedPointValues().data();
+  const Real* storage = bound->LocatedPoints().GetValues().data_handle();
   // released into the rebind: the same source, written in place
   bound = rebind(std::move(bound), b);
   REQUIRE(bound.get() == address);
-  REQUIRE(bound->LocatedPointValues().data() == storage);
+  REQUIRE(bound->LocatedPoints().GetValues().data_handle() == storage);
   pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(bound), f, b,
                               linear);
 
-  // the caller keeps a view of its points: a new source, the view unchanged
+  // the caller keeps a view of its arrays: a new source, the view unchanged
   {
-    const auto kept = bound->LocatedPointValues();
+    const auto kept = bound->FoundPoints();
     std::weak_ptr<const BoundPoints> previous = bound;
     bound = rebind(std::move(bound), a);
     REQUIRE(previous.expired());
     const auto kept_host = ToHost(kept);
-    for (size_t i = 0; i < b.size(); ++i) {
-      REQUIRE(kept_host(i / 2, i % 2) == b[i]);
+    for (size_t i = 0; i < b.size() / 2; ++i) {
+      REQUIRE(kept_host(i) == static_cast<LO>(i));
     }
   }
 
@@ -303,20 +303,20 @@ TEST_CASE("A rebind reuses the BoundPoints only when nothing else holds it")
   // fewer points reuse the storage (on a layout whose first rows are
   // contiguous); more points reallocate it, in the same source
   address = bound.get();
-  storage = bound->LocatedPointValues().data();
+  storage = bound->LocatedPoints().GetValues().data_handle();
   bound = rebind(std::move(bound), fewer);
   REQUIRE(bound.get() == address);
   if constexpr (std::is_same_v<
                   Kokkos::View<Real**, DeviceMemorySpace>::array_layout,
                   Kokkos::LayoutRight>) {
-    REQUIRE(bound->LocatedPointValues().data() == storage);
+    REQUIRE(bound->LocatedPoints().GetValues().data_handle() == storage);
   }
   pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(bound), f,
                               fewer, linear);
-  storage = bound->LocatedPointValues().data();
+  storage = bound->LocatedPoints().GetValues().data_handle();
   bound = rebind(std::move(bound), more);
   REQUIRE(bound.get() == address);
-  REQUIRE(bound->LocatedPointValues().data() != storage);
+  REQUIRE(bound->LocatedPoints().GetValues().data_handle() != storage);
   pcms::test::CheckEvaluation(*space->CreatePointEvaluator<Real>(bound), f,
                               more, linear);
 

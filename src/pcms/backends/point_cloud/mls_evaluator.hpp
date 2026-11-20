@@ -89,7 +89,7 @@ public:
   }
 
   /// @return flattened coordinates of the query points in the geometry's
-  ///         coordinate system (LocatedPointValues())
+  ///         coordinate system (LocatedPoints())
   [[nodiscard]] const Kokkos::View<const Real*, DeviceMemorySpace>&
   TargetCoordinates() const noexcept
   {
@@ -106,12 +106,8 @@ protected:
   // the arrays are reassigned, not written, so the default UnsharedImpl holds
   void RebindImpl() override
   {
-    const auto& geometry = *GetGeometry();
     supports_ =
-      geometry.Neighbourhood(CoordinateView<DeviceMemorySpace>(
-                               geometry.GetCoordinateSystem(),
-                               MakeConstRank2View(LocatedPointValues())),
-                             site_dim_, options_);
+      GetGeometry()->Neighbourhood(LocatedPoints(), site_dim_, options_);
     target_coords_ =
       detail::FlattenRows(LocatedPointValues(), "mls_target_coords");
     SetFoundFromSupports();

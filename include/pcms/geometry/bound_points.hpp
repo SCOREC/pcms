@@ -8,6 +8,7 @@
 #include <Kokkos_Core.hpp>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include "pcms/geometry/detail/bound_points.hpp"
@@ -125,12 +126,28 @@ public:
     return coordinate_map_;
   }
 
-  /// @return the bound points in the geometry's coordinate system, where they
-  ///         were located, one row per point: the query points mapped by
-  ///         GetBoundMap(), or a copy of the query points if the bind had no
-  ///         map
-  [[nodiscard]] Kokkos::View<const Real**, DeviceMemorySpace>
-  LocatedPointValues() const noexcept;
+  /// @return the bound points where they were located, one row per point:
+  ///         the query points mapped by GetBoundMap() into the geometry's
+  ///         coordinate system, or a copy of the query points if the bind had
+  ///         no map
+  [[nodiscard]] CoordinateView<DeviceMemorySpace> LocatedPoints() const;
+
+  /// @return J(p, j, i) = d x_j / d xi_i, [points][system][parameter]: the
+  ///         Jacobian of the map from the geometry's parameter coordinates to
+  ///         its coordinate system (the identity for a geometry without
+  ///         parameter coordinates); computed on first use
+  /// @throws pcms_error if the geometry's coordinate system has no metric and
+  ///         the kind provides none
+  [[nodiscard]] View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride>
+  Jacobian() const;
+
+  /// @return g(p, a, b), the metric in the parameter coordinates
+  /// @throws pcms_error as Jacobian()
+  [[nodiscard]] BoundCoordinateSystem::MetricView Metric() const;
+
+  /// @return the physical volume per unit of parameter volume at each point
+  /// @throws pcms_error as Jacobian()
+  [[nodiscard]] BoundCoordinateSystem::FactorView VolumeFactor() const;
 
   /// @return indices of the query points the source evaluates, ascending
   [[nodiscard]] Kokkos::View<const LO*, DeviceMemorySpace> FoundPoints()
@@ -189,6 +206,18 @@ protected:
   /// @param request query points of the rebind, without a map
   void Reset(const BindRequest& request);
 
+  /// @return the located points, as LocatedPoints()
+  [[nodiscard]] Kokkos::View<const Real**, DeviceMemorySpace>
+  LocatedPointValues() const noexcept;
+
+  /// @brief The geometric factors at the points: Jacobian(), Metric() and
+  ///        VolumeFactor().
+  /// @return by default the coordinate system's: J = I and its closed-form
+  ///         metric at the located points
+  /// @throws pcms_error if the geometry's coordinate system has no metric
+  ///         (default)
+  [[nodiscard]] virtual detail::GeometricFactors ComputeFactors() const;
+
   /// @brief Locates LocatedPointValues() again after Reset, reusing the
   ///        kind's arrays when they have room for the points, and calls
   ///        SetFound (unless every point is found).
@@ -201,6 +230,8 @@ protected:
   [[nodiscard]] virtual bool UnsharedImpl() const noexcept { return true; }
 
 private:
+  const detail::GeometricFactors& Factors() const;
+
   std::shared_ptr<const Geometry> geometry_;
   OutOfBoundsPolicy policy_;
   std::shared_ptr<const BoundCoordinateMap> map_;
@@ -213,6 +244,7 @@ private:
   Kokkos::View<Real**, DeviceMemorySpace> points_;
   // the found query points, ascending, followed by the missing ones
   Kokkos::View<LO*, DeviceMemorySpace> point_indices_;
+  mutable std::optional<detail::GeometricFactors> factors_;
 };
 
 } // namespace pcms

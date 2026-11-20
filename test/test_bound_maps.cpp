@@ -115,14 +115,14 @@ TEST_CASE("Bind with a map: scalar evaluation maps the query points")
   REQUIRE(bound->GetBoundMap() != nullptr);
   REQUIRE(pcms::detail::SameCoordinateSystem(bound->GetCoordinateSystem(),
                                              tgt->GetCoordinateSystem()));
-  REQUIRE(static_cast<int>(bound->LocatedPointValues().extent(0)) == n);
+  REQUIRE(static_cast<int>(bound->LocatedPoints().GetValues().extent(0)) == n);
   auto evaluator = src->CreatePointEvaluator<Real>(bound);
   REQUIRE(pcms::detail::SameValueBasis(evaluator->OutputBasis(ValueBasis{}),
                                        ValueBasis{}));
 
   const auto coords = pcms::test::CopyCoordinatesToHost(pts.GetValues());
-  const auto located = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(bound->LocatedPointValues()));
+  const auto located =
+    pcms::test::CopyCoordinatesToHost(bound->LocatedPoints().GetValues());
   const auto result =
     pcms::test::EvaluateToHost(*evaluator, f, ValueBasis{}, 1);
   for (int i = 0; i < n; ++i) {
@@ -345,10 +345,10 @@ TEST_CASE("Bind with a map: a rebind binds anew with the map")
   REQUIRE(bound->GetCoordinateMap() == map);
   const auto fresh =
     geometry.Bind(second.coordinate_view, OutOfBoundsPolicy{}, map);
-  const auto located = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(bound->LocatedPointValues()));
-  const auto expected = pcms::test::CopyCoordinatesToHost(
-    pcms::MakeConstRank2View(fresh->LocatedPointValues()));
+  const auto located =
+    pcms::test::CopyCoordinatesToHost(bound->LocatedPoints().GetValues());
+  const auto expected =
+    pcms::test::CopyCoordinatesToHost(fresh->LocatedPoints().GetValues());
   REQUIRE(located.extent(0) == 3);
   for (size_t i = 0; i < 3; ++i) {
     for (size_t d = 0; d < 3; ++d) {

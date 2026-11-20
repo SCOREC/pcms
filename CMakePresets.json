@@ -20,12 +20,7 @@
       "inherits": "with-omega-h",
       "cacheVariables": { "PCMS_ENABLE_OMEGA_H_MESHFIELDS": "ON" }
     },
-    {
-      "name": "with-conservative-projection",
-      "hidden": true,
-      "inherits": "with-omega-h-meshfields",
-      "cacheVariables": { "PCMS_ENABLE_CONSERVATIVE_PROJECTION": "ON" }
-    },
+    { "name": "with-petsc", "hidden": true, "cacheVariables": { "PCMS_ENABLE_PETSC": "ON" } },
     {
       "name": "with-polynomial-reconstruction",
       "hidden": true,
@@ -66,8 +61,8 @@
     },
     {
       "name": "conservative",
-      "displayName": "unstructured and conservative projections (PETSc)",
-      "inherits": ["base", "with-conservative-projection"]
+      "displayName": "unstructured and the assembled projection solve (PETSc)",
+      "inherits": ["base", "with-omega-h-meshfields", "with-petsc"]
     },
     {
       "name": "coupling-core",
@@ -84,7 +79,8 @@
       "displayName": "Everything except MFEM",
       "inherits": [
         "base",
-        "with-conservative-projection",
+        "with-omega-h-meshfields",
+        "with-petsc",
         "with-polynomial-reconstruction",
         "with-xgc",
         "with-coupler",

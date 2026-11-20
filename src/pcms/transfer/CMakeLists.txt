@@ -2,6 +2,8 @@ set(PCMS_FIELD_TRANSFER_HEADERS
     ../../../include/pcms/transfer/interpolator.hpp
     ../../../include/pcms/transfer/l2_inner_product.hpp
     forms.hpp
+    galerkin_projection.hpp
+    linear_solver.hpp
     ../../../include/pcms/transfer/copy.hpp
     ../../../include/pcms/transfer/detail/copy.hpp
     ../../../include/pcms/transfer/detail/interpolator.hpp
@@ -14,7 +16,9 @@ set(PCMS_FIELD_TRANSFER_HEADERS
 set(PCMS_FIELD_TRANSFER_SOURCES
     interpolator.cpp
     forms.cpp
+    galerkin_projection.cpp
     l2_inner_product.cpp
+    linear_solver.cpp
     projection.cpp)
 
 
@@ -27,18 +31,20 @@ if(PCMS_ENABLE_OMEGA_H)
       ../backends/omega_h/mesh_intersection.cpp)
 endif()
 
-if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
+  # the quadrature of the intersection of two Omega_h meshes, on MeshFields'
+  # reference rules (CreateConservativeProjection)
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
-      galerkin_projection.hpp
-      linear_solver.hpp
       omega_h_intersection_quadrature.hpp
-      petsc_utils.hpp
       omega_h_form_integrator_utils.hpp)
   list(APPEND PCMS_FIELD_TRANSFER_SOURCES
-      galerkin_projection.cpp
-      linear_solver.cpp
-      omega_h_intersection_quadrature.cpp
-      petsc_utils.cpp)
+      omega_h_intersection_quadrature.cpp)
+endif()
+
+if(PCMS_ENABLE_PETSC)
+  # the assembled solve of the projections' mass systems
+  list(APPEND PCMS_FIELD_TRANSFER_HEADERS petsc_utils.hpp)
+  list(APPEND PCMS_FIELD_TRANSFER_SOURCES petsc_utils.cpp)
 endif()
 
 add_library(pcms_transfer ${PCMS_FIELD_TRANSFER_SOURCES})
@@ -70,7 +76,7 @@ if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
   target_link_libraries(pcms_transfer PRIVATE meshfields::meshfields)
 endif()
 
-if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+if(PCMS_ENABLE_PETSC)
   target_link_libraries(pcms_transfer PRIVATE PETSc::PETSc)
 endif()
 

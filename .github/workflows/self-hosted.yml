@@ -107,7 +107,7 @@ jobs:
             -DPCMS_ENABLE_C=ON \
             -DPCMS_ENABLE_FORTRAN=ON \
             -DPCMS_ENABLE_EXAMPLES=ON \
-            -DPCMS_ENABLE_CONSERVATIVE_PROJECTION=OFF \
+            -DPCMS_ENABLE_PETSC=OFF \
             -DPETSC_ARCH="" \
             -DPETSC_DIR=$DEPENDENCY_DIR/${DEVICE_ARCH}/petsc/install \
             -DPCMS_ENABLE_SPDLOG=OFF

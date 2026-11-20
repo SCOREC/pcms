@@ -1,9 +1,12 @@
 #include "pcms/transfer/linear_solver.hpp"
+#include "pcms/configuration.hpp"
 #include "pcms/field/field_ops.hpp"
-#include "pcms/transfer/petsc_utils.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
+#ifdef PCMS_ENABLE_PETSC
+#include "pcms/transfer/petsc_utils.hpp"
 #include <petscksp.h>
+#endif
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -15,6 +18,7 @@ namespace pcms::transfer::detail
 namespace
 {
 
+#ifdef PCMS_ENABLE_PETSC
 // Owns a PETSc object and destroys it.
 template <typename Handle, PetscErrorCode (*Destroy)(Handle*)>
 class PetscOwner
@@ -39,6 +43,7 @@ private:
 using OwnedMat = PetscOwner<Mat, MatDestroy>;
 using OwnedVec = PetscOwner<Vec, VecDestroy>;
 using OwnedKsp = PetscOwner<KSP, KSPDestroy>;
+#endif
 
 void CopyOwned(const Field<Real>& from, Field<Real>& to)
 {
@@ -72,6 +77,7 @@ void Divide(const Field<Real>& numerator, const Field<Real>& denominator,
 
 struct LinearSolver::Petsc
 {
+#ifdef PCMS_ENABLE_PETSC
   OwnedMat matrix;
   OwnedKsp ksp;
   OwnedVec rhs;
@@ -79,6 +85,7 @@ struct LinearSolver::Petsc
   PetscInt size = 0;
   // the row of the matrix of each owned DOF holder
   std::vector<PetscInt> row_of_owned;
+#endif
 };
 
 LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
@@ -102,6 +109,11 @@ LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
     return;
   }
 
+#ifndef PCMS_ENABLE_PETSC
+  throw pcms_error("LinearSolver: the assembled solve needs PETSc; configure "
+                   "PCMS with -DPCMS_ENABLE_PETSC=ON or use the MatrixFree "
+                   "method");
+#else
   if (layout.IsDistributed()) {
     throw pcms_error("LinearSolver: the assembled solve is serial; the "
                      "layout is distributed");
@@ -174,6 +186,7 @@ LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
   CHKERRABORT(PETSC_COMM_SELF, ierr);
   ierr = KSPSetUp(petsc_->ksp);
   CHKERRABORT(PETSC_COMM_SELF, ierr);
+#endif
 }
 
 LinearSolver::~LinearSolver() = default;
@@ -185,6 +198,7 @@ int LinearSolver::Solve(const Field<Real>& functional,
     throw pcms_error("LinearSolver::Solve: the functional and the solution "
                      "must have the same layout");
   }
+#ifdef PCMS_ENABLE_PETSC
   if (petsc_ != nullptr) {
     // one KSP solve per component
     const auto b = functional.GetDOFHolderDataHost().GetValues();
@@ -214,6 +228,7 @@ int LinearSolver::Solve(const Field<Real>& functional,
     solution.Synchronize();
     return 0;
   }
+#endif
 
   // Preconditioned conjugate gradients, all components jointly.
   auto& r = cg_->residual;

@@ -1,11 +1,8 @@
 #include "periodic_test_utils.hpp"
 #include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/transfer/forms.hpp>
-#include <pcms/configuration.hpp>
 #include <pcms/transfer/projection.hpp>
-#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
 #include <pcms/transfer/linear_solver.hpp>
-#endif
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <chrono>
 #include <numbers>
@@ -278,7 +275,6 @@ TEST_CASE("Periodic spaces: natural quadrature integrates products of two "
     }
     CHECK(total == Catch::Approx(2.0).margin(1e-13));
   }
-#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
   // the mass matrix of Fourier modes is diagonal: 2 pi/period... and CG takes
   // two iterations (two distinct eigenvalues)
   const auto fourier = pcms::CreateFourierSpace(Periodic(4), {0, 1, 2, 3, 4});
@@ -292,10 +288,8 @@ TEST_CASE("Periodic spaces: natural quadrature integrates products of two "
   const auto sol = pcms::test::GetDofs(x);
   CHECK(sol[0] == Catch::Approx(1 / TwoPi).epsilon(1e-12));
   CHECK(sol[1] == Catch::Approx(2 / (TwoPi / 2)).epsilon(1e-12));
-#endif
 }
 
-#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
 TEST_CASE("Periodic spaces: Fourier projection reproduces the analytic "
           "coefficients; spline and Hermite projections are accurate",
           "[periodic][projection]")
@@ -343,4 +337,3 @@ TEST_CASE("Periodic spaces: Fourier projection reproduces the analytic "
     }
   }
 }
-#endif

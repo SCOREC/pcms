@@ -61,8 +61,8 @@ endif()
 option(PCMS_ENABLE_OMEGA_H "Omega_h backend (needs Omega_h)" OFF)
 option(PCMS_ENABLE_OMEGA_H_MESHFIELDS
        "MeshFields Lagrange spaces on Omega_h meshes (needs OMEGA_H, MeshFields)" OFF)
-option(PCMS_ENABLE_CONSERVATIVE_PROJECTION
-       "Conservative and control-variate projections (needs OMEGA_H_MESHFIELDS, PETSc)" OFF)
+option(PCMS_ENABLE_PETSC
+       "Assembled (PETSc) solves of the projections' mass systems (needs PETSc)" OFF)
 option(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
        "Polynomial-reconstruction spaces on point clouds (needs KokkosKernels)" OFF)
 option(PCMS_ENABLE_XGC "XGC backend (needs OMEGA_H)" OFF)
@@ -92,7 +92,6 @@ function(pcms_require capability prerequisite)
   endif()
 endfunction()
 pcms_require(OMEGA_H_MESHFIELDS OMEGA_H)
-pcms_require(CONSERVATIVE_PROJECTION OMEGA_H_MESHFIELDS)
 pcms_require(XGC OMEGA_H)
 pcms_require(FORTRAN C)
 # PCMS_ENABLE_C builds each part of the C (and Fortran) API whose capabilities
@@ -224,8 +223,8 @@ if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
   pcms_find_package(OMEGA_H_MESHFIELDS meshfields)
   message(STATUS "Found MeshFields: ${meshfields_DIR} (found version ${meshfields_VERSION})")
 endif()
-if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-  pcms_find_package(CONSERVATIVE_PROJECTION PETSc)
+if(PCMS_ENABLE_PETSC)
+  pcms_find_package(PETSC PETSc)
 endif()
 if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
   # the MLS solve uses KokkosBatched

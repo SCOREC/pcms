@@ -316,7 +316,7 @@ TEST_CASE("Product space: the natural quadrature is the tensor product and "
   }
 }
 
-#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 TEST_CASE("Product space: projection of an analytic source (matrix-free)",
           "[product][projection]")
 {

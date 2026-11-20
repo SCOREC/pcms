@@ -4,6 +4,7 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
+#include <pcms/configuration.hpp>
 #include <pcms/field/field_ops.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/transfer/projection.hpp>
@@ -16,6 +17,9 @@
 #include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/linear_solver.hpp>
 #include "field_test_utils.hpp"
+#ifndef PCMS_ENABLE_PETSC
+#include <catch2/matchers/catch_matchers_string.hpp>
+#endif
 #include <cmath>
 #include <cstdio>
 #include <map>
@@ -393,6 +397,7 @@ TEST_CASE("CreateProjection projects several components at once",
 // The solvers: MatrixFree against Assembled
 // ---------------------------------------------------------------------------
 
+#ifdef PCMS_ENABLE_PETSC
 namespace
 {
 
@@ -476,6 +481,21 @@ TEST_CASE("matrix-free Jacobi-PCG matches the assembled direct solve",
                 result.unknowns, result.iterations, result.max_difference);
   }
 }
+#else
+TEST_CASE("the assembled solve needs PETSc", "[quadrature][solver]")
+{
+  Omega_h::Library lib;
+  auto mesh = pcms::test::BuildSquareMesh(lib, 4);
+  const auto space = pcms::test::MakeP1Space(mesh);
+  const pcms::transfer::detail::BilinearForm form(space,
+                                                  space->CreateQuadrature());
+  CHECK_THROWS_WITH(pcms::transfer::detail::LinearSolver(
+                      form,
+                      pcms::LinearSolveOptions{
+                        .method = pcms::LinearSolveOptions::Method::Assembled}),
+                    Catch::Matchers::ContainsSubstring("PCMS_ENABLE_PETSC"));
+}
+#endif
 
 TEST_CASE("projection: both solve methods and the lumped mass",
           "[quadrature][projection]")
@@ -500,16 +520,20 @@ TEST_CASE("projection: both solve methods and the lumped mass",
     return target;
   };
   auto free = project({});
-  auto direct = project(pcms::ProjectionOptions{
-    .solve = {.method = pcms::LinearSolveOptions::Method::Assembled}});
   auto lumped = project(
     pcms::ProjectionOptions{.mass_matrix_type = pcms::MassMatrixType::Lumped});
+#ifdef PCMS_ENABLE_PETSC
+  auto direct = project(pcms::ProjectionOptions{
+    .solve = {.method = pcms::LinearSolveOptions::Method::Assembled}});
   auto difference = project({});
   pcms::Axpy(-1.0, direct, difference);
   const double max_difference = pcms::NormInf(difference);
   CHECK(max_difference < 1e-11);
   std::printf("[projection] MatrixFree vs Assembled: max difference %.2e\n",
               max_difference);
+#else
+  const auto& direct = free;
+#endif
   // the lumped projection is another operator, but it has the integral of the
   // consistent one (1^T M_L x = 1^T b = 1^T M x)
   const pcms::L2Integral integral(target_space);
@@ -645,6 +669,13 @@ TEST_CASE("ApplyTranspose of a projection is its adjoint, for both solve "
   if (lumped) {
     projection_options.mass_matrix_type = pcms::MassMatrixType::Lumped;
   }
+#ifndef PCMS_ENABLE_PETSC
+  if (assembled && !lumped) {
+    CHECK_THROWS(
+      pcms::CreateProjection(source_space, target_space, projection_options));
+    return;
+  }
+#endif
   const auto projection =
     pcms::CreateProjection(source_space, target_space, projection_options);
   const auto [lhs, rhs] = AdjointPair(*projection, source_space, target_space);

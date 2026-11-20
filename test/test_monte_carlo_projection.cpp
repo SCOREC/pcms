@@ -10,7 +10,6 @@
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/backends/omega_h/lagrange_layout.hpp>
 #include "field_test_utils.hpp"
-#include <petscksp.h>
 #include <vector>
 #include "pcms/backends/omega_h/omega_h.hpp"
 

@@ -496,13 +496,11 @@ if(Catch2_FOUND)
       test_polynomial_reconstruction_function_space.cpp)
   endif()
 
+  # the reference rules of Omega_h meshes and the mesh-intersection quadrature
+  # are MeshFields'
   if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES
-      test_omega_h_form_integrator_utils.cpp)
-  endif()
-
-  if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-    list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_omega_h_form_integrator_utils.cpp
       test_quadrature.cpp
       test_galerkin_projection.cpp
       test_bilinear_form.cpp
@@ -537,7 +535,7 @@ if(Catch2_FOUND)
   endif()
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-  if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+  if(PCMS_ENABLE_PETSC)
     target_link_libraries(unit_tests PRIVATE PETSc::PETSc)
   endif()
 

@@ -114,7 +114,7 @@ def test_interpolator_with_bound_outlives_its_inputs(world):
 
 
 @pytest.mark.skipif(not hasattr(pcms, "create_conservative_projection"),
-                    reason="needs PETSc and MeshFields")
+                    reason="needs OMEGA_H_MESHFIELDS")
 def test_conservative_projection_outlives_its_spaces(world):
     source_mesh = _mesh(world, 6)
     target_mesh = _mesh(world, 5)

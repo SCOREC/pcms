@@ -1,9 +1,10 @@
 #ifndef PCMS_TRANSFER_PROJECTION_HPP
 #define PCMS_TRANSFER_PROJECTION_HPP
 
-// Factories for the Galerkin projections. They are always declared; in a
-// build without the implementing backends (PETSc and MeshFields) they throw
-// pcms_error.
+// Factories for the Galerkin projections. They are always built;
+// CreateConservativeProjection throws pcms_error in a build without
+// PCMS_ENABLE_OMEGA_H_MESHFIELDS, and the Assembled solve in one without
+// PCMS_ENABLE_PETSC.
 
 #include "pcms/field/coordinate_map.hpp"
 #include "pcms/field/function_space.hpp"
@@ -32,7 +33,8 @@ struct LinearSolveOptions
     MatrixFree,
     /// the matrix E^T W E is assembled from the evaluation matrix into PETSc
     /// (serial) and solved by a KSP: a direct factorization unless the
-    /// options of `petsc_options_prefix` say otherwise
+    /// options of `petsc_options_prefix` say otherwise. Needs a build with
+    /// PCMS_ENABLE_PETSC
     Assembled
   };
   Method method = Method::MatrixFree;
@@ -76,7 +78,8 @@ struct ProjectionOptions
 /// operator holds `source` and `target_space`.
 /// @throws pcms_error if `source` or `target_space` is null, the source has no
 ///         geometry, or the target space's evaluator does not support the
-///         transpose or has no natural quadrature
+///         transpose or has no natural quadrature, or `options.solve` asks for
+///         the Assembled solve in a build without PCMS_ENABLE_PETSC
 std::unique_ptr<TransferOperator<Real>> CreateProjection(
   std::shared_ptr<const PointEvaluatorFactory> source,
   std::shared_ptr<const FunctionSpace> target_space,
@@ -90,7 +93,8 @@ struct ConservativeProjectionOptions
 /// Conservative (Galerkin L2) projection from source_space to target_space
 /// using exact mesh intersection. Both spaces must be scalar Lagrange spaces
 /// on Omega_h discretizations. The operator holds both spaces.
-/// @throws pcms_error if a space is null
+/// @throws pcms_error if a space is null, or in a build without
+///         PCMS_ENABLE_OMEGA_H_MESHFIELDS
 std::unique_ptr<TransferOperator<Real>> CreateConservativeProjection(
   std::shared_ptr<const FunctionSpace> source_space,
   std::shared_ptr<const FunctionSpace> target_space,

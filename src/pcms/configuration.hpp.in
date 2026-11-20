@@ -3,7 +3,7 @@
 
 #cmakedefine PCMS_ENABLE_OMEGA_H
 #cmakedefine PCMS_ENABLE_OMEGA_H_MESHFIELDS
-#cmakedefine PCMS_ENABLE_CONSERVATIVE_PROJECTION
+#cmakedefine PCMS_ENABLE_PETSC
 #cmakedefine PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
 #cmakedefine PCMS_ENABLE_XGC
 #cmakedefine PCMS_ENABLE_MFEM
@@ -29,8 +29,9 @@
 #ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 #define PCMS_ENABLE_MESHFIELDS
 #endif
-#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
-#define PCMS_ENABLE_PETSC
+// the 0.4.0 flag of the configuration with MeshFields and PETSc
+#if defined(PCMS_ENABLE_OMEGA_H_MESHFIELDS) && defined(PCMS_ENABLE_PETSC)
+#define PCMS_ENABLE_CONSERVATIVE_PROJECTION
 #endif
 // the timestepper is always built
 #define PCMS_ENABLE_TRANSIENT

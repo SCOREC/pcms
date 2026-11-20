@@ -23,8 +23,6 @@
 #include "pcms/backends/omega_h/omega_h.hpp"
 #endif
 #include "pcms/field/function_spaces.hpp"
-#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-#endif
 #include <cmath>
 #include <memory>
 #include <string>

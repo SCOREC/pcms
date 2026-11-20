@@ -1,5 +1,5 @@
-#ifndef PCMS_UTILITY_SHAPES_HPP
-#define PCMS_UTILITY_SHAPES_HPP
+#ifndef PCMS_LOCALIZATION_SHAPES_HPP
+#define PCMS_LOCALIZATION_SHAPES_HPP
 
 #include <Kokkos_Core.hpp>
 
@@ -98,4 +98,4 @@ inline constexpr int dimension_v = GeometryTraits<Shape>::dimension;
 
 } // namespace pcms
 
-#endif // PCMS_UTILITY_SHAPES_HPP
+#endif // PCMS_LOCALIZATION_SHAPES_HPP

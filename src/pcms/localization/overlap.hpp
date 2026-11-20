@@ -1,11 +1,11 @@
-#ifndef PCMS_UTILITY_OVERLAP_HPP
-#define PCMS_UTILITY_OVERLAP_HPP
+#ifndef PCMS_LOCALIZATION_OVERLAP_HPP
+#define PCMS_LOCALIZATION_OVERLAP_HPP
 #include <Kokkos_Core.hpp>
 
 #include <cmath>
 #include <cstddef>
 
-#include "pcms/utility/shapes.hpp"
+#include "pcms/localization/shapes.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 
@@ -503,4 +503,4 @@ template <int Dim>
 
 } // namespace pcms
 
-#endif // PCMS_UTILITY_OVERLAP_HPP
+#endif // PCMS_LOCALIZATION_OVERLAP_HPP

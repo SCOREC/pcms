@@ -383,7 +383,7 @@ TEST_CASE("uniform grid search")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  GridPointSearch2D search{mesh, 10, 10, 0.01};
+  auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 10, 10, 0.01);
 
   Kokkos::View<pcms::Real* [2]> points("test_points", 8);
   // Kokkos::View<pcms::Real*[2]> points("test_points", 1);
@@ -563,7 +563,7 @@ TEST_CASE("point search locates points on shared faces",
 
   // Same grid resolution the intersection search uses for this mesh.
   const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-  GridPointSearch3D search{mesh, n, n, n};
+  auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, n, n, n);
 
   const auto centroids_h =
     Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(query_mesh, 3));
@@ -603,7 +603,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     using Dimensionality = GridPointSearch3D::Result::Dimensionality;
     auto mesh = pcms::test::BuildReferenceTet(lib);
     const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-    GridPointSearch3D search{mesh, n, n, n};
+    auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, n, n, n);
 
     Kokkos::View<pcms::Real* [3]> points("points", 2);
     auto points_h = Kokkos::create_mirror_view(points);
@@ -638,9 +638,9 @@ TEST_CASE("point search encodes outside points unambiguously",
     // The grid over a single tet has no empty cell, so decode the
     // no-candidate result directly.
     Kokkos::View<GridPointSearch3D::Result*> none("none", 1);
-    Kokkos::deep_copy(none,
-                      GridPointSearch3D::Result{Dimensionality::NO_INTERSECT,
-                                                -1, Omega_h::zero_vector<3>()});
+    Kokkos::deep_copy(
+      none, GridPointSearch3D::Result{Dimensionality::NO_INTERSECT, -1,
+                                      Kokkos::Array<pcms::Real, 3>{}});
     auto none_h =
       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, none);
     const auto none_owners_h = LiftOnHost<3>(mesh, none).first;
@@ -657,7 +657,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     // candidates.
     auto mesh = pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3}));
     const auto n = pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
-    GridPointSearch2D search{mesh, n, n};
+    auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, n, n);
 
     Kokkos::View<pcms::Real* [2]> points("points", 3);
     auto points_h = Kokkos::create_mirror_view(points);
@@ -790,7 +790,7 @@ TEST_CASE("3D point search classifies points by entity",
   REQUIRE(face123 >= 0);
 
   const double tolerances = 1e-3;
-  GridPointSearch3D search{mesh, 4, 4, 4, tolerances};
+  auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 4, 4, 4, tolerances);
 
   const std::vector<std::pair<Omega_h::LO, double>> edge_w{{v1, 0.7},
                                                            {v2, 0.3}};
@@ -884,7 +884,7 @@ TEST_CASE("3D point search classifies points by entity",
 
   SECTION("outside the mesh: nearest entity")
   {
-    GridPointSearch3D tight{mesh, 4, 4, 4};
+    auto tight = pcms::omega_h::MakeGridPointSearch3D(mesh, 4, 4, 4);
     const auto r =
       Search3D(tight, {{-0.1, -0.1, -0.1}, {0.6, 0.6, -0.1}, {0.5, 0.5, 0.5}});
     REQUIRE(r(0).dimensionality == Dim3::VERTEX);
@@ -915,7 +915,8 @@ TEST_CASE("3D point search classifies points by entity",
       &two, OMEGA_H_SIMPLEX, 3, Omega_h::LOs({0, 1, 2, 3, 4, 5, 6, 7}),
       Omega_h::Reals({0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1,
                       3, 3, 3, 4, 3, 3, 3, 4, 3, 3, 3, 4}));
-    GridPointSearch3D sparse{two, 8, 8, 8, tolerances};
+    auto sparse =
+      pcms::omega_h::MakeGridPointSearch3D(two, 8, 8, 8, tolerances);
     const auto r = Search3D(sparse, {{2.0, 2.0, 2.0}});
     REQUIRE(r(0).dimensionality == Dim3::NO_INTERSECT);
     REQUIRE(r(0).entity == -1);
@@ -933,7 +934,7 @@ TEST_CASE("3D point search matches brute force on interior points",
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 6, 6, 6, false);
   const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-  GridPointSearch3D search{mesh, n, n, n};
+  auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, n, n, n);
 
   std::mt19937 gen(12345);
   std::uniform_real_distribution<double> uni(0.001, 0.999);
@@ -1349,13 +1350,13 @@ TEST_CASE("point search matches the facet-band rule on a non-uniform mesh",
   SECTION("2D")
   {
     auto mesh = BuildShakenBox<2>(lib, 7, 0.3);
-    pcms::GridPointSearch2D search{mesh, 8, 8, tau};
+    auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 8, 8, tau);
     CheckAgainstBandReference<2>(mesh, search, tau);
   }
   SECTION("3D")
   {
     auto mesh = BuildShakenBox<3>(lib, 4, 0.2);
-    GridPointSearch3D search{mesh, 6, 6, 6, tau};
+    auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 6, 6, 6, tau);
     CheckAgainstBandReference<3>(mesh, search, tau);
   }
 }
@@ -1483,13 +1484,13 @@ TEST_CASE("point search from guessed elements gives the search's results",
   SECTION("2D")
   {
     auto mesh = BuildShakenBox<2>(lib, 7, 0.3);
-    pcms::GridPointSearch2D search{mesh, 8, 8, tau};
+    auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 8, 8, tau);
     CheckGuessedSearchMatchesCold<2>(mesh, search);
   }
   SECTION("3D")
   {
     auto mesh = BuildShakenBox<3>(lib, 4, 0.2);
-    GridPointSearch3D search{mesh, 6, 6, 6, tau};
+    auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 6, 6, 6, tau);
     CheckGuessedSearchMatchesCold<3>(mesh, search);
   }
 }
@@ -1500,7 +1501,7 @@ TEST_CASE("point search band reaches tau / sin(angle / 2) at an acute corner",
   auto lib = Omega_h::Library{};
   const double tau = 1e-3;
   auto mesh = BuildShakenBox<2>(lib, 7, 0.3);
-  pcms::GridPointSearch2D search{mesh, 8, 8, tau};
+  auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 8, 8, tau);
   const BandReference<2> ref(mesh, tau);
   // the sharpest corner of the mesh
   double smallest = 10;
@@ -1627,13 +1628,13 @@ TEST_CASE("point search gives the same entity from either adjacent element",
   SECTION("2D edges")
   {
     auto mesh = BuildShakenBox<2>(lib, 7, 0.3);
-    pcms::GridPointSearch2D search{mesh, 8, 8, tau};
+    auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 8, 8, tau);
     check(std::integral_constant<int, 2>{}, 1, mesh, search);
   }
   SECTION("3D edges and faces")
   {
     auto mesh = BuildShakenBox<3>(lib, 4, 0.2);
-    GridPointSearch3D search{mesh, 6, 6, 6, tau};
+    auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 6, 6, 6, tau);
     check(std::integral_constant<int, 3>{}, 1, mesh, search);
     check(std::integral_constant<int, 3>{}, 2, mesh, search);
   }
@@ -1707,7 +1708,7 @@ TEST_CASE("ghost-free search localizes every element centroid")
   }
 
   const auto n = pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
-  GridPointSearch2D search{mesh, n, n};
+  auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, n, n);
   const auto centroids =
     Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(mesh, 2));
   Kokkos::View<pcms::Real* [2]> points("query points", n_elems);
@@ -1736,7 +1737,7 @@ TEST_CASE("3D point search with unequal divisions per axis",
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 4, 4, 4, false);
-  GridPointSearch3D search{mesh, 3, 5, 7};
+  auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 3, 5, 7);
 
   const auto n_elems = mesh.nelems();
   const auto centroids =
@@ -1765,8 +1766,8 @@ TEST_CASE("mesh simplices are the mesh's elements")
   auto lib = Omega_h::Library{};
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 0, 1, 1, 0, false);
-  const auto coords = mesh.coords();
-  const auto elems2verts = mesh.ask_elem_verts();
+  const auto coords = mesh.coords().view();
+  const auto elems2verts = mesh.ask_elem_verts().view();
   const auto nelems = mesh.nelems();
 
   // Built inside a kernel, as the candidate map does. Both triangles of the

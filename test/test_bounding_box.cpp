@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include <pcms/utility/overlap.hpp>
+#include <pcms/localization/overlap.hpp>
 
 using pcms::AABBox;
 using pcms::overlaps;

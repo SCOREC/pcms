@@ -2,7 +2,7 @@
 #include <catch2/catch_approx.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
-#include <pcms/utility/overlap.hpp>
+#include <pcms/localization/overlap.hpp>
 #include <pcms/utility/uniform_grid.hpp>
 #include "pcms/backends/omega_h/omega_h.hpp"
 

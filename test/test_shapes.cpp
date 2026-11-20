@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
-#include <pcms/utility/shapes.hpp>
-#include <pcms/utility/overlap.hpp>
+#include <pcms/localization/shapes.hpp>
+#include <pcms/localization/overlap.hpp>
 
 #include <type_traits>
 

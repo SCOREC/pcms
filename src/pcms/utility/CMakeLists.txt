@@ -23,8 +23,6 @@ set(
         ../../../include/pcms/utility/memory_spaces.hpp
         mpi_type.hpp
         omega_h_array_utils.hpp
-        overlap.hpp
-        shapes.hpp
         ../../../include/pcms/utility/types.hpp
         array_mask.hpp
         ../../../include/pcms/utility/detail/inclusive_scan.hpp

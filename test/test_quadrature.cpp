@@ -9,6 +9,7 @@
 #include <pcms/geometry/quadrature.hpp>
 #include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/backends/omega_h/omega_h_geometry.hpp>
+#include <pcms/transfer/omega_h_intersection_quadrature.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include "field_test_utils.hpp"
 #include <cmath>
@@ -136,6 +137,116 @@ TEST_CASE("CreateQuadrature: unsupported rules throw", "[quadrature]")
   CHECK_THROWS_AS(pcms::CreateGaussQuadrature(geometry, 0), pcms::pcms_error);
   // MeshFields' simplex rules go up to order 2
   CHECK_THROWS_AS(pcms::CreateGaussQuadrature(geometry, 3), pcms::pcms_error);
+}
+
+TEST_CASE("CreateIntersectionQuadrature: weights sum to the domain, the rule "
+          "is exact on the pieces, and both meshes are bound without a miss",
+          "[quadrature][intersection]")
+{
+  Omega_h::Library lib;
+  const int dim = GENERATE(2, 3);
+  auto source_mesh = dim == 2 ? pcms::test::BuildSquareMesh(lib, 3)
+                              : pcms::test::BuildUnitCube(lib, 2);
+  auto target_mesh = dim == 2 ? pcms::test::BuildUnitSquare(lib, 0)
+                              : pcms::test::BuildUnitCube(lib, 1);
+  const auto source =
+    std::dynamic_pointer_cast<const pcms::omega_h::OmegaHGeometry>(
+      pcms::omega_h::CreateGeometry(source_mesh,
+                                    pcms::detail::DeferredCartesian()));
+  const auto target =
+    std::dynamic_pointer_cast<const pcms::omega_h::OmegaHGeometry>(
+      pcms::omega_h::CreateGeometry(target_mesh,
+                                    pcms::detail::DeferredCartesian()));
+  const int order = 2;
+  const auto quadrature =
+    pcms::omega_h::CreateIntersectionQuadrature(source, target, order);
+  CHECK(quadrature.points->GetGeometry() == target);
+  CHECK(quadrature.points->MissingPoints().extent(0) == 0);
+  CHECK(quadrature.other.geometry == source);
+  CHECK(quadrature.other.entities.extent(0) ==
+        static_cast<std::size_t>(quadrature.points->NumPoints()));
+  CHECK(WeightSum(quadrature) == Catch::Approx(1.0).margin(1e-12));
+  for (int a = 0; a <= order; ++a) {
+    for (int b = 0; a + b <= order; ++b) {
+      const int c = dim == 3 ? std::max(0, order - a - b) : 0;
+      const double integral = Integrate(quadrature, [&](const double* x) {
+        return std::pow(x[0], a) * std::pow(x[1], b) * std::pow(x[2], c);
+      });
+      CAPTURE(a, b, c);
+      CHECK(integral ==
+            Catch::Approx(ExactMonomial(a, b, c, dim)).margin(1e-12));
+    }
+  }
+  // the source binds to the points in the elements they were generated in
+  const pcms::CoordinateView<pcms::DeviceMemorySpace> points(
+    quadrature.points->GetCoordinateSystem(),
+    quadrature.points->LocatedPoints().GetValues());
+  const auto bound = source->Bind(points, quadrature.other);
+  CHECK(bound->MissingPoints().extent(0) == 0);
+}
+
+namespace
+{
+
+std::shared_ptr<const pcms::omega_h::OmegaHGeometry> CartesianGeometry(
+  Omega_h::Mesh& mesh)
+{
+  return std::dynamic_pointer_cast<const pcms::omega_h::OmegaHGeometry>(
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian()));
+}
+
+} // namespace
+
+TEST_CASE("CreateIntersectionQuadrature: a tet inside a tet",
+          "[quadrature][3d]")
+{
+  // Source is the reference tet (volume 1/6). Target is the similar tet at the
+  // (1,0,0) corner, cut by the plane x=0.5, which sits entirely inside the
+  // source (volume (1/6)*(1/2)^3 = 1/48).
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildReferenceTet(lib);
+  auto target_mesh =
+    pcms::test::BuildTet(lib, Omega_h::Reals({1.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.5,
+                                              0.5, 0.0, 0.5, 0.0, 0.5}));
+  const auto quadrature = pcms::omega_h::CreateIntersectionQuadrature(
+    CartesianGeometry(source_mesh), CartesianGeometry(target_mesh), 2);
+  CHECK(WeightSum(quadrature) == Catch::Approx(1.0 / 48.0).margin(1e-14));
+  const auto points = pcms::test::CopyCoordinatesToHost(
+    quadrature.points->LocatedPoints().GetValues());
+  REQUIRE(points.extent(0) > 0);
+  for (std::size_t i = 0; i < points.extent(0); ++i) {
+    CHECK(points(i, 0) >= 0.5 - 1e-12);
+    CHECK(points(i, 1) >= -1e-12);
+    CHECK(points(i, 2) >= -1e-12);
+    CHECK(points(i, 0) + points(i, 1) + points(i, 2) <= 1.0 + 1e-12);
+  }
+}
+
+TEST_CASE("CreateIntersectionQuadrature: dual tets overlap in an octahedron",
+          "[quadrature][3d]")
+{
+  // Dual tets in the cube [-1,1]^3. Intersection = {|x|+|y|+|z| <= 1},
+  // volume 4/3.
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildTet(
+    lib, Omega_h::Reals(
+           {1.0, 1.0, 1.0, 1.0, -1.0, -1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0}));
+  auto target_mesh =
+    pcms::test::BuildTet(lib, Omega_h::Reals({-1.0, -1.0, -1.0, -1.0, 1.0, 1.0,
+                                              1.0, -1.0, 1.0, 1.0, 1.0, -1.0}));
+  const auto quadrature = pcms::omega_h::CreateIntersectionQuadrature(
+    CartesianGeometry(source_mesh), CartesianGeometry(target_mesh), 2);
+  CHECK(WeightSum(quadrature) == Catch::Approx(4.0 / 3.0).margin(1e-10));
+  CHECK(Integrate(quadrature, [](const double* x) {
+          return x[0] + x[1] + x[2];
+        }) == Catch::Approx(0.0).margin(1e-10));
+  const auto points = pcms::test::CopyCoordinatesToHost(
+    quadrature.points->LocatedPoints().GetValues());
+  for (std::size_t i = 0; i < points.extent(0); ++i) {
+    CHECK(std::abs(points(i, 0)) + std::abs(points(i, 1)) +
+            std::abs(points(i, 2)) <=
+          1.0 + 1e-10);
+  }
 }
 
 TEST_CASE("quadratures integrate in the physical measure of a cylindrical "

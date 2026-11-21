@@ -11,8 +11,8 @@
 #include "pcms/field/field_data.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/profile.hpp"
-#include "pcms/backends/uniform_grid/linear_interpolant.hpp"
-#include "pcms/backends/uniform_grid/multidimarray.hpp"
+#include "pcms/field/detail/field_ops.hpp"
+#include "pcms/utility/detail/memory_spaces.hpp"
 
 #include <memory>
 #include <utility>
@@ -23,63 +23,175 @@ namespace pcms::uniform_grid
 namespace detail
 {
 
-/// @brief The gradient of the multilinear (order 1) interpolant of the grid
-///        values, or zero for the piecewise constant (order 0) one: component
-///        c of the values has the partials along the axes at columns
-///        c * Dim + axis.
-template <unsigned Dim, typename Values, typename Dofs>
-void EvaluateGridGradient(UniformGrid<Dim> grid, int order,
-                          Kokkos::View<const LO*, DeviceMemorySpace> cells,
-                          Kokkos::View<const Real**, DeviceMemorySpace> t,
-                          Dofs dofs, Values values)
+/// @brief The evaluation of uniform-grid Lagrange fields at points as sparse
+///        rows: row p * num_out + r holds `stride` (DOF holder, weight)
+///        entries, the same for every component; num_out is 1 for Value and
+///        the dimension for Gradient (row r: the partial along axis r).
+struct UniformGridRows
 {
-  const int num_components = dofs.extent(1);
+  Kokkos::View<LO*, DeviceMemorySpace> holders;
+  Kokkos::View<Real*, DeviceMemorySpace> weights;
+  int stride = 1;
+  int num_out = 1;
+};
+
+/// @brief Builds the rows of order `order` at the points.
+/// @param cells the cell of each point
+/// @param t the position of each point in its cell
+/// @param missing points whose rows are zero
+/// @return the rows
+template <unsigned Dim>
+UniformGridRows BuildGridRows(
+  UniformGrid<Dim> grid, int order, bool gradient,
+  Kokkos::View<const LO*, DeviceMemorySpace> cells,
+  Kokkos::View<const Real**, DeviceMemorySpace> t,
+  Kokkos::View<const LO*, DeviceMemorySpace> missing)
+{
+  UniformGridRows rows;
+  rows.stride = order == 0 ? 1 : 1 << Dim;
+  rows.num_out = gradient ? static_cast<int>(Dim) : 1;
+  const int stride = rows.stride;
+  const int num_out = rows.num_out;
+  const auto num_points = static_cast<LO>(cells.extent(0));
+  const auto size = static_cast<std::size_t>(num_points) * num_out * stride;
+  rows.holders = Kokkos::View<LO*, DeviceMemorySpace>(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "uniform_grid_holders"),
+    size);
+  rows.weights = Kokkos::View<Real*, DeviceMemorySpace>(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "uniform_grid_weights"),
+    size);
+  const auto holders = rows.holders;
+  const auto weights = rows.weights;
   pcms::detail::ForEach(
-    "uniform_grid_gradient", static_cast<LO>(cells.extent(0)),
-    KOKKOS_LAMBDA(const LO i) {
-      for (int k = 0; k < num_components * static_cast<int>(Dim); ++k) {
-        values(i, k) = 0;
-      }
+    "uniform_grid_rows", num_points, KOKKOS_LAMBDA(const LO i) {
       if (order == 0) {
+        for (int r = 0; r < num_out; ++r) {
+          holders(i * num_out + r) = cells(i);
+          weights(i * num_out + r) = gradient ? 0 : 1;
+        }
         return;
       }
       // cell indices in axis order (GetDimensionedIndex gives them reversed),
       // and the vertex numbering with the first axis fastest
       const auto reversed = grid.GetDimensionedIndex(cells(i));
       LO first_vertex = 0;
-      LO stride[Dim];
+      LO vertex_stride[Dim];
       Real h[Dim];
       LO next = 1;
       for (unsigned d = 0; d < Dim; ++d) {
-        stride[d] = next;
+        vertex_stride[d] = next;
         next *= grid.divisions[d] + 1;
         h[d] = grid.edge_length[d] / grid.divisions[d];
-        first_vertex += reversed[Dim - 1 - d] * stride[d];
+        first_vertex += reversed[Dim - 1 - d] * vertex_stride[d];
       }
-      for (int corner = 0; corner < (1 << Dim); ++corner) {
+      for (int corner = 0; corner < stride; ++corner) {
         LO vertex = first_vertex;
         for (unsigned d = 0; d < Dim; ++d) {
-          vertex += ((corner >> d) & 1) * stride[d];
+          vertex += ((corner >> d) & 1) * vertex_stride[d];
         }
-        for (unsigned axis = 0; axis < Dim; ++axis) {
+        for (int r = 0; r < num_out; ++r) {
           Real weight = 1;
           for (unsigned d = 0; d < Dim; ++d) {
             const bool upper = (corner >> d) & 1;
-            weight *= d == axis ? (upper ? 1 : -1) / h[d]
-                                : (upper ? t(i, d) : 1 - t(i, d));
+            weight *= gradient && static_cast<int>(d) == r
+                        ? (upper ? 1 : -1) / h[d]
+                        : (upper ? t(i, d) : 1 - t(i, d));
           }
-          for (int c = 0; c < num_components; ++c) {
-            values(i, c * Dim + axis) += weight * dofs(vertex, c);
+          const auto k =
+            (static_cast<std::size_t>(i) * num_out + r) * stride + corner;
+          holders(k) = vertex;
+          weights(k) = weight;
+        }
+      }
+    });
+  const auto block = static_cast<std::size_t>(num_out) * stride;
+  pcms::detail::ForEach(
+    "uniform_grid_rows_missing", static_cast<LO>(missing.extent(0)),
+    KOKKOS_LAMBDA(const LO m) {
+      const auto first = static_cast<std::size_t>(missing(m)) * block;
+      for (std::size_t k = first; k < first + block; ++k) {
+        weights(k) = 0;
+      }
+    });
+  return rows;
+}
+
+/// @brief Applies the rows to the DOFs.
+/// @param values output: values(p, c * num_out + r) = row (p, r) times
+///        component c of `dofs`
+template <typename Dofs, typename Values>
+void ApplyGridRows(const UniformGridRows& rows, Dofs dofs, Values values)
+{
+  const auto holders = rows.holders;
+  const auto weights = rows.weights;
+  const int stride = rows.stride;
+  const int num_out = rows.num_out;
+  const int num_components = dofs.extent(1);
+  pcms::detail::ForEach(
+    "uniform_grid_apply_rows", static_cast<LO>(values.extent(0)),
+    KOKKOS_LAMBDA(const LO i) {
+      for (int r = 0; r < num_out; ++r) {
+        const auto first = (static_cast<std::size_t>(i) * num_out + r) * stride;
+        for (int c = 0; c < num_components; ++c) {
+          Real sum = 0;
+          for (int k = 0; k < stride; ++k) {
+            sum += weights(first + k) * dofs(holders(first + k), c);
           }
+          values(i, c * num_out + r) = sum;
         }
       }
     });
 }
 
+/// @brief Adds the transpose of the Value rows applied to `values` to
+///        `total`.
+template <typename Values>
+void ApplyGridRowsTranspose(const UniformGridRows& rows, Values values,
+                            Kokkos::View<Real**, DeviceMemorySpace> total)
+{
+  const auto holders = rows.holders;
+  const auto weights = rows.weights;
+  const int stride = rows.stride;
+  const int num_components = total.extent(1);
+  pcms::detail::ForEach(
+    "uniform_grid_apply_rows_transpose", static_cast<LO>(values.extent(0)),
+    KOKKOS_LAMBDA(const LO i) {
+      const auto first = static_cast<std::size_t>(i) * stride;
+      for (int k = 0; k < stride; ++k) {
+        for (int c = 0; c < num_components; ++c) {
+          Kokkos::atomic_add(&total(holders(first + k), c),
+                             weights(first + k) * values(i, c));
+        }
+      }
+    });
+}
+
+/// @brief The rows as a PointMatrix.
+/// @param gids the global id of each DOF holder
+inline PointMatrix<Real> GridRowsMatrix(
+  const UniformGridRows& rows, Kokkos::View<const GO*, DeviceMemorySpace> gids)
+{
+  const auto num_rows = static_cast<LO>(rows.holders.extent(0) / rows.stride);
+  const int stride = rows.stride;
+  Kokkos::View<LO*, DeviceMemorySpace> offsets("uniform_grid_offsets",
+                                               num_rows + 1);
+  Kokkos::View<GO*, DeviceMemorySpace> columns("uniform_grid_columns",
+                                               rows.holders.extent(0));
+  const auto holders = rows.holders;
+  pcms::detail::ForEach(
+    "uniform_grid_offsets", num_rows + 1,
+    KOKKOS_LAMBDA(const LO r) { offsets(r) = r * stride; });
+  pcms::detail::ForEach(
+    "uniform_grid_columns", static_cast<LO>(columns.extent(0)),
+    KOKKOS_LAMBDA(const LO k) { columns(k) = gids(holders(k)); });
+  return {offsets, columns, rows.weights};
+}
+
 } // namespace detail
 
 /// @brief Evaluates order-0 (cell value) or order-1 (multilinear) fields on a
-///        uniform grid, and their gradients (DifferentialOperator::Gradient).
+///        uniform grid and their gradients, with the transpose (Value) and the
+///        matrix.
 /// @tparam Dim grid dimension
 /// @tparam LayoutPolicy layout of the output view
 template <unsigned Dim = 2,
@@ -96,7 +208,6 @@ public:
     DifferentialOperator op = DifferentialOperator::Value)
     : PointEvaluator<Real, LayoutPolicy>(binding, op, layout),
       layout_(std::move(layout)),
-      grid_(layout_->GetGrid()),
       binding_(std::move(binding))
   {
   }
@@ -109,111 +220,57 @@ public:
     ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
   {
     PCMS_FUNCTION_TIMER;
-    const auto values = out.GetValues();
     const auto dof_data = field.GetDOFHolderData().GetValues();
-    LO num_points = this->NumPoints();
-    int n_comp = layout_->GetNumComponents();
-
     PCMS_ALWAYS_ASSERT(dof_data.size() ==
                        static_cast<size_t>(layout_->GetNumDofHolder() *
                                            layout_->GetNumComponents()));
-
     // Every point has a (closest) cell, so all rows are computed; Evaluate
     // overwrites the rows of points outside the grid in FILL mode.
-    auto cell_indices = binding_->CellIndices();
+    detail::ApplyGridRows(Rows(), dof_data, out.GetValues());
+  }
 
-    if (this->Operator() == DifferentialOperator::Gradient) {
-      detail::EvaluateGridGradient<Dim>(grid_, layout_->GetOrder(),
-                                        cell_indices, binding_->Parametric(),
-                                        dof_data, values);
-      return;
+  [[nodiscard]] bool SupportsTranspose() const noexcept override
+  {
+    return true;
+  }
+
+  // Public because CUDA forbids extended lambdas in non-public members.
+  void EvaluateTransposeImpl(
+    Rank2View<const Real, DeviceMemorySpace, LayoutPolicy> values,
+    Field<Real>& functional) const override
+  {
+    PCMS_FUNCTION_TIMER;
+    Kokkos::View<Real**, DeviceMemorySpace> total("uniform_grid_transpose",
+                                                  layout_->GetNumDofHolder(),
+                                                  layout_->GetNumComponents());
+    detail::ApplyGridRowsTranspose(Rows(), values, total);
+    pcms::detail::AddToField(functional, total);
+  }
+
+  [[nodiscard]] bool SupportsMatrix() const noexcept override { return true; }
+
+  PointMatrix<Real> GetMatrixImpl() const override
+  {
+    const auto gids = layout_->GetGidsHost();
+    Kokkos::View<GO*, HostMemorySpace> host("uniform_grid_gids", gids.size());
+    for (std::size_t i = 0; i < gids.size(); ++i) {
+      host(i) = gids[i];
     }
-
-    if (layout_->GetOrder() == 0) {
-      Kokkos::parallel_for(
-        "evaluate_order0_device",
-        Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {num_points, n_comp}),
-        KOKKOS_LAMBDA(const LO i, const int c) {
-          values(i, c) = dof_data(cell_indices(i), c);
-        });
-      return;
-    }
-
-    // Order-1: multilinear interpolation
-    // Create local copy to avoid capturing reference in device lambdas in some
-    // compilers
-    auto grid_copy = grid_;
-    Kokkos::View<LO**, DeviceMemorySpace> cell_dim_indices("cell_dim_indices",
-                                                           num_points, Dim);
-    Kokkos::parallel_for(
-      "compute_cell_dim_indices",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_CLASS_LAMBDA(const LO i) {
-        auto dim_idx = grid_copy.GetDimensionedIndex(cell_indices(i));
-        for (unsigned d = 0; d < Dim; ++d) {
-          cell_dim_indices(i, d) = dim_idx[d];
-        }
-      });
-
-    auto cell_divisions = grid_.divisions;
-    IntVecView dimensions_view("dimensions", Dim);
-    Kokkos::parallel_for(
-      "set_dimensions_view",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, Dim),
-      KOKKOS_LAMBDA(const unsigned d) {
-        // cell_dim_indices uses GetDimensionedIndex(), which returns indices in
-        // the opposite order of the coordinates, so we reverse the order here.
-        dimensions_view(d) = cell_divisions[Dim - 1 - d] + 1;
-      });
-
-    // the binding's coordinates are in axis order; cell_dim_indices is filled
-    // from GetDimensionedIndex(), which returns indices in the opposite order
-    RealMatView parametric_coords("parametric_coords", num_points, Dim);
-    const auto parametric = binding_->Parametric();
-    Kokkos::parallel_for(
-      "compute_parametric_coords",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_LAMBDA(const LO i) {
-        for (unsigned d = 0; d < Dim; ++d) {
-          parametric_coords(i, Dim - 1 - d) = parametric(i, d);
-        }
-      });
-
-    IntMatView cell_indices_interp("cell_indices_interp", num_points, Dim);
-    Kokkos::parallel_for(
-      "copy_cell_dim_indices_to_interp",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
-      KOKKOS_LAMBDA(const LO i) {
-        for (unsigned d = 0; d < Dim; ++d)
-          cell_indices_interp(i, d) = cell_dim_indices(i, d);
-      });
-
-    RealMatView values_interp("values_interp",
-                              static_cast<size_t>(layout_->GetNumDofHolder()),
-                              static_cast<size_t>(n_comp));
-    Kokkos::parallel_for(
-      "copy_dof_data_to_values_interp",
-      Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
-        {0, 0}, {static_cast<LO>(layout_->GetNumDofHolder()), n_comp}),
-      KOKKOS_LAMBDA(const LO i, const int c) {
-        values_interp(i, c) = dof_data(i, c);
-      });
-
-    auto interpolator = RegularGridInterpolator(
-      parametric_coords, values_interp, cell_indices_interp, dimensions_view);
-    auto interpolated = interpolator.linear_interpolation();
-
-    Kokkos::parallel_for(
-      "evaluate_order1_device",
-      Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0, 0}, {num_points, n_comp}),
-      KOKKOS_LAMBDA(const LO i, const int c) {
-        values(i, c) = interpolated(i, c);
-      });
+    return detail::GridRowsMatrix(
+      Rows(), Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, host));
   }
 
 private:
+  // built per call: a Rebind moves the points
+  [[nodiscard]] detail::UniformGridRows Rows() const
+  {
+    return detail::BuildGridRows<Dim>(
+      layout_->GetGrid(), layout_->GetOrder(),
+      this->Operator() == DifferentialOperator::Gradient,
+      binding_->CellIndices(), binding_->Parametric(), this->FilledPoints());
+  }
+
   std::shared_ptr<const UniformGridFieldLayout<Dim>> layout_;
-  UniformGrid<Dim> grid_;
   std::shared_ptr<const pcms::detail::UniformGridBinding<Dim>> binding_;
 };
 

@@ -186,3 +186,26 @@ TEST_CASE("EvaluateTranspose checks its arguments", "[adjoint]")
                     View(basis, pcms::MakeConstRank2View(values)), foreign),
                   pcms::pcms_error);
 }
+
+TEST_CASE("FunctionSpace::CreateQuadrature is exact for products of two "
+          "functions of the space",
+          "[quadrature]")
+{
+  Omega_h::Library lib;
+  auto mesh = pcms::test::BuildSquareMesh(lib, 3);
+  for (const int order : {0, 1}) {
+    auto geometry =
+      pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
+    const auto space = pcms::CreateLagrangeSpace(
+      geometry, order, 1,
+      pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+    const auto quadrature = space->CreateQuadrature();
+    const auto weights = Kokkos::create_mirror_view_and_copy(
+      pcms::HostMemorySpace{}, quadrature.weights);
+    double total = 0;
+    for (std::size_t i = 0; i < weights.extent(0); ++i) {
+      total += weights(i);
+    }
+    CHECK(total == Catch::Approx(1.0).epsilon(1e-13));
+  }
+}

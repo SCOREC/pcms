@@ -87,6 +87,15 @@ public:
     return geometry_->GetCoordinateSystem();
   }
 
+  /// @brief The space's own quadrature on its geometry: exact for the
+  ///        product of two functions of the space.
+  /// @throws pcms_error unless the kind overrides it
+  [[nodiscard]] virtual Quadrature CreateQuadrature() const
+  {
+    throw pcms_error("FunctionSpace::CreateQuadrature: this space has no "
+                     "quadrature");
+  }
+
   /// @return whether the space's evaluator source supports `op`; for a space
   ///         without one, whether `op` is Value
   [[nodiscard]] bool Supports(DifferentialOperator op) const noexcept override;

@@ -64,11 +64,12 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
   // Run point-in-mesh search
   Kokkos::View<typename PointLocalizationSearch<Dim>::Result*> results_d;
   if constexpr (Dim == 2) {
-    GridPointSearch2D search(mesh, grid.divisions[0], grid.divisions[1]);
+    auto search =
+      MakeGridPointSearch2D(mesh, grid.divisions[0], grid.divisions[1]);
     results_d = search(coords_d);
   } else {
-    GridPointSearch3D search(mesh, grid.divisions[0], grid.divisions[1],
-                             grid.divisions[2]);
+    auto search = MakeGridPointSearch3D(mesh, grid.divisions[0],
+                                        grid.divisions[1], grid.divisions[2]);
     results_d = search(coords_d);
   }
   auto results_h =

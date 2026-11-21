@@ -2,9 +2,16 @@
 #include <catch2/catch_approx.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
+#include <pcms/localization/overlap.hpp>
 #include <pcms/utility/uniform_grid.hpp>
 #include "pcms/backends/omega_h/omega_h.hpp"
 
+using pcms::AABBox;
+using pcms::candidate_cells;
+using pcms::CellRange;
+using pcms::LO;
+using pcms::overlapping_cells;
+using pcms::Real;
 using pcms::UniformGrid;
 using pcms::UniformGrid2D;
 using pcms::omega_h::CreateUniformGridFromMesh;
@@ -53,6 +60,40 @@ TEST_CASE("uniform grid")
   {
     REQUIRE(0 == uniform_grid.GetCellIndex({0, 0}));
     REQUIRE(119 == uniform_grid.GetCellIndex({11, 9}));
+  }
+  SECTION("AxisIndicesFromCellIndex")
+  {
+    // The inverse of CellIndexFromAxisIndices, in coordinate order. Cell 1 is
+    // the second cell along x, which the cell-BBOX test below also pins down
+    // (its center is (1.5, 0.5)): the grid stores its indices reversed relative
+    // to coordinates, so getting this wrong is silent.
+    {
+      const auto [i, j] = uniform_grid.AxisIndicesFromCellIndex(0);
+      REQUIRE(i == 0);
+      REQUIRE(j == 0);
+    }
+    {
+      const auto [i, j] = uniform_grid.AxisIndicesFromCellIndex(1);
+      REQUIRE(i == 1);
+      REQUIRE(j == 0);
+    }
+    {
+      const auto [i, j] = uniform_grid.AxisIndicesFromCellIndex(119);
+      REQUIRE(i == 9);
+      REQUIRE(j == 11);
+    }
+
+    // Round-trip over every cell of the grid, which is the property a caller
+    // keyed by linear cell id depends on.
+    for (pcms::LO cell = 0; cell < uniform_grid.GetNumCells(); ++cell) {
+      const auto axis_indices = uniform_grid.AxisIndicesFromCellIndex(cell);
+      REQUIRE(uniform_grid.CellIndexFromAxisIndices(axis_indices) == cell);
+      // ...and it must agree with the binning rule used to find a point's cell.
+      for (int d = 0; d < 2; ++d) {
+        const auto center = uniform_grid.GetCellBBOX(cell).center[d];
+        REQUIRE(uniform_grid.AxisCellIndex(d, center) == axis_indices[d]);
+      }
+    }
   }
 }
 
@@ -202,5 +243,282 @@ TEST_CASE("UniformGrid dimensioned index with unequal 3D divisions")
     REQUIRE(box.center[0] == Catch::Approx(c.x + 0.5));
     REQUIRE(box.center[1] == Catch::Approx(c.y + 0.5));
     REQUIRE(box.center[2] == Catch::Approx(c.z + 0.5));
+  }
+}
+
+// Grid resolution has to be a property of the mesh as a whole, not of one
+// partition: search cells are named by a linear id, and an id identifies
+// the same region of space on two ranks only if both resolved the grid the
+// same way. A resolution derived from `mesh.nelems()` breaks that, because
+// `nelems()` counts ghost copies and therefore changes with the partition.
+TEST_CASE("cell index round trip on a grid with unequal divisions")
+{
+  const UniformGrid<3> grid{.edge_length = {3.0, 4.0, 5.0},
+                            .bot_left = {0.0, 0.0, 0.0},
+                            .divisions = {3, 4, 5}};
+  for (pcms::LO cell = 0; cell < grid.GetNumCells(); ++cell) {
+    CAPTURE(cell);
+    const auto axis_indices = grid.AxisIndicesFromCellIndex(cell);
+    for (int d = 0; d < 3; ++d) {
+      REQUIRE(axis_indices[d] >= 0);
+      REQUIRE(axis_indices[d] < grid.divisions[d]);
+    }
+    REQUIRE(grid.CellIndexFromAxisIndices(axis_indices) == cell);
+    // The cell's own box must bin back to the same cell.
+    const auto box = grid.GetCellBBOX(cell);
+    REQUIRE(grid.ClosestCellID(Omega_h::Vector<3>{box.center[0], box.center[1],
+                                                  box.center[2]}) == cell);
+  }
+}
+
+// Which grid cells a box covers (`overlapping_cells`, `candidate_cells`),
+// as used to build the point search's candidate map, and the invariants of
+// `CellRange`.
+
+TEST_CASE("bbox vs grid cell range")
+{
+  UniformGrid2D grid{
+    .edge_length = {10, 10}, .bot_left = {0, 0}, .divisions = {10, 10}};
+
+  SECTION("box inside one cell still covers padded neighbors")
+  {
+    AABBox<2> box{.center = {0.5, 0.5}, .half_width = {0.1, 0.1}};
+    const auto range = overlapping_cells<2>(box, grid);
+    // default pad = 1 clamps at the grid border
+    REQUIRE(range.lo[0] == 0);
+    REQUIRE(range.lo[1] == 0);
+    REQUIRE(range.hi[0] == 1);
+    REQUIRE(range.hi[1] == 1);
+  }
+
+  SECTION("no padding gives the exact span")
+  {
+    AABBox<2> box{.center = {2.5, 2.5}, .half_width = {0.4, 0.4}};
+    const auto range = overlapping_cells<2>(box, grid, 0);
+    REQUIRE(range.lo[0] == 2);
+    REQUIRE(range.lo[1] == 2);
+    REQUIRE(range.hi[0] == 2);
+    REQUIRE(range.hi[1] == 2);
+  }
+
+  SECTION("box spanning several cells")
+  {
+    AABBox<2> box{.center = {2.5, 2.5}, .half_width = {1.0, 1.0}};
+    const auto range = overlapping_cells<2>(box, grid, 0);
+    REQUIRE(range.lo[0] == 1);
+    REQUIRE(range.lo[1] == 1);
+    REQUIRE(range.hi[0] == 3);
+    REQUIRE(range.hi[1] == 3);
+  }
+}
+
+namespace
+{
+/// True when grid cell `(cx, cy)` and `box` meet, each treated as closed.
+///
+/// A shared boundary counts, which is the semantics the overlap predicate
+/// has and therefore the set `candidate_cells` has to cover.
+[[nodiscard]] bool cell_touches_box(const UniformGrid2D& grid, LO cx, LO cy,
+                                    const AABBox<2>& box)
+{
+  const Kokkos::Array<LO, 2> cell{cx, cy};
+  for (int d = 0; d < 2; ++d) {
+    const Real width = grid.edge_length[d] / grid.divisions[d];
+    const Real cell_lo = grid.bot_left[d] + cell[d] * width;
+    const Real cell_hi = cell_lo + width;
+    const Real box_lo = box.center[d] - box.half_width[d];
+    const Real box_hi = box.center[d] + box.half_width[d];
+    if (cell_hi < box_lo || cell_lo > box_hi) {
+      return false;
+    }
+  }
+  return true;
+}
+} // namespace
+
+/// The property `candidate_cells` exists to guarantee: its range contains
+/// every cell a closed-boundary predicate can accept. A range that is too
+/// narrow drops candidates silently -- the element is never offered to the
+/// query and nothing downstream can tell -- so this is checked as a
+/// coverage property rather than against the exact bounds, which are
+/// allowed to over-include.
+TEST_CASE(
+  "candidate_cells covers every cell a closed-boundary predicate accepts")
+{
+  const UniformGrid2D grid{
+    .edge_length = {10, 10}, .bot_left = {0, 0}, .divisions = {10, 10}};
+
+  // Centres at, near and between grid lines, and extents that land exactly
+  // on a grid line: that is when an unwidened range loses the touching
+  // cell.
+  for (const Real center : {0.5, 2.5, 5.0, 9.5}) {
+    for (const Real half : {0.0, 0.25, 0.5, 1.0, 3.0}) {
+      const AABBox<2> box{.center = {center, center},
+                          .half_width = {half, half}};
+      const auto range = candidate_cells<2>(box, grid);
+      for (LO cx = 0; cx < grid.divisions[0]; ++cx) {
+        for (LO cy = 0; cy < grid.divisions[1]; ++cy) {
+          if (cell_touches_box(grid, cx, cy, box)) {
+            REQUIRE(range.Contains(Kokkos::Array<LO, 2>{cx, cy}));
+          }
+        }
+      }
+    }
+  }
+}
+
+TEST_CASE("candidate_cells bins a supplied bound")
+{
+  const UniformGrid2D grid{
+    .edge_length = {10, 10}, .bot_left = {0, 0}, .divisions = {10, 10}};
+
+  // A degenerate triangle whose bounding box is the single grid line x = y
+  // = 3: the cells on either side of that line only touch it, so the
+  // padding must come from the predicate rather than from the caller.
+  pcms::detail::SimplexVertices<2> degenerate;
+  for (int k = 0; k < 3; ++k) {
+    degenerate[k] = {3.0, 3.0};
+  }
+  // `candidate_cells` bins a bound it is given; the element side supplies
+  // it.
+  const auto range =
+    candidate_cells<2>(pcms::detail::simplex_bbox<2>(degenerate), grid);
+  REQUIRE(range.Contains(Kokkos::Array<LO, 2>{3, 3}));
+  REQUIRE(range.Contains(Kokkos::Array<LO, 2>{2, 2}));
+}
+
+TEST_CASE("CellRange states its own invariants")
+{
+  const auto empty = pcms::CellRange<2>::Empty();
+  REQUIRE(empty.IsEmpty());
+  REQUIRE(!empty.Contains(Kokkos::Array<LO, 2>{0, 0}));
+
+  const pcms::CellRange<2> unit{.lo = {2, 2}, .hi = {2, 2}};
+  REQUIRE(!unit.IsEmpty());
+  REQUIRE(unit.Contains(Kokkos::Array<LO, 2>{2, 2}));
+  REQUIRE(!unit.Contains(Kokkos::Array<LO, 2>{3, 2}));
+
+  // The empty range must not be what value initialization produces: a
+  // zero-initialized CellRange denotes the single cell at axis index 0.
+  const pcms::CellRange<2> zeroed{};
+  REQUIRE(!zeroed.IsEmpty());
+  REQUIRE(zeroed.Contains(Kokkos::Array<LO, 2>{0, 0}));
+}
+
+// The grid and overlap layer under the point search is written for any
+// dimension, though the search classes themselves are 2D and 3D only. These
+// checks pin that down above 3D. Every grid has a different division count
+// on each axis, and every probe uses different indices per axis, so an axis
+// mix-up cannot hide behind a symmetric case.
+namespace
+{
+
+/// Cells of `grid` whose id, per-axis indices and box disagree, counted on
+/// the device: the same functions the search runs in its kernels.
+template <unsigned Dim>
+pcms::LO CountCellRoundTripFailuresOnDevice(const pcms::UniformGrid<Dim>& grid)
+{
+  pcms::LO failures = 0;
+  Kokkos::parallel_reduce(
+    "cell round trip", grid.GetNumCells(),
+    KOKKOS_LAMBDA(pcms::LO cell, pcms::LO & n) {
+      const auto axis = grid.AxisIndicesFromCellIndex(cell);
+      bool ok = grid.CellIndexFromAxisIndices(axis) == cell;
+      Omega_h::Vector<Dim> center;
+      const auto box = grid.GetCellBBOX(cell);
+      for (unsigned d = 0; d < Dim; ++d) {
+        ok = ok && axis[d] >= 0 && axis[d] < grid.divisions[d];
+        center[d] = box.center[d];
+      }
+      ok = ok && grid.ClosestCellID(center) == cell;
+      n += ok ? 0 : 1;
+    },
+    failures);
+  return failures;
+}
+
+} // namespace
+
+// What dimension does the overlap + grid-cell-range layer actually support?
+TEST_CASE("uniform grid above 3D", "[nd]")
+{
+  SECTION("4D grid: cell ids, per-axis indices and cell boxes agree")
+  {
+    // Cell size 1 on every axis, so a cell's box is easy to state.
+    const pcms::UniformGrid<4> grid{.edge_length = {2.0, 3.0, 4.0, 5.0},
+                                    .bot_left = {0.0, 0.0, 0.0, 0.0},
+                                    .divisions = {2, 3, 4, 5}};
+    REQUIRE(grid.GetNumCells() == 120);
+
+    // Ids number cells x-fastest: x + Nx * (y + Ny * (z + Nz * w)).
+    const Kokkos::Array<LO, 4> last{1, 2, 3, 4};
+    REQUIRE(grid.CellIndexFromAxisIndices(last) == 119);
+    const Kokkos::Array<LO, 4> probe{1, 0, 2, 3};
+    const LO probe_id = 1 + 2 * (0 + 3 * (2 + 4 * 3));
+    REQUIRE(grid.CellIndexFromAxisIndices(probe) == probe_id);
+    const auto back = grid.AxisIndicesFromCellIndex(probe_id);
+    for (int d = 0; d < 4; ++d) {
+      REQUIRE(back[d] == probe[d]);
+    }
+    const auto box = grid.GetCellBBOX(probe_id);
+    for (int d = 0; d < 4; ++d) {
+      REQUIRE(box.center[d] == Catch::Approx(probe[d] + 0.5));
+      REQUIRE(box.half_width[d] == Catch::Approx(0.5));
+    }
+
+    REQUIRE(CountCellRoundTripFailuresOnDevice(grid) == 0);
+  }
+
+  SECTION("5D grid: every cell round-trips on the device")
+  {
+    const pcms::UniformGrid<5> grid{.edge_length = {1.0, 2.0, 3.0, 2.0, 1.0},
+                                    .bot_left = {0.0, -1.0, 2.0, 0.5, 0.0},
+                                    .divisions = {2, 3, 4, 3, 2}};
+    REQUIRE(grid.GetNumCells() == 144);
+    REQUIRE(CountCellRoundTripFailuresOnDevice(grid) == 0);
+  }
+
+  SECTION("4D candidate cells keep each axis separate")
+  {
+    const pcms::UniformGrid<4> grid{.edge_length = {2.0, 3.0, 4.0, 5.0},
+                                    .bot_left = {0.0, 0.0, 0.0, 0.0},
+                                    .divisions = {2, 3, 4, 5}};
+    // Inside cell (0, 1, 2, 3); padded by one cell, clamped to the grid.
+    const AABBox<4> box{.center = {0.5, 1.5, 2.5, 3.5},
+                        .half_width = {0.25, 0.25, 0.25, 0.25}};
+    const auto range = pcms::candidate_cells<4>(box, grid);
+    const Kokkos::Array<LO, 4> lo{0, 0, 1, 2};
+    const Kokkos::Array<LO, 4> hi{1, 2, 3, 4};
+    for (int d = 0; d < 4; ++d) {
+      CAPTURE(d);
+      REQUIRE(range.lo[d] == lo[d]);
+      REQUIRE(range.hi[d] == hi[d]);
+    }
+    REQUIRE(range.Contains(Kokkos::Array<LO, 4>{0, 1, 2, 3}));
+    REQUIRE_FALSE(range.Contains(Kokkos::Array<LO, 4>{0, 1, 2, 1}));
+  }
+
+  SECTION("1D")
+  {
+    const UniformGrid<1> grid{
+      .edge_length = {4.0}, .bot_left = {0.0}, .divisions = {4}};
+    const AABBox<1> box{.center = {1.5}, .half_width = {0.25}};
+    // Cell 1, padded by 1, clamped at the low edge.
+    const auto range = candidate_cells<1>(box, grid);
+    REQUIRE(range.lo[0] == 0);
+    REQUIRE(range.hi[0] == 2);
+    REQUIRE(range.Contains(Kokkos::Array<LO, 1>{1}));
+  }
+
+  SECTION("5D range invariants")
+  {
+    const auto empty = CellRange<5>::Empty();
+    REQUIRE(empty.IsEmpty());
+    REQUIRE(!empty.Contains(Kokkos::Array<LO, 5>{0, 0, 0, 0, 0}));
+
+    const CellRange<5> unit{.lo = {3, 3, 3, 3, 3}, .hi = {3, 3, 3, 3, 3}};
+    REQUIRE(!unit.IsEmpty());
+    REQUIRE(unit.Contains(Kokkos::Array<LO, 5>{3, 3, 3, 3, 3}));
+    REQUIRE(!unit.Contains(Kokkos::Array<LO, 5>{3, 3, 3, 3, 4}));
   }
 }

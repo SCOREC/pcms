@@ -129,13 +129,13 @@ GridPointSearchVariant MakeGridSearch(Omega_h::Mesh& mesh,
     const LO n = options.divisions > 0
                    ? options.divisions
                    : pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
-    return GridPointSearch2D(mesh, n, n, options.tolerance);
+    return MakeGridPointSearch2D(mesh, n, n, options.tolerance);
   }
   if (mesh.dim() == 3) {
     const LO n = options.divisions > 0
                    ? options.divisions
                    : pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-    return GridPointSearch3D(mesh, n, n, n, options.tolerance);
+    return MakeGridPointSearch3D(mesh, n, n, n, options.tolerance);
   }
   throw std::invalid_argument(
     "MakeGridSearch: only 2D and 3D meshes are supported");

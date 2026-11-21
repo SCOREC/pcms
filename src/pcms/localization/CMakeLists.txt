@@ -2,11 +2,15 @@
 set(
         PCMS_LOCALIZATION_HEADERS
         mls_support_helpers.hpp
+        point_search.hpp
+        overlap.hpp
+        shapes.hpp
 )
 
 set(
         PCMS_LOCALIZATION_SOURCES
         mls_support_helpers.cpp
+        point_search.cpp
 )
 add_library(pcms_localization ${PCMS_LOCALIZATION_SOURCES})
 add_library(pcms::localization ALIAS pcms_localization)

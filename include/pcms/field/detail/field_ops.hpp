@@ -1,0 +1,33 @@
+#ifndef PCMS_FIELD_DETAIL_FIELD_OPS_HPP
+#define PCMS_FIELD_DETAIL_FIELD_OPS_HPP
+
+#include "pcms/field/field.hpp"
+#include <Kokkos_Core.hpp>
+
+namespace pcms::detail
+{
+
+/// @brief field += addend over the owned values, then synchronizes the field.
+/// @param field the field to add to
+/// @param addend shaped [owned DOF holders][components]; overwritten with
+///        the sum
+template <typename T>
+void AddToField(Field<T>& field,
+                const Kokkos::View<T**, DeviceMemorySpace>& addend)
+{
+  const auto current = field.GetDOFHolderData().GetValues();
+  Kokkos::parallel_for(
+    "pcms::AddToField",
+    Kokkos::MDRangePolicy<DefaultExecutionSpace, Kokkos::Rank<2>>(
+      {0, 0}, {static_cast<int64_t>(addend.extent(0)),
+               static_cast<int64_t>(addend.extent(1))}),
+    KOKKOS_LAMBDA(const int64_t i, const int64_t c) {
+      addend(i, c) += current(i, c);
+    });
+  field.SetDOFHolderDataUnchecked(MakeConstRank2View(addend));
+  field.Synchronize();
+}
+
+} // namespace pcms::detail
+
+#endif // PCMS_FIELD_DETAIL_FIELD_OPS_HPP

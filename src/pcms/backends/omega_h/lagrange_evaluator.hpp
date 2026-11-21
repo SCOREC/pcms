@@ -3,6 +3,7 @@
 
 #include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
+#include "pcms/field/detail/field_ops.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/field_data.hpp"
@@ -39,49 +40,34 @@ struct OmegaHLagrangeTagValues
   }
 };
 
-/// Evaluates an order 0 or 1 Lagrange field at the found points of a binding
-/// of a mesh of dimension Dim. Order 0 takes the value of the lowest element
-/// adjacent to the entity of the point's record; order 1 interpolates on the
-/// vertices of that entity itself, with the weights its reduced coordinates
-/// give, and picks no element. (A free function: CUDA does not allow device
-/// lambdas in the public virtual function that dispatches on the dimension.)
-template <int Dim, typename T, typename Dof, typename Values>
-void EvaluateOmegaHLagrange(Omega_h::Mesh& mesh, int order,
-                            const pcms::detail::OmegaHMeshBinding& binding,
-                            const Dof& dof_data, int n_comp,
-                            const Values& values)
+/// @brief Fills the evaluation rows of an order 0 or 1 Lagrange field at the
+///        found points of a binding: order 0 takes the lowest element
+///        adjacent to the entity of the point's record (1 entry per point);
+///        order 1 the vertices of that entity, with the weights its reduced
+///        coordinates give (Dim + 1 entries per point).
+template <int Dim>
+void FillOmegaHLagrangeRows(
+  Omega_h::Mesh& mesh, int order,
+  const pcms::detail::OmegaHMeshBinding& binding,
+  const Kokkos::View<LO*, DeviceMemorySpace>& holders,
+  const Kokkos::View<Real*, DeviceMemorySpace>& weights)
 {
   const auto found = binding.FoundPoints();
   const auto results = binding.Results<Dim>();
-  const auto n_valid = static_cast<LO>(found.extent(0));
   const auto up = UpAdjacencies<Dim>(mesh);
   const auto verts_of = VerticesOfEntities<Dim>(mesh);
-  if (order == 0) {
-    pcms::detail::ForEach(
-      "OmegaHLagrangePointEvaluator::EvaluateOrder0", n_valid,
-      KOKKOS_LAMBDA(const LO k) {
-        const LO elem = ElementOfResult<Dim>(up, results(found(k)));
-        for (int c = 0; c < n_comp; ++c) {
-          values(found(k), c) = dof_data(elem, c);
-        }
-      });
-  } else {
-    pcms::detail::ForEach(
-      "OmegaHLagrangePointEvaluator::EvaluateOrder1", n_valid,
-      KOKKOS_LAMBDA(const LO k) {
-        LO vertices[Dim + 1];
-        Real weights[Dim + 1];
-        const int nv = EntityVertexWeights<Dim>(verts_of, results(found(k)),
-                                                vertices, weights);
-        for (int c = 0; c < n_comp; ++c) {
-          T val = T{};
-          for (int v = 0; v < nv; ++v) {
-            val += static_cast<T>(weights[v]) * dof_data(vertices[v], c);
-          }
-          values(found(k), c) = val;
-        }
-      });
-  }
+  pcms::detail::ForEach(
+    "OmegaHLagrangePointEvaluator::Rows", static_cast<LO>(found.extent(0)),
+    KOKKOS_LAMBDA(const LO k) {
+      const LO p = found(k);
+      if (order == 0) {
+        holders(p) = ElementOfResult<Dim>(up, results(p));
+        weights(p) = 1.0;
+      } else {
+        EntityVertexWeights<Dim>(verts_of, results(p), &holders(p * (Dim + 1)),
+                                 &weights(p * (Dim + 1)));
+      }
+    });
 }
 
 } // namespace detail
@@ -109,8 +95,20 @@ public:
     : PointEvaluator<T, LayoutPolicy>(binding, DifferentialOperator::Value,
                                       layout),
       layout_(std::move(layout)),
-      binding_(std::move(binding))
+      binding_(std::move(binding)),
+      stride_(layout_->GetOrder() == 0 ? 1 : layout_->GetMesh().dim() + 1),
+      holders_("omega_h_lagrange_holders",
+               static_cast<std::size_t>(binding_->NumPoints()) * stride_),
+      weights_("omega_h_lagrange_weights", holders_.extent(0))
   {
+    Omega_h::Mesh& mesh = const_cast<Omega_h::Mesh&>(layout_->GetMesh());
+    if (mesh.dim() == 2) {
+      detail::FillOmegaHLagrangeRows<2>(mesh, layout_->GetOrder(), *binding_,
+                                        holders_, weights_);
+    } else {
+      detail::FillOmegaHLagrangeRows<3>(mesh, layout_->GetOrder(), *binding_,
+                                        holders_, weights_);
+    }
   }
 
   // Public because CUDA forbids extended lambdas in non-public member
@@ -130,21 +128,111 @@ public:
       layout_->GetMesh().get_array<TagValue>(layout_->GetDOFHolderEntityDim(),
                                              data.GetTagName()),
       layout_->GetNumComponents()};
-    Omega_h::Mesh& mesh = const_cast<Omega_h::Mesh&>(layout_->GetMesh());
-    const int order = layout_->GetOrder();
+    const auto found = binding_->FoundPoints();
     const int n_comp = layout_->GetNumComponents();
-    if (mesh.dim() == 2) {
-      detail::EvaluateOmegaHLagrange<2, T>(mesh, order, *binding_, dof_data,
-                                           n_comp, values);
-    } else {
-      detail::EvaluateOmegaHLagrange<3, T>(mesh, order, *binding_, dof_data,
-                                           n_comp, values);
-    }
+    const int stride = stride_;
+    const auto holders = holders_;
+    const auto weights = weights_;
+    pcms::detail::ForEach(
+      "OmegaHLagrangePointEvaluator::Evaluate",
+      static_cast<LO>(found.extent(0)), KOKKOS_LAMBDA(const LO k) {
+        const LO p = found(k);
+        for (int c = 0; c < n_comp; ++c) {
+          T val = T{};
+          for (int v = p * stride; v < (p + 1) * stride; ++v) {
+            val += static_cast<T>(weights(v)) * dof_data(holders(v), c);
+          }
+          values(p, c) = val;
+        }
+      });
+  }
+
+  [[nodiscard]] bool SupportsTranspose() const noexcept override
+  {
+    return true;
+  }
+
+  // Public for the same reason as EvaluateImpl.
+  void EvaluateTransposeImpl(
+    Rank2View<const T, DeviceMemorySpace, LayoutPolicy> values,
+    Field<T>& functional) const override
+  {
+    PCMS_FUNCTION_TIMER;
+    using TagValue = utility::OmegaHValue_t<T>;
+    const auto found = binding_->FoundPoints();
+    const int n_comp = layout_->GetNumComponents();
+    const int stride = stride_;
+    const auto holders = holders_;
+    const auto weights = weights_;
+    Omega_h::Write<TagValue> sums(layout_->GetNumDofHolderWithGhosts() * n_comp,
+                                  0, "transpose_sums");
+    pcms::detail::ForEach(
+      "OmegaHLagrangePointEvaluator::EvaluateTranspose",
+      static_cast<LO>(found.extent(0)), KOKKOS_LAMBDA(const LO k) {
+        const LO p = found(k);
+        for (int v = p * stride; v < (p + 1) * stride; ++v) {
+          for (int c = 0; c < n_comp; ++c) {
+            Kokkos::atomic_add(
+              &sums[holders(v) * n_comp + c],
+              static_cast<TagValue>(weights(v) * values(p, c)));
+          }
+        }
+      });
+    const bool ghosted = layout_->HasGhosts();
+    // the copies of a holder on other ranks add into its owner
+    const auto reduced =
+      ghosted
+        ? layout_->GetMesh().reduce_array(layout_->GetDOFHolderEntityDim(),
+                                          Omega_h::Read<TagValue>(sums), n_comp,
+                                          OMEGA_H_SUM)
+        : Omega_h::Read<TagValue>(sums);
+    const auto owned = layout_->GetOwnedIndices();
+    Kokkos::View<T**, DeviceMemorySpace> addend(
+      "transpose_addend", layout_->GetNumDofHolder(), n_comp);
+    Kokkos::parallel_for(
+      "OmegaHLagrangePointEvaluator::EvaluateTranspose::owned",
+      Kokkos::RangePolicy<DefaultExecutionSpace>(0, layout_->GetNumDofHolder()),
+      KOKKOS_LAMBDA(const LO o) {
+        const LO h = ghosted ? owned(o) : o;
+        for (int c = 0; c < n_comp; ++c) {
+          addend(o, c) = static_cast<T>(reduced[h * n_comp + c]);
+        }
+      });
+    pcms::detail::AddToField(functional, addend);
+  }
+
+  [[nodiscard]] bool SupportsMatrix() const noexcept override { return true; }
+
+  PointMatrix<T> GetMatrixImpl() const override
+  {
+    const LO n = binding_->NumPoints();
+    const int stride = stride_;
+    const auto holders = holders_;
+    const auto weights = weights_;
+    const auto gids = layout_->GetGids();
+    Kokkos::View<LO*, DeviceMemorySpace> offsets("offsets", n + 1);
+    Kokkos::View<GO*, DeviceMemorySpace> columns("columns", holders.extent(0));
+    Kokkos::View<T*, DeviceMemorySpace> entries("entries", holders.extent(0));
+    Kokkos::parallel_for(
+      "OmegaHLagrangePointEvaluator::GetMatrix",
+      Kokkos::RangePolicy<DefaultExecutionSpace>(0, n + 1),
+      KOKKOS_LAMBDA(const LO p) {
+        offsets(p) = p * stride;
+        for (int v = p * stride; p < n && v < (p + 1) * stride; ++v) {
+          columns(v) = gids[holders(v)];
+          entries(v) = static_cast<T>(weights(v));
+        }
+      });
+    return PointMatrix<T>{offsets, columns, entries};
   }
 
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
   std::shared_ptr<const pcms::detail::OmegaHMeshBinding> binding_;
+  // the evaluation matrix: stride_ entries per point
+  int stride_;
+  Kokkos::View<LO*, DeviceMemorySpace> holders_;
+  Kokkos::View<Real*, DeviceMemorySpace> weights_;
 };
 
 // ---------------------------------------------------------------------------

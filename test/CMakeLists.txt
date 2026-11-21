@@ -497,6 +497,7 @@ if(Catch2_FOUND)
   if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_quadrature.cpp
+      test_galerkin_projection.cpp
       test_omega_h_intersection_rhs_integrator.cpp
       test_omega_h_mass_integrator.cpp
       test_omega_h_mc_rhs_integrator.cpp

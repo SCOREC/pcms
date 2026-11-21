@@ -86,6 +86,47 @@ public:
     }
   }
 
+  /// @return whether the inner evaluator supports the transpose
+  [[nodiscard]] bool SupportsTranspose() const noexcept override
+  {
+    return inner_->SupportsTranspose();
+  }
+
+  // Public for the same reason as EvaluateImpl.
+  void EvaluateTransposeImpl(Rank2View<const T, DeviceMemorySpace> values,
+                             Field<T>& functional) const override
+  {
+    PCMS_FUNCTION_TIMER;
+    const auto bases = Bases(functional.GetData().GetValueBasis());
+    if (bases.size() == 1) {
+      inner_->EvaluateTranspose(
+        ValueView<const T, DeviceMemorySpace>(bases.front(), values),
+        functional);
+      return;
+    }
+    if constexpr (std::is_same_v<T, Real>) {
+      // E^T T_1^T ... T_n^T
+      const std::size_t blocks =
+        values.extent(1) / bases.back().system->Dimension();
+      Scratch scratch;
+      Rank2View<const Real, DeviceMemorySpace> in = values;
+      for (std::size_t k = bases.size() - 1; k > 0; --k) {
+        const auto out =
+          Storage(scratch, bases[k - 1], values.extent(0), blocks);
+        transforms_[k - 1]().ApplyTranspose(
+          ValueView<const Real, DeviceMemorySpace>(bases[k], in),
+          ValueView<Real, DeviceMemorySpace>(bases[k - 1], out));
+        in = out;
+      }
+      inner_->EvaluateTranspose(
+        ValueView<const Real, DeviceMemorySpace>(bases.front(), in),
+        functional);
+    } else {
+      throw pcms_error("TransformedPointEvaluator::EvaluateTranspose: basis "
+                       "transformations require T == Real");
+    }
+  }
+
   [[nodiscard]] ValueBasis OutputBasis(const ValueBasis& stored) const override
   {
     return Bases(stored).back();

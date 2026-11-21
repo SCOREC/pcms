@@ -364,7 +364,9 @@ struct SetFieldFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(int i) const
   {
-    if constexpr (std::is_invocable_v<Func, Real, Real, Real>) {
+    if constexpr (std::is_invocable_v<Func, Real>) {
+      data(i) = f(coords(i, 0));
+    } else if constexpr (std::is_invocable_v<Func, Real, Real, Real>) {
       data(i) = f(coords(i, 0), coords(i, 1), coords(i, 2));
     } else {
       data(i) = f(coords(i, 0), coords(i, 1));
@@ -373,16 +375,17 @@ struct SetFieldFunctor
 };
 
 // Set scalar DOF data by sampling func at each DOF-holder coordinate. The
-// arity of func selects the spatial dimension: func(x, y) for 2D layouts,
-// func(x, y, z) for 3D.
+// arity of func selects the spatial dimension: func(x) for 1D layouts,
+// func(x, y) for 2D, func(x, y, z) for 3D.
 template <typename ExecutionSpace = DefaultExecutionSpace, typename Func>
 inline void SetField(Field<Real>& field, Func func)
 {
   using MemorySpace = typename ExecutionSpace::memory_space;
 
-  static_assert(std::is_invocable_v<Func, Real, Real> ||
+  static_assert(std::is_invocable_v<Func, Real> ||
+                  std::is_invocable_v<Func, Real, Real> ||
                   std::is_invocable_v<Func, Real, Real, Real>,
-                "SetField requires func(x, y) or func(x, y, z)");
+                "SetField requires func(x), func(x, y) or func(x, y, z)");
 
   auto dof_coords = field.GetLayout().GetDOFHolderCoordinates().GetValues();
   int n = static_cast<int>(dof_coords.extent(0));
@@ -403,8 +406,8 @@ inline void SetField(Field<Real>& field, Func func)
 // Set multi-component DOF data by sampling func at each DOF-holder
 // coordinate, writing the components through the out pointer. The arity of
 // func selects the spatial dimension: func(x, y, out) for 2D layouts,
-// func(x, y, z, out) for 3D. Host-side; the component count comes from the
-// field's layout.
+// func(x, y, z, out) for 3D, func(x, out) for 1D. Host-side; the component
+// count comes from the field's layout.
 template <typename Func>
 inline void SetFieldComponents(Field<Real>& field, Func func)
 {
@@ -412,16 +415,19 @@ inline void SetFieldComponents(Field<Real>& field, Func func)
   const int n = static_cast<int>(coords.extent(0));
   const int num_components = field.GetLayout().GetNumComponents();
 
-  static_assert(std::is_invocable_v<Func, Real, Real, Real*> ||
+  static_assert(std::is_invocable_v<Func, Real, Real*> ||
+                  std::is_invocable_v<Func, Real, Real, Real*> ||
                   std::is_invocable_v<Func, Real, Real, Real, Real*>,
-                "SetFieldComponents requires func(x, y, out) or "
-                "func(x, y, z, out)");
+                "SetFieldComponents requires func(x, out), func(x, y, out) "
+                "or func(x, y, z, out)");
 
   const auto coords_host = CopyCoordinatesToHost(coords);
   std::vector<Real> data(static_cast<size_t>(n) * num_components);
   for (int i = 0; i < n; ++i) {
     Real* out = &data[static_cast<size_t>(i) * num_components];
-    if constexpr (std::is_invocable_v<Func, Real, Real, Real, Real*>) {
+    if constexpr (std::is_invocable_v<Func, Real, Real*>) {
+      func(coords_host(i, 0), out);
+    } else if constexpr (std::is_invocable_v<Func, Real, Real, Real, Real*>) {
       func(coords_host(i, 0), coords_host(i, 1), coords_host(i, 2), out);
     } else {
       func(coords_host(i, 0), coords_host(i, 1), out);

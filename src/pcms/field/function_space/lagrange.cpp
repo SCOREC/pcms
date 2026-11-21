@@ -34,6 +34,7 @@ using omega_h::OmegaHLagrangeLayout;
 using uniform_grid::UniformGridEvaluatorFactory;
 using uniform_grid::UniformGridFieldLayout;
 using uniform_grid::UniformGridGeometry;
+using uniform_grid::VisitUniformGrid;
 } // namespace pcms
 
 namespace pcms
@@ -189,15 +190,11 @@ std::shared_ptr<const FunctionSpace> CreateLagrangeSpace(
                                      options);
   }
 #endif
-  if (auto grid =
-        std::dynamic_pointer_cast<const UniformGridGeometry<2>>(geometry)) {
-    return CreateUniformGridLagrangeSpace<2>(std::move(grid), order,
-                                             num_components, options);
-  }
-  if (auto grid =
-        std::dynamic_pointer_cast<const UniformGridGeometry<3>>(geometry)) {
-    return CreateUniformGridLagrangeSpace<3>(std::move(grid), order,
-                                             num_components, options);
+  if (auto space = VisitUniformGrid(geometry, [&](auto grid) {
+        return CreateUniformGridLagrangeSpace(std::move(grid), order,
+                                              num_components, options);
+      })) {
+    return space;
   }
   throw pcms_error("CreateLagrangeSpace: only Omega_h and uniform-grid "
                    "geometries are supported");

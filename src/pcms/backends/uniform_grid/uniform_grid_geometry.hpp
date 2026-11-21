@@ -150,8 +150,41 @@ private:
 };
 
 // instantiated in geometry.cpp
+extern template class UniformGridGeometry<1>;
 extern template class UniformGridGeometry<2>;
 extern template class UniformGridGeometry<3>;
+
+/// @brief Calls `f` with `geometry` as its typed uniform-grid geometry.
+/// @return the result of `f`, or an empty one if `geometry` is not a uniform
+///         grid
+template <typename F>
+[[nodiscard]] auto VisitUniformGrid(
+  const std::shared_ptr<const Geometry>& geometry,
+  F f) -> decltype(f(std::shared_ptr<const UniformGridGeometry<1>>{}))
+{
+  switch (geometry->GetCoordinateSystem()->Dimension()) {
+    case 1:
+      if (auto grid =
+            std::dynamic_pointer_cast<const UniformGridGeometry<1>>(geometry)) {
+        return f(std::move(grid));
+      }
+      break;
+    case 2:
+      if (auto grid =
+            std::dynamic_pointer_cast<const UniformGridGeometry<2>>(geometry)) {
+        return f(std::move(grid));
+      }
+      break;
+    case 3:
+      if (auto grid =
+            std::dynamic_pointer_cast<const UniformGridGeometry<3>>(geometry)) {
+        return f(std::move(grid));
+      }
+      break;
+    default: break;
+  }
+  return {};
+}
 
 } // namespace pcms::uniform_grid
 

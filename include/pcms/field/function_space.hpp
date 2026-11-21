@@ -12,6 +12,7 @@
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/geometry/geometry.hpp"
+#include "pcms/geometry/quadrature.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
@@ -51,10 +52,9 @@ public:
   ///        when there is one
   /// @throws pcms_error if `geometry` is null or is not the evaluator
   ///         source's geometry
-  explicit FunctionSpace(
-    std::shared_ptr<const FieldLayout> layout,
-    std::shared_ptr<const PointEvaluatorFactory> evaluator,
-    std::shared_ptr<const Geometry> geometry)
+  explicit FunctionSpace(std::shared_ptr<const FieldLayout> layout,
+                         std::shared_ptr<const PointEvaluatorFactory> evaluator,
+                         std::shared_ptr<const Geometry> geometry)
     : layout_(std::move(layout)),
       evaluator_(std::move(evaluator)),
       geometry_(std::move(geometry))
@@ -87,6 +87,17 @@ public:
     return geometry_->GetCoordinateSystem();
   }
 
+  /// @brief The space's natural quadrature on its geometry: exact for the
+  ///        product of two functions of the space; built on first use.
+  /// @throws pcms_error if the space has none
+  [[nodiscard]] const Quadrature& GetQuadrature() const
+  {
+    if (!quadrature_) {
+      quadrature_ = CreateQuadrature();
+    }
+    return *quadrature_;
+  }
+
   /// @return whether the space's evaluator source supports `op`; for a space
   ///         without one, whether `op` is Value
   [[nodiscard]] bool Supports(DifferentialOperator op) const noexcept override;
@@ -115,6 +126,14 @@ public:
     std::string name, std::unique_ptr<FieldData<T>> data) const;
 
 protected:
+  /// @brief The space's natural quadrature (GetQuadrature).
+  /// @throws pcms_error unless the kind overrides it
+  [[nodiscard]] virtual Quadrature CreateQuadrature() const
+  {
+    throw pcms_error("FunctionSpace::GetQuadrature: this space has no "
+                     "quadrature");
+  }
+
   /// @brief Creates the data of a field of this space.
   /// The default holds the values of the layout's DOF holders in a
   /// SimpleFieldData; kinds with their own storage override it.
@@ -165,6 +184,7 @@ private:
   std::shared_ptr<const FieldLayout> layout_;
   std::shared_ptr<const PointEvaluatorFactory> evaluator_;
   std::shared_ptr<const Geometry> geometry_;
+  mutable std::optional<Quadrature> quadrature_;
 };
 
 template <typename T>

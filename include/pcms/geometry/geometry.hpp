@@ -5,6 +5,7 @@
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/geometry/bound_points.hpp"
+#include "pcms/geometry/quadrature.hpp"
 #include "pcms/geometry/supports.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
@@ -181,7 +182,19 @@ protected:
   [[nodiscard]] virtual std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const = 0;
 
+  /// @brief Quadrature over this geometry's cells by `rule`
+  ///        (CreateGaussQuadrature, CreateMonteCarloQuadrature).
+  /// @return points generated in the cells, bound without a search, and
+  ///         their weights
+  /// @throws pcms_error unless the kind overrides it for the rule, or if it
+  ///         cannot generate the rule
+  [[nodiscard]] virtual Quadrature CreateQuadrature(
+    const detail::QuadratureRule& rule) const;
+
 private:
+  friend Quadrature detail::CreateQuadrature(
+    const Geometry& geometry, const detail::QuadratureRule& rule);
+
   // creates the passkey of BoundPoints::Rebind
   struct RebindKey : BoundPoints::RebindKey
   {

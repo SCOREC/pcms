@@ -3,6 +3,7 @@
 
 #include "pcms/geometry/geometry.hpp"
 #include <string>
+#include <vector>
 
 namespace pcms::detail
 {
@@ -36,6 +37,12 @@ void CheckEntityIds(Kokkos::View<const LO*, DeviceMemorySpace> ids,
 /// @param bound the bound points of the weights
 void ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
                          const BoundPoints& bound);
+
+/// @brief The n-point Gauss-Legendre rule on [-1, 1].
+/// @param n number of points
+/// @param nodes the nodes, ascending
+/// @param weights the weights of the nodes
+void GaussLegendre(int n, std::vector<Real>& nodes, std::vector<Real>& weights);
 
 } // namespace pcms::detail
 

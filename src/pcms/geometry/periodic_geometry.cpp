@@ -1,4 +1,5 @@
 #include "pcms/geometry/periodic_geometry.hpp"
+#include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/detail/arrays.hpp"
 #include "pcms/utility/assert.hpp"
@@ -11,11 +12,8 @@
 namespace pcms
 {
 
-namespace
-{
-
-/// Gauss-Legendre nodes (ascending) and weights on [-1, 1].
-void GaussLegendre(int n, std::vector<Real>& nodes, std::vector<Real>& weights)
+void detail::GaussLegendre(int n, std::vector<Real>& nodes,
+                           std::vector<Real>& weights)
 {
   nodes.assign(n, 0);
   weights.assign(n, 0);
@@ -41,8 +39,6 @@ void GaussLegendre(int n, std::vector<Real>& nodes, std::vector<Real>& weights)
     weights[n - 1 - i] = 2 / ((1 - x * x) * dp * dp);
   }
 }
-
-} // namespace
 
 PeriodicGeometry::PeriodicGeometry(
   std::shared_ptr<const CoordinateSystem> system, LO num_cells, Real period,
@@ -100,7 +96,7 @@ Quadrature PeriodicGeometry::CreateQuadrature(
   const int n = std::max(1, gauss_rule->order / 2 + 1);
   std::vector<Real> nodes;
   std::vector<Real> gauss;
-  GaussLegendre(n, nodes, gauss);
+  detail::GaussLegendre(n, nodes, gauss);
   const Real h = period_ / num_cells_;
   Kokkos::View<Real**, HostMemorySpace> points(
     "gauss_points", static_cast<std::size_t>(num_cells_) * n, 1);

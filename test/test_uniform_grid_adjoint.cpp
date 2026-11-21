@@ -6,6 +6,8 @@
 #include <pcms/field/embedding.hpp>
 #include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/geometry/product_geometry.hpp>
+#include <pcms/transfer/l2_inner_product.hpp>
+#include <pcms/transfer/projection.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/utility/coordinate_systems/parameter.hpp>
@@ -392,5 +394,178 @@ TEST_CASE("BOUT++-like embedded grid: the transpose at points translated by "
     for (std::size_t i = 0; i < num_dofs; ++i) {
       CHECK(ety[i] == Catch::Approx(reference[i]).margin(1e-9));
     }
+  }
+}
+
+namespace
+{
+
+/// @return the integral of x^a over [lo, hi]
+Real MonomialIntegral(int a, Real lo, Real hi)
+{
+  return (std::pow(hi, a + 1) - std::pow(lo, a + 1)) / (a + 1);
+}
+
+/// @return the sum of the weights times f at the points of `quadrature`
+template <typename F>
+Real Integrate(const pcms::Quadrature& quadrature, F f)
+{
+  const auto x = pcms::test::CopyCoordinatesToHost(
+    quadrature.points->LocatedPoints().GetValues());
+  const auto w =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace{}, quadrature.weights);
+  Real sum = 0;
+  for (std::size_t p = 0; p < w.extent(0); ++p) {
+    sum += w(p) * f(&x(p, 0));
+  }
+  return sum;
+}
+
+/// @return sqrt(det g_ij) of GInv
+Real VolumeFactor()
+{
+  const Real det = GInv[0] * (GInv[4] * GInv[8] - GInv[5] * GInv[7]) -
+                   GInv[1] * (GInv[3] * GInv[8] - GInv[5] * GInv[6]) +
+                   GInv[2] * (GInv[3] * GInv[7] - GInv[4] * GInv[6]);
+  return 1 / std::sqrt(det);
+}
+
+} // namespace
+
+TEST_CASE("Uniform-grid quadrature is exact for polynomials of its degree in "
+          "each coordinate",
+          "[uniform_grid][quadrature]")
+{
+  const std::vector<Real> lo = {-1.0, 0.5, 0.0};
+  const std::vector<Real> hi = {2.0, 2.5, 1.5};
+  for (const auto& system : {pcms::csys::CreateCartesian(3),
+                             pcms::csys::CreateParameterSystem("xi", 3)}) {
+    const auto grid = Grid3(system);
+    for (int order = 1; order <= 5; ++order) {
+      CAPTURE(order, system->Kind());
+      const auto quadrature = pcms::CreateGaussQuadrature(grid, order);
+      const int per_axis = order / 2 + 1;
+      CHECK(quadrature.points->NumPoints() ==
+            4 * 3 * 5 * per_axis * per_axis * per_axis);
+      CHECK(quadrature.points->GetGeometry() == grid);
+      for (int a = 0; a <= order; ++a) {
+        for (int c = 0; c <= order; c += 2) {
+          const int b = order - a;
+          const Real expected = MonomialIntegral(a, lo[0], hi[0]) *
+                                MonomialIntegral(b, lo[1], hi[1]) *
+                                MonomialIntegral(c, lo[2], hi[2]);
+          const Real sum = Integrate(quadrature, [&](const Real* x) {
+            return std::pow(x[0], a) * std::pow(x[1], b) * std::pow(x[2], c);
+          });
+          CHECK(sum == Catch::Approx(expected).epsilon(1e-12).margin(1e-12));
+        }
+      }
+    }
+  }
+  const auto rz = Grid2(pcms::csys::CreateCylindricalRZ());
+  const auto quadrature = pcms::CreateGaussQuadrature(rz, 3);
+  const Real sum = Integrate(
+    quadrature, [](const Real* x) { return x[0] * x[0] * x[1] * x[1] * x[1]; });
+  CHECK(sum == Catch::Approx(MonomialIntegral(3, -1.0, 2.0) *
+                             MonomialIntegral(3, 0.5, 2.5))
+                 .epsilon(1e-12));
+  CHECK_THROWS(pcms::CreateMonteCarloQuadrature(rz, 2));
+  CHECK_THROWS(pcms::CreateGaussQuadrature(rz, 0));
+  CHECK(pcms::CreateLagrangeSpace(Grid2(), 0, 1)
+          ->CreateQuadrature()
+          .points->NumPoints() == 20);
+  CHECK(pcms::CreateLagrangeSpace(Grid2(), 1, 1)
+          ->CreateQuadrature()
+          .points->NumPoints() == 80);
+}
+
+TEST_CASE("Product of a uniform grid and a periodic axis: the tensor "
+          "quadrature",
+          "[uniform_grid][product][quadrature]")
+{
+  const auto plane = pcms::CreateLagrangeSpace(Grid2(), 1, 1);
+  const auto space = pcms::CreateProductSpace(
+    plane, pcms::CreateFourierSpace(
+             pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), 5),
+             {0, 1, 2}));
+  const auto u = ProductFunction(*plane, *space);
+  const Real expected = (MonomialIntegral(1, -1.0, 2.0) * 2.0 +
+                         2 * 3.0 * MonomialIntegral(1, 0.5, 2.5)) *
+                        TwoPi;
+  CHECK(pcms::L2Integral(space).Apply(u) ==
+        Catch::Approx(expected).epsilon(1e-12));
+}
+
+TEST_CASE("Conservative projection into a uniform grid keeps the integral",
+          "[uniform_grid][projection]")
+{
+  // nested cells: the target rules integrate source x target basis exactly
+  const auto system = pcms::csys::CreateCylindricalRZ();
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {1.0, -0.5};
+  grid.edge_length = {2.0, 1.0};
+  grid.divisions = {6, 4};
+  const auto source_space = pcms::CreateLagrangeSpace(
+    pcms::uniform_grid::CreateGeometry(grid, system), 1, 1);
+  grid.divisions = {12, 8};
+  const auto target_geometry = pcms::uniform_grid::CreateGeometry(grid, system);
+  auto source = source_space->CreateFunction<Real>(
+    "n", pcms::test::ComponentsBasis(*source_space));
+  SetDofs(source, Pseudo(static_cast<std::size_t>(
+                           source_space->GetLayout()->GetNumDofHolder()),
+                         7));
+  const Real expected = pcms::L2Integral(source_space).Apply(source);
+  for (const int order : {0, 1}) {
+    const auto target_space =
+      pcms::CreateLagrangeSpace(target_geometry, order, 1);
+    const pcms::L2Integral integral(target_space);
+    for (const auto mass :
+         {pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped}) {
+      CAPTURE(order, static_cast<int>(mass));
+      pcms::ProjectionOptions options;
+      options.mass_matrix_type = mass;
+      options.solve.relative_tolerance = 1e-14;
+      auto target = target_space->CreateFunction<Real>(
+        "n", pcms::test::ComponentsBasis(*target_space));
+      pcms::CreateProjection(source_space, target_space, options)
+        ->Apply(source, target);
+      CHECK(integral.Apply(target) == Catch::Approx(expected).epsilon(1e-12));
+    }
+  }
+}
+
+TEST_CASE("BOUT++-like embedded grid with a given metric: quadrature and "
+          "conservative projection",
+          "[uniform_grid][embedding][projection]")
+{
+  const Bout coarse(2);
+  const Bout fine(4);
+  const auto quadrature = fine.fields->CreateQuadrature();
+  CHECK(quadrature.points->GetGeometry() == fine.geometry);
+  CHECK(Integrate(quadrature, [](const Real*) { return 1.0; }) ==
+        Catch::Approx(Wedge * VolumeFactor()).epsilon(1e-12));
+  const auto rule = pcms::CreateGaussQuadrature(fine.geometry, 2);
+  CHECK(
+    Integrate(rule,
+              [](const Real* x) { return x[0] * x[0] * x[1] * x[2] * x[2]; }) ==
+    Catch::Approx(VolumeFactor() / 3 / 2 * Wedge * Wedge * Wedge / 3)
+      .epsilon(1e-12));
+
+  auto source = coarse.fields->CreateFunction<Real>("P");
+  SetDofs(source, Pseudo(static_cast<std::size_t>(
+                           coarse.fields->GetLayout()->GetNumDofHolder()),
+                         8));
+  const Real expected = pcms::L2Integral(coarse.fields).Apply(source);
+  for (const auto mass :
+       {pcms::MassMatrixType::Consistent, pcms::MassMatrixType::Lumped}) {
+    CAPTURE(static_cast<int>(mass));
+    pcms::ProjectionOptions options;
+    options.mass_matrix_type = mass;
+    options.solve.relative_tolerance = 1e-14;
+    auto target = fine.fields->CreateFunction<Real>("P");
+    pcms::CreateProjection(coarse.fields, fine.fields, options)
+      ->Apply(source, target);
+    CHECK(pcms::L2Integral(fine.fields).Apply(target) ==
+          Catch::Approx(expected).epsilon(1e-12));
   }
 }

@@ -167,7 +167,8 @@ private:
 /// of the position's Jacobian: vectors by J, covectors by J^-T, which needs as
 /// many parameters as coordinates). Only Value is supported, and the fields are
 /// plain DOF holders data (the data of a SimpleFieldData), which is what
-/// uniform-grid spaces use.
+/// uniform-grid spaces use. CreateQuadrature is `space`'s rule bound on the
+/// embedded geometry, with the weights of the physical measure.
 /// @throws pcms_error if `embedded` is not an embedded geometry of
 ///         `space`'s geometry
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateEmbeddedSpace(

@@ -140,9 +140,23 @@ public:
     return grid_;
   }
 
+  /// @brief The tensor Gauss-Legendre rule of the cells, exact for
+  ///        polynomials of degree `order` in each coordinate, before binding.
+  /// @return the points [point][axis] and their weights in the coordinate
+  ///         measure
+  /// @throws pcms_error for an order below 1
+  [[nodiscard]] std::pair<Kokkos::View<Real**, DeviceMemorySpace>,
+                          Kokkos::View<Real*, DeviceMemorySpace>>
+  CellRule(int order) const;
+
 protected:
   [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override;
+
+  /// @brief The Gauss rule (CellRule), with the coordinate system's volume
+  ///        factor in the weights if the coordinate system has a metric.
+  [[nodiscard]] Quadrature CreateQuadrature(
+    const pcms::detail::QuadratureRule& rule) const override;
 
 private:
   UniformGrid<Dim> grid_;

@@ -374,6 +374,13 @@ protected:
   [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override;
 
+  /// @brief Quadrature over the elements: MeshFields' reference rule of the
+  ///        order (Gauss) or uniform random samples on each element.
+  /// @throws pcms_error if the order has no rule, if the rule is
+  ///         deterministic and MeshFields is not enabled, or for another rule
+  [[nodiscard]] Quadrature CreateQuadrature(
+    const pcms::detail::QuadratureRule& rule) const override;
+
 private:
   /// The containing-element search, built on first use.
   const GridPointSearchVariant& Search() const;

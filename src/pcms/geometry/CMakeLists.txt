@@ -2,9 +2,11 @@ set(
         PCMS_GEOMETRY_HEADERS
         ../../../include/pcms/geometry/geometry.hpp
         ../../../include/pcms/geometry/bound_points.hpp
+        ../../../include/pcms/geometry/quadrature.hpp
         ../../../include/pcms/geometry/supports.hpp
         ../../../include/pcms/geometry/detail/bound_points.hpp
         ../../../include/pcms/geometry/detail/geometry.hpp
+        ../../../include/pcms/geometry/detail/quadrature.hpp
 )
 
 set(

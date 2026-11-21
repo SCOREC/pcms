@@ -10,28 +10,24 @@ namespace pcms
 {
 using uniform_grid::UniformGridFieldLayout;
 using uniform_grid::UniformGridGeometry;
-using uniform_grid::UniformGridSplineEvaluatorFactory2D;
+using uniform_grid::UniformGridSplineEvaluatorFactory;
+using uniform_grid::VisitUniformGrid;
 } // namespace pcms
 
 namespace pcms
 {
 
-std::shared_ptr<const FunctionSpace> CreateSplineSpace(
-  std::shared_ptr<const Geometry> geometry)
+namespace
 {
-  if (geometry == nullptr) {
-    throw pcms_error("CreateSplineSpace: the geometry must not be null");
-  }
-  auto grid_geometry =
-    std::dynamic_pointer_cast<const UniformGridGeometry<2>>(geometry);
-  if (grid_geometry == nullptr) {
-    throw pcms_error(
-      "CreateSplineSpace: only 2D uniform-grid geometries are supported");
-  }
+
+template <unsigned Dim>
+std::shared_ptr<const FunctionSpace> CreateUniformGridSplineSpace(
+  std::shared_ptr<const UniformGridGeometry<Dim>> grid_geometry)
+{
   auto layout =
-    std::make_shared<UniformGridFieldLayout<2>>(grid_geometry, 1, 1);
+    std::make_shared<UniformGridFieldLayout<Dim>>(grid_geometry, 1, 1);
   auto evaluator_factory =
-    std::make_shared<UniformGridSplineEvaluatorFactory2D>(
+    std::make_shared<UniformGridSplineEvaluatorFactory<Dim>>(
       std::move(grid_geometry), layout);
   return std::make_shared<FunctionSpace>(
     layout,
@@ -48,6 +44,30 @@ std::shared_ptr<const FunctionSpace> CreateSplineSpace(
       });
     },
     evaluator_factory, evaluator_factory->GetGeometry());
+}
+
+} // namespace
+
+std::shared_ptr<const FunctionSpace> CreateSplineSpace(
+  std::shared_ptr<const Geometry> geometry)
+{
+  if (geometry == nullptr) {
+    throw pcms_error("CreateSplineSpace: the geometry must not be null");
+  }
+  if (auto space = VisitUniformGrid(
+        geometry,
+        []<unsigned Dim>(std::shared_ptr<const UniformGridGeometry<Dim>> grid)
+          -> std::shared_ptr<const FunctionSpace> {
+          if constexpr (Dim == 3) {
+            return nullptr;
+          } else {
+            return CreateUniformGridSplineSpace(std::move(grid));
+          }
+        })) {
+    return space;
+  }
+  throw pcms_error(
+    "CreateSplineSpace: only 1D and 2D uniform-grid geometries are supported");
 }
 
 } // namespace pcms

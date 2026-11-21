@@ -50,9 +50,10 @@ struct LagrangeOptions
   std::shared_ptr<const Geometry> geometry, int order, int num_components,
   LagrangeOptions options = {});
 
-/// A bicubic spline space on a 2D uniform-grid geometry. Spaces on one
-/// geometry accept each other's BoundPoints.
-/// @throws pcms_error if `geometry` is null or not a 2D uniform-grid geometry
+/// @brief A cubic (1D) or bicubic (2D) spline space on a uniform-grid
+///        geometry.
+/// @throws pcms_error if `geometry` is null or not a 1D or 2D uniform-grid
+///         geometry
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateSplineSpace(
   std::shared_ptr<const Geometry> geometry);
 

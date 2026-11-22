@@ -59,7 +59,7 @@ struct LagrangeOptions
   std::shared_ptr<const Geometry> geometry, int num_components = 1);
 
 /// @name 1D spaces on a periodic geometry (CreatePeriodicGeometry)
-/// Scalar, Real, with Value and Gradient evaluation, EvaluateTranspose and
+/// Real, with Value and Gradient evaluation, EvaluateTranspose and
 /// GetMatrix. DOF holder i is the node i of the geometry's cells (Hermite:
 /// holder 2 i is the value and 2 i + 1 the derivative of node i; Fourier:
 /// holders have no positions).
@@ -73,12 +73,12 @@ struct LagrangeOptions
 
 /// Cubic Hermite: the value and derivative of each node.
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreatePeriodicHermiteSpace(
-  std::shared_ptr<const Geometry> geometry);
+  std::shared_ptr<const Geometry> geometry, int num_components = 1);
 
 /// The periodic cubic spline of the node values (C2; its coefficients are
 /// solved internally, the DOFs are grid values).
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreatePeriodicSplineSpace(
-  std::shared_ptr<const Geometry> geometry);
+  std::shared_ptr<const Geometry> geometry, int num_components = 1);
 
 /// Real Fourier series: for each m of `modes` the DOFs cos(m stride theta)
 /// and, for m > 0, sin(m stride theta), in the order of the list, theta =
@@ -86,23 +86,23 @@ struct LagrangeOptions
 /// period.
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateFourierSpace(
   std::shared_ptr<const Geometry> geometry, std::vector<int> modes,
-  int stride = 1);
+  int stride = 1, int num_components = 1);
 /// @}
 
 /// The product of two scalar spaces: the basis phi_i(a) psi_k(b), DOF (i, k)
-/// with global id gid_a * (global DOFs of b) + gid_b, owned when both are.
+/// with global id gid_a * (global DOFs of b) + gid_b.
 /// Evaluation (Value, and Gradient when both factors have it),
 /// EvaluateTranspose and GetMatrix are the Kronecker products of the factors'
 /// rows, so both factors' evaluators must provide GetMatrix (for Gradient also
 /// of the partials); the natural quadrature is the tensor product of the
-/// factors'. Serial: the factors' layouts have no ghosts.
+/// factors'. Serial: the factors' layouts are on one rank.
 /// @param geometry the product geometry to create the space on, or null for
 ///        CreateProductGeometry(a's geometry, b's geometry); to use the one
 ///        made with a twist-shift identification, or to share one between
 ///        spaces
 /// @throws pcms_error if a factor is null or not scalar, `geometry` is not the
 ///         product geometry of the factors' geometries, or a factor's layout
-///         has ghosts
+///         is distributed
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateProductSpace(
   std::shared_ptr<const FunctionSpace> a,
   std::shared_ptr<const FunctionSpace> b,

@@ -10,6 +10,7 @@
 #include "pcms/utility/detail/arrays.hpp"
 #include "pcms/utility/detail/memory_spaces.hpp"
 #include "../../geometry/periodic_binding.hpp"
+#include "pcms/field/layout/serial.hpp"
 #include "pcms/field/point_rows.hpp"
 #include "quadrature_space.hpp"
 #include <cmath>
@@ -25,69 +26,25 @@ namespace
 
 constexpr Real TwoPi = 2 * std::numbers::pi_v<Real>;
 
-/// A serial layout of `size` DOF holders with one component, at the given
-/// positions (zeros for spaces whose DOFs have none).
-class PeriodicLayout final : public FieldLayout
+/// The serial layout of DOF holders at the given positions (zeros for spaces
+/// whose DOFs have none).
+std::shared_ptr<const FieldLayout> LayoutAt(
+  std::shared_ptr<const Geometry> geometry, const std::vector<Real>& positions,
+  int num_components)
 {
-public:
-  PeriodicLayout(std::shared_ptr<const Geometry> geometry,
-                 const std::vector<Real>& positions)
-    : size_(static_cast<LO>(positions.size())),
-      owned_("owned", size_),
-      gids_("gids", size_),
-      zeros_("zeros", size_)
-  {
-    Kokkos::View<Real**, HostMemorySpace> host_coords("coords", size_, 1);
-    for (LO i = 0; i < size_; ++i) {
-      owned_(i) = true;
-      gids_(i) = i;
-      host_coords(i, 0) = positions[i];
-    }
-    coords_ = pcms::detail::ToDeviceView(host_coords);
-    SetCoordinateSystem(geometry->GetCoordinateSystem());
-    SetGeometry(std::move(geometry));
+  const auto n = positions.size();
+  Kokkos::View<Real**, HostMemorySpace> coords("coords", n, 1);
+  Kokkos::View<GO*, HostMemorySpace> gids("gids", n);
+  Kokkos::View<bool*, HostMemorySpace> owned("owned", n);
+  for (std::size_t i = 0; i < n; ++i) {
+    coords(i, 0) = positions[i];
+    gids(i) = static_cast<GO>(i);
+    owned(i) = true;
   }
-  int GetNumComponents() const override { return 1; }
-  LO GetNumDofHolder() const override { return size_; }
-  GO GetNumGlobalDofHolder() const override { return size_; }
-  bool IsDistributed() const override { return false; }
-  Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override
-  {
-    return MakeRank1View(owned_);
-  }
-  GlobalIDView<HostMemorySpace> GetGidsHost() const override
-  {
-    return GlobalIDView<HostMemorySpace>(gids_.data(), size_);
-  }
-  EntOffsetsArray GetEntOffsets() const override
-  {
-    const auto n = static_cast<std::size_t>(size_);
-    return {0, n, n, n, n};
-  }
-  CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const override
-  {
-    return CoordinateView<DeviceMemorySpace>(GetCoordinateSystem(),
-                                             MakeConstRank2View(coords_));
-  }
-  int GetDimension() const override { return 1; }
-  Rank1View<const LO, HostMemorySpace>
-  GetDOFHolderClassificationDimensionsHost() const override
-  {
-    return MakeRank1View(zeros_);
-  }
-  Rank1View<const LO, HostMemorySpace> GetDOFHolderClassificationIdsHost()
-    const override
-  {
-    return MakeRank1View(zeros_);
-  }
-
-private:
-  LO size_;
-  Kokkos::View<bool*, HostMemorySpace> owned_;
-  Kokkos::View<GO*, HostMemorySpace> gids_;
-  Kokkos::View<LO*, HostMemorySpace> zeros_;
-  Kokkos::View<Real**, DeviceMemorySpace> coords_;
-};
+  return std::make_shared<pcms::detail::SerialLayout>(
+    std::move(geometry), coords, gids, owned, static_cast<GO>(n),
+    num_components);
+}
 
 using pcms::detail::PeriodicBinding;
 using RowsFactory = pcms::detail::RowsEvaluatorFactory<PeriodicBinding>;
@@ -252,7 +209,7 @@ std::shared_ptr<const FunctionSpace> CreatePeriodicLagrangeSpace(
   std::shared_ptr<const Geometry> geometry)
 {
   const auto& g = RequirePeriodic(geometry, "CreatePeriodicLagrangeSpace");
-  auto layout = std::make_shared<PeriodicLayout>(geometry, NodePositions(g, 1));
+  auto layout = LayoutAt(geometry, NodePositions(g, 1), 1);
   const LO num_cells = g.NumCells();
   const Real h = g.Period() / num_cells;
   return MakeSpace(
@@ -267,10 +224,10 @@ std::shared_ptr<const FunctionSpace> CreatePeriodicLagrangeSpace(
 }
 
 std::shared_ptr<const FunctionSpace> CreatePeriodicHermiteSpace(
-  std::shared_ptr<const Geometry> geometry)
+  std::shared_ptr<const Geometry> geometry, int num_components)
 {
   const auto& g = RequirePeriodic(geometry, "CreatePeriodicHermiteSpace");
-  auto layout = std::make_shared<PeriodicLayout>(geometry, NodePositions(g, 2));
+  auto layout = LayoutAt(geometry, NodePositions(g, 2), num_components);
   const LO num_cells = g.NumCells();
   const Real h = g.Period() / num_cells;
   return MakeSpace(
@@ -285,14 +242,14 @@ std::shared_ptr<const FunctionSpace> CreatePeriodicHermiteSpace(
 }
 
 std::shared_ptr<const FunctionSpace> CreatePeriodicSplineSpace(
-  std::shared_ptr<const Geometry> geometry)
+  std::shared_ptr<const Geometry> geometry, int num_components)
 {
   const auto& g = RequirePeriodic(geometry, "CreatePeriodicSplineSpace");
   const LO n = g.NumCells();
   if (n < 3) {
     throw pcms_error("CreatePeriodicSplineSpace: needs at least 3 cells");
   }
-  auto layout = std::make_shared<PeriodicLayout>(geometry, NodePositions(g, 1));
+  auto layout = LayoutAt(geometry, NodePositions(g, 1), num_components);
   const Real h = g.Period() / n;
   // M = S f solves (h / 6) (M[i-1] + 4 M[i] + M[i+1]) = (f[i-1] - 2 f[i] +
   // f[i+1]) / h; both sides are circulant, so S is diagonal in the discrete
@@ -322,7 +279,8 @@ std::shared_ptr<const FunctionSpace> CreatePeriodicSplineSpace(
 }
 
 std::shared_ptr<const FunctionSpace> CreateFourierSpace(
-  std::shared_ptr<const Geometry> geometry, std::vector<int> modes, int stride)
+  std::shared_ptr<const Geometry> geometry, std::vector<int> modes, int stride,
+  int num_components)
 {
   const auto& g = RequirePeriodic(geometry, "CreateFourierSpace");
   if (stride < 1) {
@@ -355,8 +313,8 @@ std::shared_ptr<const FunctionSpace> CreateFourierSpace(
     Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, host_freq);
   const Kokkos::View<const int*, DeviceMemorySpace> device_sin =
     Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, host_sin);
-  auto layout = std::make_shared<PeriodicLayout>(
-    geometry, std::vector<Real>(freq.size(), 0.0));
+  auto layout =
+    LayoutAt(geometry, std::vector<Real>(freq.size(), 0.0), num_components);
   const auto entries = static_cast<int>(freq.size());
   const Real omega = TwoPi / g.Period();
   return MakeSpace(

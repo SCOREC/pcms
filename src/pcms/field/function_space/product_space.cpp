@@ -7,6 +7,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/arrays.hpp"
 #include "product_binding.hpp"
+#include "pcms/field/layout/serial.hpp"
 #include "pcms/field/point_rows.hpp"
 #include "quadrature_space.hpp"
 #include <set>
@@ -36,98 +37,46 @@ Kokkos::View<Real**, HostMemorySpace> HostCoordinates(const FieldLayout& layout)
 }
 
 /// The layout of the product of two serial layouts: holder (i, k) is
-/// i * (holders of b) + k of the factors' local holders, its global id is
-/// gid_a * (global holders of b) + gid_b, it is owned when both are, and its
-/// position is the factors' positions side by side.
-class ProductLayout final : public FieldLayout
+/// i * (holders of b) + k of the factors' holders, its global id is
+/// gid_a * (global holders of b) + gid_b, and its position is the factors'
+/// positions side by side.
+std::shared_ptr<const FieldLayout> ProductLayout(
+  std::shared_ptr<const Geometry> geometry, const FieldLayout& a,
+  const FieldLayout& b)
 {
-public:
-  ProductLayout(std::shared_ptr<const Geometry> geometry, const FieldLayout& a,
-                const FieldLayout& b)
-    : num_global_(a.GetNumGlobalDofHolder() * b.GetNumGlobalDofHolder()),
-      dimension_(a.GetDimension() + b.GetDimension())
-  {
-    if (a.HasGhosts() || b.HasGhosts()) {
-      throw pcms_error("CreateProductSpace: the factors' layouts must have "
-                       "no ghosts (the product is serial)");
-    }
-    const LO na = a.GetNumDofHolder();
-    const LO nb = b.GetNumDofHolder();
-    size_ = na * nb;
-    owned_ = Kokkos::View<bool*, HostMemorySpace>("owned", size_);
-    gids_ = Kokkos::View<GO*, HostMemorySpace>("gids", size_);
-    zeros_ = Kokkos::View<LO*, HostMemorySpace>("zeros", size_);
-    coords_ =
-      Kokkos::View<Real**, HostMemorySpace>("coords", size_, dimension_);
-    const auto gid_a = a.GetGidsHost();
-    const auto gid_b = b.GetGidsHost();
-    const auto owned_a = a.GetOwnedHost();
-    const auto owned_b = b.GetOwnedHost();
-    const auto xa = HostCoordinates(a);
-    const auto xb = HostCoordinates(b);
-    for (LO i = 0; i < na; ++i) {
-      for (LO k = 0; k < nb; ++k) {
-        const LO holder = i * nb + k;
-        owned_(holder) = owned_a(i) && owned_b(k);
-        gids_(holder) = gid_a(i) * b.GetNumGlobalDofHolder() + gid_b(k);
-        for (int d = 0; d < a.GetDimension(); ++d) {
-          coords_(holder, d) = xa(i, d);
-        }
-        for (int d = 0; d < b.GetDimension(); ++d) {
-          coords_(holder, a.GetDimension() + d) = xb(k, d);
-        }
+  if (a.IsDistributed() || b.IsDistributed()) {
+    throw pcms_error("CreateProductSpace: the factors' layouts must be on "
+                     "one rank (the product is serial)");
+  }
+  const LO na = a.GetNumDofHolder();
+  const LO nb = b.GetNumDofHolder();
+  const int da = a.GetDimension();
+  const int db = b.GetDimension();
+  const auto n = static_cast<std::size_t>(na) * nb;
+  Kokkos::View<bool*, HostMemorySpace> owned("owned", n);
+  Kokkos::View<GO*, HostMemorySpace> gids("gids", n);
+  Kokkos::View<Real**, HostMemorySpace> coords("coords", n, da + db);
+  const auto gid_a = a.GetGidsHost();
+  const auto gid_b = b.GetGidsHost();
+  const auto xa = HostCoordinates(a);
+  const auto xb = HostCoordinates(b);
+  for (LO i = 0; i < na; ++i) {
+    for (LO k = 0; k < nb; ++k) {
+      const LO holder = i * nb + k;
+      owned(holder) = true;
+      gids(holder) = gid_a(i) * b.GetNumGlobalDofHolder() + gid_b(k);
+      for (int d = 0; d < da; ++d) {
+        coords(holder, d) = xa(i, d);
+      }
+      for (int d = 0; d < db; ++d) {
+        coords(holder, da + d) = xb(k, d);
       }
     }
-    SetCoordinateSystem(geometry->GetCoordinateSystem());
-    SetGeometry(std::move(geometry));
   }
-  int GetNumComponents() const override { return 1; }
-  LO GetNumDofHolder() const override { return size_; }
-  GO GetNumGlobalDofHolder() const override { return num_global_; }
-  bool IsDistributed() const override { return false; }
-  Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override
-  {
-    return MakeRank1View(owned_);
-  }
-  GlobalIDView<HostMemorySpace> GetGidsHost() const override
-  {
-    return GlobalIDView<HostMemorySpace>(gids_.data(), size_);
-  }
-  EntOffsetsArray GetEntOffsets() const override
-  {
-    const auto n = static_cast<std::size_t>(size_);
-    return {0, n, n, n, n};
-  }
-  CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const override
-  {
-    if (device_coords_.extent(0) != static_cast<std::size_t>(size_)) {
-      device_coords_ = pcms::detail::ToDeviceView(coords_);
-    }
-    return CoordinateView<DeviceMemorySpace>(
-      GetCoordinateSystem(), MakeConstRank2View(device_coords_));
-  }
-  int GetDimension() const override { return dimension_; }
-  Rank1View<const LO, HostMemorySpace>
-  GetDOFHolderClassificationDimensionsHost() const override
-  {
-    return MakeRank1View(zeros_);
-  }
-  Rank1View<const LO, HostMemorySpace> GetDOFHolderClassificationIdsHost()
-    const override
-  {
-    return MakeRank1View(zeros_);
-  }
-
-private:
-  GO num_global_;
-  int dimension_;
-  LO size_ = 0;
-  Kokkos::View<bool*, HostMemorySpace> owned_;
-  Kokkos::View<GO*, HostMemorySpace> gids_;
-  Kokkos::View<LO*, HostMemorySpace> zeros_;
-  Kokkos::View<Real**, HostMemorySpace> coords_;
-  mutable Kokkos::View<Real**, DeviceMemorySpace> device_coords_;
-};
+  return std::make_shared<pcms::detail::SerialLayout>(
+    std::move(geometry), coords, gids, owned,
+    a.GetNumGlobalDofHolder() * b.GetNumGlobalDofHolder());
+}
 
 /// The factors' evaluation matrices at a set of bound points: of the values
 /// (v) and, for Gradient, of the partials (g, row p * dimension + j).
@@ -262,8 +211,7 @@ std::shared_ptr<const FunctionSpace> CreateProductSpace(
       b->GetLayout()->GetNumComponents() != 1) {
     throw pcms_error("CreateProductSpace: the factors must be scalar");
   }
-  auto layout =
-    std::make_shared<ProductLayout>(geometry, *a->GetLayout(), *b->GetLayout());
+  auto layout = ProductLayout(geometry, *a->GetLayout(), *b->GetLayout());
   const LO holders_b = b->GetLayout()->GetNumDofHolder();
   const int da = a->GetGeometry()->GetCoordinateSystem()->Dimension();
   const int db = b->GetGeometry()->GetCoordinateSystem()->Dimension();

@@ -245,6 +245,59 @@ TEST_CASE("Periodic cubic spline: the circulant moments match the dense "
   CHECK(fine->GetLayout()->GetNumDofHolder() == 1024);
 }
 
+TEST_CASE("Periodic spaces: each of two components evaluates as a scalar "
+          "field",
+          "[periodic][components]")
+{
+  const auto geometry = Periodic(8, 2.0, 0.5);
+  const std::vector<std::pair<std::shared_ptr<const pcms::FunctionSpace>,
+                              std::shared_ptr<const pcms::FunctionSpace>>>
+    spaces = {
+      {pcms::CreatePeriodicSplineSpace(geometry), pcms::CreatePeriodicSplineSpace(geometry, 2)},
+      {pcms::CreatePeriodicHermiteSpace(geometry),
+       pcms::CreatePeriodicHermiteSpace(geometry, 2)},
+      {pcms::CreateFourierSpace(geometry, {0, 1, 2}),
+       pcms::CreateFourierSpace(geometry, {0, 1, 2}, 1, 2)}};
+  const auto pts = Points(7, -1.0, 4.0);
+  const auto device = pcms::test::DevicePoints(pts);
+  const auto bound =
+    geometry->Bind(pcms::CoordinateView<pcms::DeviceMemorySpace>(
+      geometry->GetCoordinateSystem(), pcms::MakeConstRank2View(device)));
+  for (const auto& [one, two] : spaces) {
+    REQUIRE(two->GetLayout()->GetNumComponents() == 2);
+    const auto n =
+      static_cast<std::size_t>(one->GetLayout()->GetNumDofHolder());
+    const std::vector<std::vector<Real>> dofs = {pcms::test::Pseudo(n, 1),
+                                                 pcms::test::Pseudo(n, 2)};
+    Kokkos::View<Real**, pcms::HostMemorySpace> values("values", n, 2);
+    for (std::size_t i = 0; i < n; ++i) {
+      values(i, 0) = dofs[0][i];
+      values(i, 1) = dofs[1][i];
+    }
+    auto both = two->CreateFunction<Real>(
+      "both", pcms::ValueBasis{.kind = pcms::ValueKind::Array});
+    both.SetDOFHolderDataHost(
+      pcms::ValueView<const Real, pcms::HostMemorySpace>(
+        both.GetData().GetValueBasis(), pcms::MakeConstRank2View(values)));
+    const auto evaluator = two->CreatePointEvaluator<Real>(bound);
+    Kokkos::View<Real**, pcms::DeviceMemorySpace> out("out", pts.size(), 2);
+    evaluator->Evaluate(
+      both, pcms::ValueView<Real, pcms::DeviceMemorySpace>(
+              evaluator->OutputBasis(both.GetData().GetValueBasis()),
+              pcms::MakeRank2View(out)));
+    const auto host =
+      Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, out);
+    for (int c = 0; c < 2; ++c) {
+      auto scalar = one->CreateFunction<Real>();
+      SetDofs(scalar, dofs[c]);
+      const auto expected = EvaluateAt(*one, scalar, pts);
+      for (std::size_t q = 0; q < pts.size(); ++q) {
+        CHECK(host(q, c) == Catch::Approx(expected[q][0]).margin(1e-12));
+      }
+    }
+  }
+}
+
 TEST_CASE("Periodic spaces: <E x, y> = <x, E^T y> and the matrix is E",
           "[periodic][adjoint]")
 {

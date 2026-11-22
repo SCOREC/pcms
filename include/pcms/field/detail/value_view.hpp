@@ -5,7 +5,6 @@
 #define PCMS_FIELD_DETAIL_VALUE_VIEW_HPP
 
 #include <memory>
-#include <optional>
 #include <string>
 
 namespace pcms::detail
@@ -21,18 +20,6 @@ namespace pcms::detail
   }
   throw pcms_error("ValueTypeOfRank: no FieldValueType label for rank " +
                    std::to_string(rank));
-}
-
-[[nodiscard]] inline std::optional<ComponentScaling> DerivedComponentScaling(
-  const CoordinateSystem& system) noexcept
-{
-  if (!system.IsOrthogonal()) {
-    return ComponentScaling::Natural;
-  }
-  if (system.IsNormalized()) {
-    return ComponentScaling::Physical;
-  }
-  return std::nullopt;
 }
 
 /// @return "" unless both bases have units that differ, else why they differ
@@ -110,14 +97,6 @@ inline void ValidateValueBasis(const ValueBasis& basis)
       "ValidateValueBasis: Vector/Tensor values require a basis coordinate "
       "system");
   }
-  if (basis.scaling == ComponentScaling::Physical &&
-      !basis.system->IsOrthogonal()) {
-    throw pcms_error(
-      "ValidateValueBasis: coordinate system '" +
-      std::string(basis.system->Kind()) +
-      "' has a non-orthogonal basis, so physical components are undefined; "
-      "use ComponentScaling::Natural, or borrow an orthogonal system's basis");
-  }
 }
 
 /// @param blocks whether the values may hold several blocks of the basis's
@@ -175,8 +154,9 @@ inline ValueBasis DefaultValueBasis(int num_components)
 }
 
 /// @brief The basis of a new field: an unset system is the space's, an unset
-///        scaling is derived from the system.
-/// @throws pcms_error if the scaling is ambiguous and not stated
+///        scaling is Physical where the metric is the identity.
+/// @throws pcms_error if a vector or tensor on another system does not state
+///         its scaling
 inline ValueBasis ResolveValueBasis(
   const std::shared_ptr<const CoordinateSystem>& space_system, ValueBasis basis)
 {
@@ -186,25 +166,26 @@ inline ValueBasis ResolveValueBasis(
   if (basis.system == nullptr) {
     basis.system = space_system;
   }
-  if (!basis.scaling) {
-    basis.scaling = detail::DerivedComponentScaling(*basis.system);
+  if (basis.scaling) {
+    return basis;
   }
-  if (!basis.scaling) {
+  if (!basis.system->IsOrthonormal()) {
     throw pcms_error(
-      "CreateFunction: coordinate system '" +
+      "CreateFunction: physical and natural components differ on coordinate "
+      "system '" +
       std::string(basis.system->Kind()) +
-      "' admits both physical and natural components and they differ, so "
-      "the scaling must be stated (set ValueBasis::scaling to "
+      "', so the scaling must be stated (set ValueBasis::scaling to "
       "ComponentScaling::Physical or ComponentScaling::Natural)");
   }
+  basis.scaling = ComponentScaling::Physical;
   return basis;
 }
 
 /// @brief Basis of the gradient of values stored in `stored`.
 ///
 /// Component (j..., i) is the derivative along coordinate i of stored
-/// component (j...). Components are physical on orthogonal systems and
-/// natural otherwise.
+/// component (j...). Components are natural unless the system is
+/// orthonormal.
 /// @param stored basis of the differentiated values
 /// @param system coordinate system of the derivatives
 /// @return the stored basis with one covariant index appended; the parity is
@@ -219,13 +200,9 @@ inline ValueBasis ResolveValueBasis(
   if (system == nullptr) {
     throw pcms_error("GradientBasis: derivatives require a coordinate system");
   }
-  // the partials along the coordinates: natural components, physical ones
-  // where they coincide (PointEvaluatorFactory::CreatePointEvaluator scales
-  // the others)
-  const ComponentScaling scaling =
-    system->IsOrthogonal() && !HasScaleFactors(*system)
-      ? ComponentScaling::Physical
-      : ComponentScaling::Natural;
+  const ComponentScaling scaling = system->IsOrthonormal()
+                                     ? ComponentScaling::Physical
+                                     : ComponentScaling::Natural;
   if (stored.Rank() == 0) {
     return ValueBasis{std::move(system), scaling, values::Covector,
                       stored.parity};

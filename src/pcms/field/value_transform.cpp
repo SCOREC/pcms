@@ -16,7 +16,7 @@ namespace
 constexpr int MaxDimension = 3;
 
 // What happens to the components on one side of the matrix: nothing, or a
-// multiplication or division by the scale factor of their axis.
+// multiplication or division by the scale factor of their axis and variance.
 enum class Scaling : std::uint8_t
 {
   None,
@@ -33,6 +33,7 @@ struct Operation
   bool identity = false;
   bool solve = false;
   bool transposed = false;
+  bool covariant = false;
   Scaling pre = Scaling::None;
   Scaling post = Scaling::None;
 };
@@ -43,17 +44,20 @@ KOKKOS_INLINE_FUNCTION Real SafeFactor(Real h)
   return h > 0 ? h : Real(1);
 }
 
+// `factors` holds sqrt(g_ii) in columns [0, n) and sqrt(g^ii) in [n, 2n)
 KOKKOS_INLINE_FUNCTION void ApplyScaling(
-  Scaling scaling, Kokkos::View<const Real**, DeviceMemorySpace> factors, LO p,
-  int n, Real (&v)[MaxDimension])
+  Scaling scaling, bool covariant,
+  Kokkos::View<const Real**, DeviceMemorySpace> factors, LO p, int n,
+  Real (&v)[MaxDimension])
 {
+  const int offset = covariant ? n : 0;
   if (scaling == Scaling::Multiply) {
     for (int k = 0; k < n; ++k) {
-      v[k] *= SafeFactor(factors(p, k));
+      v[k] *= SafeFactor(factors(p, offset + k));
     }
   } else if (scaling == Scaling::Divide) {
     for (int k = 0; k < n; ++k) {
-      v[k] /= SafeFactor(factors(p, k));
+      v[k] /= SafeFactor(factors(p, offset + k));
     }
   }
 }
@@ -78,7 +82,7 @@ void RunOperation(Operation op, detail::JacobianView jacobian,
         for (int k = 0; k < din; ++k) {
           x[k] = in(p, b * din + k);
         }
-        ApplyScaling(op.pre, pre_factors, p, din, x);
+        ApplyScaling(op.pre, op.covariant, pre_factors, p, din, x);
         if (op.identity) {
           for (int k = 0; k < din; ++k) {
             y[k] = x[k];
@@ -107,7 +111,7 @@ void RunOperation(Operation op, detail::JacobianView jacobian,
             y[k] = x[k];
           }
         }
-        ApplyScaling(op.post, post_factors, p, dout, y);
+        ApplyScaling(op.post, op.covariant, post_factors, p, dout, y);
         for (int k = 0; k < dout; ++k) {
           out(p, b * dout + k) = y[k];
         }
@@ -131,16 +135,17 @@ void CopyValues(Rank2View<const Real, DeviceMemorySpace> in,
     });
 }
 
-// The scale factors sqrt(g_ii) of a coordinate system with them
-// (HasScaleFactors) at the points, from its metric there; empty for another
-// coordinate system or without a metric. With the Jacobian J(p, j, i) = d y_j /
-// d x_i of a map x -> y of the points, `metric` is the metric at their images y
-// and the coordinate system's is J^T g J.
+// The scale factors of `system` at the points, [points][2 dimension]:
+// sqrt(g_ii), then sqrt(g^ii) (0 where g is singular); empty if the system is
+// orthonormal, without a metric or of a dimension above 3. With the Jacobian
+// J(p, j, i) = d y_j / d x_i of a map x -> y of the points, `metric` is the
+// metric at their images y and the system's is J^T g J.
 Kokkos::View<const Real**, DeviceMemorySpace> ScaleFactors(
   const CoordinateSystem& system, detail::MetricView metric,
   detail::JacobianView jacobian = {})
 {
-  if (!detail::HasScaleFactors(system) || metric.extent(0) == 0) {
+  if (system.IsOrthonormal() || metric.extent(0) == 0 ||
+      system.Dimension() > MaxDimension) {
     return {};
   }
   const int dim = system.Dimension();
@@ -148,18 +153,30 @@ Kokkos::View<const Real**, DeviceMemorySpace> ScaleFactors(
   const bool pulled = jacobian.extent(0) > 0;
   Kokkos::View<Real**, DeviceMemorySpace> factors(
     Kokkos::view_alloc(Kokkos::WithoutInitializing, "scale_factors"),
-    metric.extent(0), dim);
+    metric.extent(0), 2 * dim);
   detail::ForEach(
     "ValueTransform::ScaleFactors", static_cast<LO>(factors.extent(0)),
     KOKKOS_LAMBDA(const LO p) {
+      Real g[3][3] = {};
       for (int k = 0; k < dim; ++k) {
-        Real g = pulled ? Real(0) : metric(p, k, k);
-        for (int a = 0; pulled && a < dm; ++a) {
-          for (int b = 0; b < dm; ++b) {
-            g += jacobian(p, a, k) * metric(p, a, b) * jacobian(p, b, k);
+        for (int l = 0; l < dim; ++l) {
+          g[k][l] = pulled ? Real(0) : metric(p, k, l);
+          for (int a = 0; pulled && a < dm; ++a) {
+            for (int b = 0; b < dm; ++b) {
+              g[k][l] +=
+                jacobian(p, a, k) * metric(p, a, b) * jacobian(p, b, l);
+            }
           }
         }
-        factors(p, k) = Kokkos::sqrt(g);
+      }
+      Real inverse[3][3] = {};
+      const bool singular = !(detail::Determinant(g, dim) > 0);
+      if (!singular) {
+        detail::Invert(g, dim, inverse);
+      }
+      for (int k = 0; k < dim; ++k) {
+        factors(p, k) = Kokkos::sqrt(g[k][k]);
+        factors(p, dim + k) = singular ? Real(0) : Kokkos::sqrt(inverse[k][k]);
       }
     });
   // the metric is the caller's, which may release it on return
@@ -266,11 +283,15 @@ ValueBasis ValueTransform::OutputBasis(const ValueBasis& in) const
       std::to_string(jacobian_.extent(1)) + " x " +
       std::to_string(jacobian_.extent(2)) + ")");
   }
+  const bool physical = in.scaling == ComponentScaling::Physical;
+  if (physical && !from_->IsOrthonormal() && from_scale_.extent(1) == 0) {
+    throw pcms_error("ValueTransform::OutputBasis: physical components in '" +
+                     std::string(from_->Kind()) + "' need its metric");
+  }
   ComponentScaling scaling = ComponentScaling::Natural;
   if (scale) {
     scaling = scale_to_;
-  } else if (to_->IsOrthogonal() && (in.scaling == ComponentScaling::Physical ||
-                                     to_->IsNormalized())) {
+  } else if (to_->IsOrthonormal() || (physical && to_scale_.extent(1) > 0)) {
     scaling = ComponentScaling::Physical;
   }
   return ValueBasis{to_,       scaling,           in.variance,
@@ -287,14 +308,13 @@ void ValueTransform::Run(const ValueBasis& in_side,
   op.identity = direction_ == Direction::None;
   op.solve = NeedsInverse(in_side.variance[0]);
   op.transposed = vector != transpose;
-  // physical components of a vector are the natural ones times the scale
-  // factor, of a covector divided by it
+  op.covariant = !vector;
   const bool in_physical =
     in_side.scaling == ComponentScaling::Physical && from_scale_.extent(1) > 0;
   const bool out_physical =
     out_scaling == ComponentScaling::Physical && to_scale_.extent(1) > 0;
-  const Scaling to_natural = vector ? Scaling::Divide : Scaling::Multiply;
-  const Scaling to_physical = vector ? Scaling::Multiply : Scaling::Divide;
+  const Scaling to_natural = Scaling::Divide;
+  const Scaling to_physical = Scaling::Multiply;
   const int din = from_->Dimension();
   const int dout = to_->Dimension();
   if (!transpose) {
@@ -439,14 +459,12 @@ ValueTransform Pushforward(JacobianView jacobian,
 ValueTransform Scale(std::shared_ptr<const CoordinateSystem> system,
                      MetricView metric, ComponentScaling to)
 {
-  if (to == ComponentScaling::Physical && !system->IsOrthogonal()) {
-    throw pcms_error(
-      "Scale: physical components need an orthogonal coordinate system; "
-      "'" +
-      std::string(system->Kind()) + "' is not");
-  }
   auto factors = ScaleFactors(*system, metric);
   if (factors.extent(0) == 0) {
+    if (!system->IsOrthonormal()) {
+      throw pcms_error("Scale: physical components in '" +
+                       std::string(system->Kind()) + "' need its metric");
+    }
     // physical and natural components coincide: an identity of as many points
     factors = Kokkos::View<const Real**, DeviceMemorySpace>(
       Kokkos::View<Real**, DeviceMemorySpace>("unit_scale_factors",

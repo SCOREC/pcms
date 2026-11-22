@@ -109,7 +109,7 @@ TEST_CASE("Parameter systems are labels without a metric",
   CHECK(system->Kind() == "r_theta_zeta");
   CHECK(system->Dimension() == 3);
   CHECK_FALSE(system->HasMetric());
-  CHECK_FALSE(system->IsOrthogonal());
+  CHECK_FALSE(system->IsOrthonormal());
   REQUIRE(system->Identifications().size() == 2);
   CHECK(system->Identifications()[0].length == 2.0 * std::numbers::pi);
   CHECK(system->Identifications()[1].axis == 2);

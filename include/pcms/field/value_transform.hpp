@@ -103,9 +103,9 @@ private:
   View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride> jacobian_;
   std::shared_ptr<const CoordinateSystem> from_;
   std::shared_ptr<const CoordinateSystem> to_;
-  // the scale factors sqrt(g_ii) of the input and output coordinate systems at
-  // the points, [points][dimension]; empty where physical and natural
-  // components coincide or are not defined
+  // the scale factors of the input and output coordinate systems at the
+  // points, [points][2 dimension]: sqrt(g_ii), then sqrt(g^ii); empty where
+  // physical and natural components coincide or there is no metric
   Kokkos::View<const Real**, DeviceMemorySpace> from_scale_;
   Kokkos::View<const Real**, DeviceMemorySpace> to_scale_;
   // the output scaling of a Scale transform

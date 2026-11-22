@@ -275,7 +275,9 @@ TEST_CASE("Parameter-system vectors and covectors come out in the coordinate "
     // components on the parameter system (the space's default is the
     // coordinate system of the embedded geometry)
     auto field = space->CreateFunction<Real>(
-      "e1", {.system = f.embedded->GetParameterSystem(), .variance = variance});
+      "e1", {.system = f.embedded->GetParameterSystem(),
+             .scaling = pcms::ComponentScaling::Natural,
+             .variance = variance});
     pcms::test::SetFieldComponents(field, [](Real, Real, Real* out) {
       out[0] = 1.0;
       out[1] = 0.0;
@@ -672,8 +674,9 @@ std::shared_ptr<const pcms::Function<Real>> ConstantMetric(
     const Real det = g[0] * g[3] - g[1] * g[2];
     g = {g[3] / det, -g[1] / det, -g[2] / det, g[0] / det};
   }
-  auto metric = std::make_shared<pcms::Function<Real>>(
-    space->CreateFunction<Real>("g", {.variance = variance}));
+  auto metric =
+    std::make_shared<pcms::Function<Real>>(space->CreateFunction<Real>(
+      "g", {.scaling = pcms::ComponentScaling::Natural, .variance = variance}));
   pcms::test::SetFieldComponents(*metric, [g](Real, Real, Real* out) {
     for (int k = 0; k < 4; ++k) {
       out[k] = g[k];
@@ -742,7 +745,8 @@ TEST_CASE("An embedded geometry uses a given metric",
     const auto space = pcms::CreateLagrangeSpace(grid, 1, 4);
     const auto mixed =
       std::make_shared<pcms::Function<Real>>(space->CreateFunction<Real>(
-        "g", {.variance = pcms::VarianceSignature{pcms::Variance::Contravariant,
+        "g", {.scaling = pcms::ComponentScaling::Natural,
+              .variance = pcms::VarianceSignature{pcms::Variance::Contravariant,
                                                   pcms::Variance::Covariant}}));
     CHECK_THROWS_WITH(
       pcms::CreateEmbeddedGeometry(grid, position, {.metric = mixed}),
@@ -752,5 +756,83 @@ TEST_CASE("An embedded geometry uses a given metric",
     CHECK_THROWS_WITH(
       pcms::CreateEmbeddedGeometry(grid, position, {.metric = other}),
       ContainsSubstring("rank 2 in the parameter system"));
+  }
+}
+
+TEST_CASE("Physical components on a sheared parameter system scale by the "
+          "metric diagonal",
+          "[embedding][embedded_geometry][metric]")
+{
+  using pcms::ComponentScaling;
+  const auto grid = pcms::test::MakeUnitSquareGrid(4);
+  const auto embedded = pcms::CreateEmbeddedGeometry(
+    grid, pcms::test::MakeSplinePosition(grid, Affine,
+                                         pcms::csys::CreateCartesian(2)));
+  const auto xi = embedded->GetParameterSystem();
+  const auto bound = embedded->Bind(
+    pcms::test::CreateDeviceCoordinateView({0.3, 0.6}, xi, 2).coordinate_view);
+  // sqrt(g_ii) and sqrt(g^ii) of g = A^T A
+  const auto g = InducedMetric(1.0);
+  const Real det = g[0] * g[3] - g[1] * g[2];
+  const std::array<Real, 2> vector_factors{std::sqrt(g[0]), std::sqrt(g[3])};
+  const std::array<Real, 2> covector_factors{std::sqrt(g[3] / det),
+                                             std::sqrt(g[0] / det)};
+  const auto to_physical =
+    pcms::detail::Scale(xi, bound->Metric(), ComponentScaling::Physical);
+  const auto to_natural =
+    pcms::detail::Scale(xi, bound->Metric(), ComponentScaling::Natural);
+  const auto space =
+    pcms::CreateEmbeddedSpace(embedded, pcms::CreateLagrangeSpace(grid, 1, 2));
+  const auto evaluator = space->CreatePointEvaluator<Real>(bound);
+  for (const bool covariant : {false, true}) {
+    CAPTURE(covariant);
+    const auto variance =
+      covariant ? pcms::values::Covector : pcms::values::Vector;
+    const auto& factors = covariant ? covector_factors : vector_factors;
+    const pcms::ValueBasis natural{xi, ComponentScaling::Natural, variance};
+    const pcms::ValueBasis physical{xi, ComponentScaling::Physical, variance};
+    REQUIRE(to_physical.OutputBasis(natural) == physical);
+
+    // natural (1, 1) to physical and back
+    Kokkos::View<Real**, DeviceMemorySpace> values("values", 1, 2);
+    Kokkos::deep_copy(values, 1.0);
+    to_physical.Apply(pcms::ValueView<Real, DeviceMemorySpace>(
+                        natural, pcms::MakeRank2View(values)),
+                      pcms::ValueView<Real, DeviceMemorySpace>(
+                        physical, pcms::MakeRank2View(values)));
+    auto host =
+      Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), values);
+    CHECK_THAT(host(0, 0), WithinAbs(factors[0], 1e-12));
+    CHECK_THAT(host(0, 1), WithinAbs(factors[1], 1e-12));
+    to_natural.Apply(pcms::ValueView<Real, DeviceMemorySpace>(
+                       physical, pcms::MakeRank2View(values)),
+                     pcms::ValueView<Real, DeviceMemorySpace>(
+                       natural, pcms::MakeRank2View(values)));
+    Kokkos::deep_copy(host, values);
+    CHECK_THAT(host(0, 0), WithinAbs(1.0, 1e-12));
+    CHECK_THAT(host(0, 1), WithinAbs(1.0, 1e-12));
+
+    // the physical component 1 along xi1 is a unit vector in (x, y): along
+    // d x / d xi1 = A e1, or grad xi1 = A^-T e1
+    auto field =
+      space->CreateFunction<Real>("e1", {.system = xi,
+                                         .scaling = ComponentScaling::Physical,
+                                         .variance = variance});
+    pcms::test::SetFieldComponents(field, [](Real, Real, Real* out) {
+      out[0] = 1.0;
+      out[1] = 0.0;
+    });
+    const auto basis = evaluator->OutputBasis(field.GetData().GetValueBasis());
+    CHECK(basis.scaling == ComponentScaling::Physical);
+    Kokkos::View<Real**, DeviceMemorySpace> out("out", 1, 2);
+    evaluator->Evaluate(field, pcms::ValueView<Real, DeviceMemorySpace>(
+                                 basis, pcms::MakeRank2View(out)));
+    Kokkos::deep_copy(host, out);
+    const std::array<Real, 2> direction =
+      covariant ? std::array<Real, 2>{A[1][1], -A[0][1]}
+                : std::array<Real, 2>{A[0][0], A[1][0]};
+    const Real length = std::hypot(direction[0], direction[1]);
+    CHECK_THAT(host(0, 0), WithinAbs(direction[0] / length, 1e-12));
+    CHECK_THAT(host(0, 1), WithinAbs(direction[1] / length, 1e-12));
   }
 }

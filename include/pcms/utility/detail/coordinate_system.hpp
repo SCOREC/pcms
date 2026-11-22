@@ -17,15 +17,6 @@ namespace pcms::detail
   return *a == *b;
 }
 
-/// @return whether the physical components of `system` are its natural ones
-///         times per-point scale factors sqrt(g_ii): an orthogonal system
-///         whose metric varies
-[[nodiscard]] inline bool HasScaleFactors(
-  const CoordinateSystem& system) noexcept
-{
-  return system.IsOrthogonal() && system.HasMetric() && !system.IsNormalized();
-}
-
 /// A Cartesian system whose dimension is not yet known ("cartesian
 /// (dimension deferred)"): ResolveCoordinateSystem replaces it by the
 /// Cartesian system of the data's dimension.

@@ -64,14 +64,6 @@ void bind_coordinate_system_module(py::module& m)
         return self.ptr->Dimension();
       },
       "Number of coordinate columns")
-    .def("is_orthogonal",
-         [](const Immutable<CoordinateSystem>& self) {
-           return self.ptr->IsOrthogonal();
-         })
-    .def("is_normalized",
-         [](const Immutable<CoordinateSystem>& self) {
-           return self.ptr->IsNormalized();
-         })
     .def("is_orthonormal",
          [](const Immutable<CoordinateSystem>& self) {
            return self.ptr->IsOrthonormal();

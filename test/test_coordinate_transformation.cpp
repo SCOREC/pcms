@@ -84,9 +84,10 @@ TEST_CASE("coordinate systems: structural equality")
   REQUIRE(pcms::csys::CreateCylindricalRZ()->Dimension() == 2);
   REQUIRE(pcms::csys::CreateCylindricalRThetaZ()->Dimension() == 3);
 
-  // The analytic orthogonal coordinate systems are orthogonal
-  REQUIRE(pcms::csys::CreateCartesian(3)->IsOrthogonal());
-  REQUIRE(pcms::csys::CreateCylindricalRThetaZ()->IsOrthogonal());
+  // Cartesian and cylindrical RZ have the identity metric, RThetaZ does not
+  REQUIRE(pcms::csys::CreateCartesian(3)->IsOrthonormal());
+  REQUIRE(pcms::csys::CreateCylindricalRZ()->IsOrthonormal());
+  REQUIRE_FALSE(pcms::csys::CreateCylindricalRThetaZ()->IsOrthonormal());
 }
 
 TEST_CASE("coordinate systems: ResolveCoordinateSystem resolves the deferred "
@@ -444,8 +445,7 @@ TEST_CASE("ValueView validates component counts and basis")
       ValueBasis{nullptr, ComponentScaling::Physical, pcms::values::Vector},
       pcms::MakeConstRank2View(data3))),
     ContainsSubstring("basis coordinate system"));
-  // Physical components are undefined on a non-orthogonal basis, and rank 0
-  // (an empty signature) ignores the basis at any component count.
+  // Rank 0 (an empty signature) ignores the basis at any component count.
   REQUIRE_NOTHROW(ValueView<const Real, DeviceMemorySpace>(
     ValueBasis{}, pcms::MakeConstRank2View(data)));
 }

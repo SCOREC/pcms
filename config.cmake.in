@@ -9,7 +9,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 find_dependency(Kokkos CONFIG)
 if(@PCMS_ENABLE_COUPLER@)
     # the coupler's public headers use redev (and through it ADIOS2 and MPI)
-    find_dependency(redev CONFIG)
+    find_dependency(redev 4.3.2 CONFIG)
     find_dependency(ADIOS2 CONFIG)
 endif()
 # MPI is public for the coupler and the C/Fortran APIs, private otherwise

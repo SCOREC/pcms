@@ -246,22 +246,21 @@ TEST_CASE("the conservative and control variate projections check units",
     pcms::CreateControlVariateProjection(source_space, target_space);
 
   auto source = source_space->CreateFunction<pcms::Real>(
-    pcms::FieldMetadata{.name = "source", .units = pcms::Units::Parse("m^-3")});
+    "source", {.units = pcms::Units::Parse("m^-3")});
   pcms::test::SetField(
     source, OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return x + y; });
   const auto target_with = [&](const char* units) {
-    pcms::FieldMetadata metadata{.name = "target"};
+    pcms::ValueBasis basis;
     if (units != nullptr) {
-      metadata.units = pcms::Units::Parse(units);
+      basis.units = pcms::Units::Parse(units);
     }
-    return target_space->CreateFunction<pcms::Real>(metadata);
+    return target_space->CreateFunction<pcms::Real>("target", basis);
   };
   for (const auto* projection : {conservative.get(), control_variate.get()}) {
     auto same = target_with("1/m^3");
     REQUIRE_NOTHROW(projection->Apply(source, same));
     auto unknown = target_with(nullptr);
     REQUIRE_NOTHROW(projection->Apply(source, unknown));
-    REQUIRE(unknown.GetMetadata().units.has_value());
 #ifdef PCMS_ENABLE_UNITS
     auto scaled = target_with("cm^-3");
     REQUIRE_THROWS_WITH(

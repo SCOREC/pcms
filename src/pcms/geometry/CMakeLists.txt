@@ -18,6 +18,7 @@ set(
         # (its header stays in pcms/field), so it is compiled here
         ../field/coordinate_map.cpp
         ../field/value_transform.cpp
+        ../field/units.cpp
 )
 add_library(pcms_geometry ${PCMS_GEOMETRY_SOURCES})
 add_library(pcms::geometry ALIAS pcms_geometry)
@@ -39,6 +40,9 @@ target_link_libraries(
         Kokkos::kokkos
         pcms::utility
 )
+if(PCMS_ENABLE_UNITS)
+  target_link_libraries(pcms_geometry PRIVATE units::units)
+endif()
 # Omega_h is used by the implementation only (no public header includes it)
 if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms_geometry PRIVATE Omega_h::omega_h)

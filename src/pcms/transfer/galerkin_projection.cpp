@@ -95,14 +95,23 @@ void GalerkinProjection::ApplyImpl(const Field<Real>& source,
   if (&target.GetLayout() != target_space_->GetLayout().get()) {
     throw pcms_error("GalerkinProjection::Apply: target field layout mismatch");
   }
+  const ValueBasis written =
+    source_at_points_->OutputBasis(source.GetData().GetValueBasis());
+  pcms::detail::CheckWrittenValueBasis("GalerkinProjection::Apply", written,
+                                       target.GetData().GetValueBasis());
   auto samples = samples_;
 
   // 1. f at the points, minus the control variate g there; the control
   //    variate is the interpolation of the source onto the target space.
-  source_at_points_->Evaluate(
-    source, ValueView<Real, DeviceMemorySpace>(source.GetData().GetValueBasis(),
-                                               pcms::MakeRank2View(samples)));
+  source_at_points_->Evaluate(source, ValueView<Real, DeviceMemorySpace>(
+                                        written, pcms::MakeRank2View(samples)));
   if (control_variate_) {
+    if (!pcms::detail::SameValueBasis(
+          control_variate_->values.GetData().GetValueBasis(),
+          target.GetData().GetValueBasis())) {
+      control_variate_->values = target_space_->CreateFunction<Real>(
+        "", target.GetData().GetValueBasis());
+    }
     control_variate_->interpolator.Apply(source, control_variate_->values);
     Kokkos::View<Real**, DeviceMemorySpace> g(
       "projection_control_variate", samples.extent(0), samples.extent(1));
@@ -146,6 +155,11 @@ void GalerkinProjection::ApplyTransposeImpl(const Field<Real>& source,
     throw pcms_error("GalerkinProjection::ApplyTranspose: the source must be "
                      "a field of the target space's layout");
   }
+  const ValueBasis written =
+    source_at_points_->OutputBasis(target.GetData().GetValueBasis());
+  pcms::detail::CheckWrittenValueBasis("GalerkinProjection::ApplyTranspose",
+                                       source.GetData().GetValueBasis(),
+                                       written);
   // z = M^-1 b, E z at the points, W, then S^T into the functional
   if (lumped_ != nullptr) {
     detail::Divide(source, *lumped_, coefficients_);
@@ -158,7 +172,7 @@ void GalerkinProjection::ApplyTransposeImpl(const Field<Real>& source,
                                        MakeRank2View(samples_)));
   const auto weighted =
     right_hand_side_.Weight(ValueView<const Real, DeviceMemorySpace>(
-      target.GetData().GetValueBasis(), MakeConstRank2View(samples_)));
+      written, MakeConstRank2View(samples_)));
   pcms::detail::SetZero(target);
   source_at_points_->EvaluateTranspose(weighted, target);
 }

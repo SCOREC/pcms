@@ -35,9 +35,27 @@ namespace pcms::detail
   return std::nullopt;
 }
 
-[[nodiscard]] inline bool SameValueBasis(const ValueBasis& a,
-                                         const ValueBasis& b) noexcept
+/// @return "" unless both bases have units that differ, else why they differ
+[[nodiscard]] inline std::string UnitsMismatch(const ValueBasis& a,
+                                               const ValueBasis& b)
 {
+  if (!a.units || !b.units || SameUnits(*a.units, *b.units)) {
+    return "";
+  }
+  return std::string(": units [") + a.units->ToString() + "] and [" +
+         b.units->ToString() +
+         (SameDimensions(*a.units, *b.units)
+            ? "] differ in scale or offset; PCMS does not convert units, so "
+              "convert one of the fields"
+            : "] have different dimensions");
+}
+
+[[nodiscard]] inline bool SameValueBasis(const ValueBasis& a,
+                                         const ValueBasis& b)
+{
+  if (a.units && b.units && !SameUnits(*a.units, *b.units)) {
+    return false;
+  }
   if (a.Rank() == 0 && b.Rank() == 0) {
     return a.kind == b.kind &&
            (a.kind != ValueKind::Coordinates ||
@@ -63,7 +81,8 @@ inline void CheckWrittenValueBasis(const char* context,
   if (!detail::SameValueBasis(claimed, written)) {
     throw pcms_error(std::string(context) +
                      ": the output view's declared value type/basis does not "
-                     "match the basis this call writes");
+                     "match the basis this call writes" +
+                     detail::UnitsMismatch(claimed, written));
   }
 }
 

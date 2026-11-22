@@ -1,6 +1,7 @@
 #ifndef PCMS_FIELD_VALUE_VIEW_HPP
 #define PCMS_FIELD_VALUE_VIEW_HPP
 
+#include "pcms/field/units.hpp"
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -121,10 +122,9 @@ enum class ValueKind : std::uint8_t
 };
 
 /// Basis the components of a value are expressed in: coordinate system,
-/// component scaling, index variance and parity. Curl produces Odd output;
-/// reflections negate Odd values.
-/// An unset `system` (scaling) at creation is the space's own (derived from
-/// the system).
+/// component scaling, index variance, parity and units. Curl produces Odd
+/// output; reflections negate Odd values. An unset `system` (scaling) at
+/// creation is the space's own (derived from the system).
 struct ValueBasis
 {
   std::shared_ptr<const CoordinateSystem> system = nullptr;
@@ -132,6 +132,8 @@ struct ValueBasis
   VarianceSignature variance{};
   Parity parity = Parity::Even;
   ValueKind kind = ValueKind::Tensor;
+  /// units of the physical components, whatever the scaling; unset matches any
+  std::optional<Units> units = std::nullopt;
 
   [[nodiscard]] int Rank() const noexcept { return variance.Rank(); }
 
@@ -144,9 +146,9 @@ struct ValueBasis
   [[nodiscard]] static ValueBasis Coordinates(
     std::shared_ptr<const CoordinateSystem> system)
   {
-    return ValueBasis{std::move(system), ComponentScaling::Natural,
-                      VarianceSignature{}, Parity::Even,
-                      ValueKind::Coordinates};
+    return ValueBasis{std::move(system),      ComponentScaling::Natural,
+                      VarianceSignature{},    Parity::Even,
+                      ValueKind::Coordinates, std::nullopt};
   }
 
   friend bool operator==(const ValueBasis&, const ValueBasis&) = default;

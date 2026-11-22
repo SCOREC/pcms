@@ -43,7 +43,6 @@ set(PCMS_FIELD_HEADERS
 )
 set(PCMS_FIELD_SOURCES
         field_metadata.cpp
-        units.cpp
         embedding.cpp
         field_layout.cpp
         function_space.cpp
@@ -84,10 +83,6 @@ target_link_libraries(pcms_field PUBLIC
         pcms::localization
         pcms::geometry
         MPI::MPI_CXX)
-if(PCMS_ENABLE_UNITS)
-    target_link_libraries(pcms_field PRIVATE units::units)
-endif()
-
 if(PCMS_ENABLE_OMEGA_H)
     # private: core public headers do not include Omega_h. The Omega_h backend
     # header (pcms/backends/omega_h/omega_h.hpp) does; its users link

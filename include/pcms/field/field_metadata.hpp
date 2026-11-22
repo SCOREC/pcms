@@ -1,7 +1,6 @@
 #ifndef PCMS_FIELD_FIELD_METADATA_HPP
 #define PCMS_FIELD_FIELD_METADATA_HPP
 
-#include "pcms/field/units.hpp"
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -17,12 +16,11 @@ enum class Extent : std::uint8_t
   Extensive,
 };
 
-/// @brief Name, units and extent of a field; unset units and extent are
-///        unknown and never checked.
+/// @brief Name and extent of a field; an unset extent is unknown and never
+///        checked.
 struct FieldMetadata
 {
   std::string name;
-  std::optional<Units> units;
   std::optional<Extent> extent;
 };
 

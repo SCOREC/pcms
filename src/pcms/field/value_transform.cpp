@@ -273,7 +273,8 @@ ValueBasis ValueTransform::OutputBasis(const ValueBasis& in) const
                                      to_->IsNormalized())) {
     scaling = ComponentScaling::Physical;
   }
-  return ValueBasis{to_, scaling, in.variance, in.parity};
+  return ValueBasis{to_,       scaling,           in.variance,
+                    in.parity, ValueKind::Tensor, in.units};
 }
 
 void ValueTransform::Run(const ValueBasis& in_side,

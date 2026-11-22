@@ -241,7 +241,7 @@ int LinearSolver::Solve(const Field<Real>& functional,
       break;
     }
     const Real alpha = rz / curvature;
-    Axpy(alpha, p, solution);
+    pcms::detail::AxpyValues(alpha, p, solution);
     Axpy(-alpha, ap, r);
     if (Norm2(r) <= target) {
       return iteration;

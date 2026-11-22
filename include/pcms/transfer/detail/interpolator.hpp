@@ -91,7 +91,8 @@ private:
     if (!detail::SameValueBasis(written, td.GetValueBasis())) {
       throw pcms_error(
         "Interpolator: the basis written for the source's stored basis "
-        "differs from the target's declared basis");
+        "differs from the target's declared basis" +
+        detail::UnitsMismatch(written, td.GetValueBasis()));
     }
     evaluator_->Evaluate(source, ValueView<T, DeviceMemorySpace>(
                                    written, MakeRank2View(target_values_)));
@@ -111,6 +112,9 @@ private:
       throw pcms_error("Interpolator::ApplyTranspose: the source must be a "
                        "field of the target space's layout");
     }
+    detail::CheckWrittenValueBasis("Interpolator::ApplyTranspose",
+                                   source.GetData().GetValueBasis(),
+                                   target.GetData().GetValueBasis());
     detail::SetZero(target);
     evaluator_->EvaluateTranspose(ValueView<const T, DeviceMemorySpace>(
                                     target.GetData().GetValueBasis(),

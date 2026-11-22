@@ -9,6 +9,7 @@
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/transfer/projection.hpp>
 #include <pcms/backends/omega_h/omega_h.hpp>
+#include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/coordinate_map.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include <pcms/transfer/forms.hpp>
@@ -360,6 +361,9 @@ TEST_CASE("CreateProjection with a reference-rule quadrature reproduces fields "
 TEST_CASE("CreateProjection projects several components at once",
           "[quadrature][projection]")
 {
+  const bool vector = GENERATE(false, true);
+  const bool control_variate = GENERATE(false, true);
+  CAPTURE(vector, control_variate);
   Omega_h::Library lib;
   auto source_mesh = pcms::test::BuildSquareMesh(lib, 5);
   auto target_mesh = pcms::test::BuildSquareMesh(lib, 3);
@@ -371,16 +375,21 @@ TEST_CASE("CreateProjection projects several components at once",
     pcms::CreateLagrangeSpace(source_geometry, 1, 2, options);
   const auto target_space =
     pcms::CreateLagrangeSpace(target_geometry, 1, 2, options);
-  auto source = source_space->CreateFunction<pcms::Real>(
-    "", pcms::test::ComponentsBasis(*source_space));
-  auto target = target_space->CreateFunction<pcms::Real>(
-    "", pcms::test::ComponentsBasis(*target_space));
+  const auto basis = [&](const pcms::FunctionSpace& space) {
+    return vector ? pcms::ValueBasis{.variance = pcms::values::Vector}
+                  : pcms::test::ComponentsBasis(space);
+  };
+  auto source =
+    source_space->CreateFunction<pcms::Real>("", basis(*source_space));
+  auto target =
+    target_space->CreateFunction<pcms::Real>("", basis(*target_space));
   pcms::test::SetFieldComponents(
     source, [](pcms::Real x, pcms::Real y, pcms::Real* out) {
       out[0] = x + y;
       out[1] = 2 * x - y + 0.5;
     });
-  auto projection = pcms::CreateProjection(source_space, target_space, {});
+  auto projection = pcms::CreateProjection(
+    source_space, target_space, {.control_variate = control_variate});
   projection->Apply(source, target);
   const auto values = FieldValues(target);
   const auto coords = pcms::test::CopyCoordinatesToHost(
@@ -392,6 +401,53 @@ TEST_CASE("CreateProjection projects several components at once",
     CHECK(values[2 * i + 1] ==
           Catch::Approx(2 * coords(i, 0) - coords(i, 1) + 0.5).margin(1e-10));
   }
+}
+
+TEST_CASE("CreateProjection through a coordinate map writes the target's "
+          "vector components",
+          "[quadrature][projection]")
+{
+  Omega_h::Library lib;
+  auto target_mesh = pcms::test::BuildUnitCube(lib, 2);
+  const auto target_space = pcms::CreateLagrangeSpace(
+    MakeGeometry(target_mesh), 1, 3,
+    pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+  pcms::UniformGrid<3> grid;
+  grid.bot_left = {0.0, 0.0, 0.0};
+  grid.edge_length = {2.0, 2.0, 1.0};
+  grid.divisions = {4, 4, 2};
+  const auto source_space =
+    pcms::CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                                grid, pcms::csys::CreateCylindricalRThetaZ()),
+                              1, 3);
+  const pcms::ValueBasis vector{.scaling = pcms::ComponentScaling::Physical,
+                                .variance = pcms::values::Vector};
+  // R e_R: (x, y, 0)
+  auto source = source_space->CreateFunction<pcms::Real>("v", vector);
+  pcms::test::SetFieldComponents(
+    source, [](pcms::Real r, pcms::Real, pcms::Real, pcms::Real* out) {
+      out[0] = r;
+      out[1] = 0;
+      out[2] = 0;
+    });
+  auto target = target_space->CreateFunction<pcms::Real>("v", vector);
+  pcms::ProjectionOptions options;
+  options.to_source = pcms::CreateCartesianToCylindrical();
+  options.solve.relative_tolerance = 1e-13;
+  const auto projection =
+    pcms::CreateProjection(source_space, target_space, options);
+  projection->Apply(source, target);
+  const auto values = target.GetDOFHolderDataHost().GetValues();
+  const auto coords = pcms::test::CopyCoordinatesToHost(
+    target_space->GetLayout()->GetDOFHolderCoordinates().GetValues());
+  for (std::size_t i = 0; i < coords.extent(0); ++i) {
+    CAPTURE(i);
+    CHECK(values(i, 0) == Catch::Approx(coords(i, 0)).margin(1e-10));
+    CHECK(values(i, 1) == Catch::Approx(coords(i, 1)).margin(1e-10));
+    CHECK(values(i, 2) == Catch::Approx(0).margin(1e-10));
+  }
+  auto functional = source_space->CreateFunction<pcms::Real>("f", vector);
+  CHECK_NOTHROW(projection->ApplyTranspose(target, functional));
 }
 
 // ---------------------------------------------------------------------------

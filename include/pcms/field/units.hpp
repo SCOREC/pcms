@@ -53,6 +53,12 @@ private:
   std::shared_ptr<const Impl> impl_;
 };
 
+/// @return whether `a` and `b` are the same unit, scale and offset included
+[[nodiscard]] inline bool operator==(const Units& a, const Units& b)
+{
+  return detail::SameUnits(a, b);
+}
+
 } // namespace pcms
 
 #endif // PCMS_FIELD_UNITS_HPP

@@ -1,12 +1,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include "pcms/configuration.hpp"
-#include "pcms/field/field_metadata.hpp"
+#include "pcms/field/value_view.hpp"
 #include "pcms/field/units.hpp"
 #include "pcms/utility/assert.hpp"
 
 using Catch::Matchers::ContainsSubstring;
-using pcms::FieldMetadata;
 using pcms::Units;
 using pcms::UnitSyntax;
 
@@ -39,9 +38,9 @@ TEST_CASE("Units without a units library are their text")
   REQUIRE(Units::Parse("mixed", UnitSyntax::IMAS).ToString() == "mixed");
   // nothing is compared
   REQUIRE(Same(Units::Parse("T"), Units::Parse("m")));
-  REQUIRE_NOTHROW(pcms::detail::CheckSameUnits(
-    FieldMetadata{.name = "b", .units = Units::Parse("T")},
-    FieldMetadata{.name = "x", .units = Units::Parse("m")}, "transfer"));
+  REQUIRE(
+    pcms::detail::SameValueBasis(pcms::ValueBasis{.units = Units::Parse("T")},
+                                 pcms::ValueBasis{.units = Units::Parse("m")}));
 }
 #else
 TEST_CASE("Units parse SI, IMAS and fusion notations")
@@ -109,32 +108,37 @@ TEST_CASE("Units reject what is not a unit")
                       ContainsSubstring("\"UNITLESS\" is not a unit"));
 }
 
-TEST_CASE("CheckSameUnits")
+TEST_CASE("value bases compare units")
 {
-  const FieldMetadata tesla{.name = "b", .units = Units::Parse("T")};
-  const FieldMetadata gauss{.name = "b_g", .units = Units::Parse("gauss")};
-  const FieldMetadata metre{.name = "x", .units = Units::Parse("m")};
-  const FieldMetadata unknown{.name = "u"};
+  const auto basis = [](const char* units) {
+    pcms::ValueBasis b;
+    if (units != nullptr) {
+      b.units = Units::Parse(units);
+    }
+    return b;
+  };
+  const auto tesla = basis("T");
 
-  SECTION("passes for the same or unknown units")
+  SECTION("the same or unset units match")
   {
-    REQUIRE_NOTHROW(pcms::detail::CheckSameUnits(tesla, tesla, "transfer"));
-    REQUIRE_NOTHROW(pcms::detail::CheckSameUnits(
-      tesla, FieldMetadata{.name = "c", .units = Units::Parse("kg/(A*s^2)")},
-      "transfer"));
-    REQUIRE_NOTHROW(pcms::detail::CheckSameUnits(tesla, unknown, "transfer"));
-    REQUIRE_NOTHROW(pcms::detail::CheckSameUnits(unknown, tesla, "transfer"));
+    REQUIRE(pcms::detail::SameValueBasis(tesla, tesla));
+    REQUIRE(pcms::detail::SameValueBasis(tesla, basis("kg/(A*s^2)")));
+    REQUIRE(pcms::detail::SameValueBasis(tesla, basis(nullptr)));
+    REQUIRE(pcms::detail::SameValueBasis(basis(nullptr), tesla));
+    REQUIRE(pcms::detail::UnitsMismatch(tesla, basis(nullptr)).empty());
   }
-  SECTION("throws for different dimensions")
+  SECTION("different dimensions")
   {
-    REQUIRE_THROWS_WITH(pcms::detail::CheckSameUnits(tesla, metre, "transfer"),
-                        ContainsSubstring("transfer from 'b' [T] to 'x' [m]") &&
-                          ContainsSubstring("different dimensions"));
+    REQUIRE_FALSE(pcms::detail::SameValueBasis(tesla, basis("m")));
+    REQUIRE_THAT(pcms::detail::UnitsMismatch(tesla, basis("m")),
+                 ContainsSubstring("units [T] and [m]") &&
+                   ContainsSubstring("different dimensions"));
   }
-  SECTION("throws for a different scale")
+  SECTION("a different scale")
   {
-    REQUIRE_THROWS_WITH(pcms::detail::CheckSameUnits(gauss, tesla, "transfer"),
-                        ContainsSubstring("differ in scale or offset"));
+    REQUIRE_FALSE(pcms::detail::SameValueBasis(basis("gauss"), tesla));
+    REQUIRE_THAT(pcms::detail::UnitsMismatch(basis("gauss"), tesla),
+                 ContainsSubstring("differ in scale or offset"));
   }
 }
 #endif // PCMS_ENABLE_UNITS

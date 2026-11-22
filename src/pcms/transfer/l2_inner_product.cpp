@@ -104,6 +104,8 @@ Real L2Integral::Distance(const Field<Real>& u, const Field<Real>& v) const
   CheckInnerProductMetric(u, "L2Integral::Distance");
   const auto uu = Evaluate(form_->Evaluator(), u, u_values_);
   const auto vv = Evaluate(other_ ? *other_ : form_->Evaluator(), v, v_values_);
+  pcms::detail::CheckWrittenValueBasis("L2Integral::Distance", uu.GetBasis(),
+                                       vv.GetBasis());
   const auto difference = pcms::detail::MapOwned<Real>(
     uu.GetValues(), vv.GetValues(),
     KOKKOS_LAMBDA(const Real a, const Real b) { return a - b; });

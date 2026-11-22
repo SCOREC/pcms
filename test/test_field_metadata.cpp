@@ -3,8 +3,10 @@
 #include <pcms/configuration.hpp>
 #include <pcms/field/detail/simple_field_data.hpp>
 #include <pcms/field/field_metadata.hpp>
+#include <pcms/field/field_ops.hpp>
 #include <pcms/transfer/copy.hpp>
 #include <pcms/transfer/interpolator.hpp>
+#include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/projection.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 
@@ -62,7 +64,7 @@ struct Transfers
 // the text of a field's units, "none" when they are unknown
 std::string UnitsOf(const pcms::Field<Real>& field)
 {
-  const auto& units = field.GetMetadata().units;
+  const auto& units = field.GetData().GetValueBasis().units;
   return units ? units->ToString() : "none";
 }
 
@@ -117,18 +119,19 @@ TEST_CASE("fields carry metadata, which travels with them", "[metadata]")
   const auto space = Space(8);
   auto plain = space->CreateFunction<Real>("b");
   REQUIRE(plain.GetName() == "b");
-  REQUIRE_FALSE(plain.GetMetadata().units.has_value());
+  REQUIRE_FALSE(plain.GetData().GetValueBasis().units.has_value());
   REQUIRE_FALSE(plain.GetMetadata().extent.has_value());
 
-  auto field = space->CreateFunction<Real>(FieldMetadata{
-    .name = "n", .units = Units::Parse("m^-3"), .extent = Extent::Intensive});
+  auto field = space->CreateFunction<Real>(
+    FieldMetadata{.name = "n", .extent = Extent::Intensive},
+    {.units = Units::Parse("m^-3")});
   REQUIRE(field.GetName() == "n");
   REQUIRE(UnitsOf(field) == Units::Parse("m^-3").ToString());
   REQUIRE(field.GetMetadata().extent == Extent::Intensive);
 
   const auto moved = std::move(field);
   REQUIRE(moved.GetName() == "n");
-  REQUIRE(moved.GetMetadata().units.has_value());
+  REQUIRE(moved.GetData().GetValueBasis().units.has_value());
   REQUIRE(moved.GetMetadata().extent == Extent::Intensive);
 }
 
@@ -147,11 +150,11 @@ TEST_CASE("creation takes metadata and a value basis", "[metadata]")
   SECTION("metadata with a vector basis: system and scaling are derived")
   {
     const auto f = space->CreateFunction<Real>(
-      FieldMetadata{.name = "v", .units = Units::Parse("m/s")},
-      {.variance = pcms::values::Vector});
+      FieldMetadata{.name = "v"},
+      {.variance = pcms::values::Vector, .units = Units::Parse("m/s")});
     REQUIRE(f.GetName() == "v");
-    REQUIRE(f.GetMetadata().units.has_value());
     const auto& basis = f.GetData().GetValueBasis();
+    REQUIRE(basis.units.has_value());
     REQUIRE(basis.Rank() == 1);
     REQUIRE(pcms::detail::SameCoordinateSystem(basis.system,
                                                space->GetCoordinateSystem()));
@@ -163,7 +166,7 @@ TEST_CASE("creation takes metadata and a value basis", "[metadata]")
       "v", {.scaling = pcms::ComponentScaling::Natural,
             .variance = pcms::values::Vector});
     REQUIRE(f.GetName() == "v");
-    REQUIRE_FALSE(f.GetMetadata().units.has_value());
+    REQUIRE_FALSE(f.GetData().GetValueBasis().units.has_value());
     REQUIRE(f.GetData().GetValueBasis().scaling ==
             pcms::ComponentScaling::Natural);
   }
@@ -187,10 +190,11 @@ TEST_CASE("a FieldFactory takes metadata and a value basis", "[metadata]")
 {
   const TestFieldFactory factory;
 
-  const auto f = factory.CreateField<Real>(FieldMetadata{
-    .name = "q", .units = Units::Parse("C"), .extent = Extent::Extensive});
+  const auto f = factory.CreateField<Real>(
+    FieldMetadata{.name = "q", .extent = Extent::Extensive},
+    {.units = Units::Parse("C")});
   REQUIRE(f.GetName() == "q");
-  REQUIRE(f.GetMetadata().units.has_value());
+  REQUIRE(f.GetData().GetValueBasis().units.has_value());
   REQUIRE(f.GetMetadata().extent == Extent::Extensive);
 
   const auto vector =
@@ -219,18 +223,18 @@ TEST_CASE("transfers check units", "[metadata]")
     CAPTURE(name);
     const auto& target_space = transfers.TargetOf(i);
     const auto make = [&](const char* source_units, const char* target_units) {
-      FieldMetadata s{.name = "source"};
-      FieldMetadata t{.name = "target"};
+      pcms::ValueBasis s;
+      pcms::ValueBasis t;
       if (source_units != nullptr) {
         s.units = Units::Parse(source_units);
       }
       if (target_units != nullptr) {
         t.units = Units::Parse(target_units);
       }
-      auto source = transfers.source_space->CreateFunction<Real>(s);
+      auto source = transfers.source_space->CreateFunction<Real>("source", s);
       pcms::test::SetDofs(source, std::vector<Real>(8, 1.0));
       return std::make_pair(std::move(source),
-                            target_space.CreateFunction<Real>(t));
+                            target_space.CreateFunction<Real>("target", t));
     };
 
     SECTION("unknown units are not checked")
@@ -252,8 +256,7 @@ TEST_CASE("transfers check units", "[metadata]")
       {
         auto [source, target] = make("T", "m");
         REQUIRE_THROWS_WITH(op->Apply(source, target),
-                            ContainsSubstring("transfer from 'source' [T] to "
-                                              "'target' [m]") &&
+                            ContainsSubstring("units [T] and [m]") &&
                               ContainsSubstring("different dimensions"));
       }
       SECTION("a different scale throws, and nothing is converted")
@@ -339,67 +342,19 @@ TEST_CASE("transfers check the extent", "[metadata]")
   }
 }
 
-TEST_CASE("a transfer teaches the target what it does not know", "[metadata]")
+TEST_CASE("a transfer does not change the target's metadata", "[metadata]")
 {
   Transfers transfers;
   const auto& op = transfers.operators[1].second;
   auto source = transfers.source_space->CreateFunction<Real>(
-    FieldMetadata{.name = "source",
-                  .units = Units::Parse("m^-3"),
-                  .extent = Extent::Intensive});
+    FieldMetadata{.name = "source", .extent = Extent::Intensive},
+    {.units = Units::Parse("m^-3")});
   pcms::test::SetDofs(source, std::vector<Real>(8, 1.0));
-
-  SECTION("unknown units and extent are learned")
-  {
-    auto target = transfers.target_space->CreateFunction<Real>("target");
-    op->Apply(source, target);
-    REQUIRE(target.GetName() == "target");
-    REQUIRE(target.GetMetadata().units.has_value());
-    REQUIRE(UnitsOf(target) == UnitsOf(source));
-    REQUIRE(target.GetMetadata().extent == Extent::Intensive);
-  }
-  SECTION("known values are never overwritten")
-  {
-    // the same units, written differently: the target keeps its own
-    auto target = transfers.target_space->CreateFunction<Real>(
-      FieldMetadata{.name = "target", .units = Units::Parse("1/m^3")});
-    op->Apply(source, target);
-    REQUIRE(UnitsOf(target) == Units::Parse("1/m^3").ToString());
-    // the extent is learned alone
-    REQUIRE(target.GetMetadata().extent == Extent::Intensive);
-    if constexpr (!UnitsEnabled) {
-      // without a units library nothing is compared, so units that differ
-      // pass, and the known ones stay
-      auto metre = transfers.target_space->CreateFunction<Real>(
-        FieldMetadata{.name = "metre", .units = Units::Parse("m")});
-      op->Apply(source, metre);
-      REQUIRE(UnitsOf(metre) == "m");
-    }
-  }
-  SECTION("what a failed transfer was refused for is not learned")
-  {
-    auto bad = transfers.source_space->CreateFunction<Real>(
-      FieldMetadata{.name = "bad",
-                    .units = Units::Parse("m^-3"),
-                    .extent = Extent::Extensive});
-    auto target = transfers.target_space->CreateFunction<Real>("target");
-    REQUIRE_THROWS(op->Apply(bad, target));
-    REQUIRE_FALSE(target.GetMetadata().units.has_value());
-    REQUIRE_FALSE(target.GetMetadata().extent.has_value());
-  }
-  SECTION("ApplyTranspose learns too")
-  {
-    auto loads = transfers.target_space->CreateFunction<Real>(
-      FieldMetadata{.name = "loads",
-                    .units = Units::Parse("N"),
-                    .extent = Extent::Extensive});
-    pcms::test::SetDofs(loads, std::vector<Real>(16, 1.0));
-    auto functional =
-      transfers.source_space->CreateFunction<Real>("functional");
-    op->ApplyTranspose(loads, functional);
-    REQUIRE(functional.GetMetadata().units.has_value());
-    REQUIRE(functional.GetMetadata().extent == Extent::Extensive);
-  }
+  auto target = transfers.target_space->CreateFunction<Real>("target");
+  op->Apply(source, target);
+  REQUIRE(target.GetName() == "target");
+  REQUIRE_FALSE(target.GetData().GetValueBasis().units.has_value());
+  REQUIRE_FALSE(target.GetMetadata().extent.has_value());
 }
 
 TEST_CASE("ApplyTranspose checks units", "[metadata]")
@@ -413,16 +368,17 @@ TEST_CASE("ApplyTranspose checks units", "[metadata]")
     REQUIRE(op->SupportsTranspose());
     const auto run = [&](const char* loads_units,
                          const char* functional_units) {
-      FieldMetadata l{.name = "loads"};
-      FieldMetadata f{.name = "functional"};
+      pcms::ValueBasis l;
+      pcms::ValueBasis f;
       if (loads_units != nullptr) {
         l.units = Units::Parse(loads_units);
       }
       if (functional_units != nullptr) {
         f.units = Units::Parse(functional_units);
       }
-      auto loads = transfers.target_space->CreateFunction<Real>(l);
-      auto functional = transfers.source_space->CreateFunction<Real>(f);
+      auto loads = transfers.target_space->CreateFunction<Real>("loads", l);
+      auto functional =
+        transfers.source_space->CreateFunction<Real>("functional", f);
       pcms::test::SetDofs(loads, std::vector<Real>(16, 1.0));
       op->ApplyTranspose(loads, functional);
     };
@@ -432,8 +388,7 @@ TEST_CASE("ApplyTranspose checks units", "[metadata]")
     REQUIRE_NOTHROW(run("N", "kg*m/s^2"));
     if constexpr (UnitsEnabled) {
       REQUIRE_THROWS_WITH(run("N", "m"),
-                          ContainsSubstring("transposed transfer from 'loads' "
-                                            "[N] to 'functional' [m]"));
+                          ContainsSubstring("units [N] and [m]"));
       REQUIRE_THROWS_WITH(run("N", "dyn"),
                           ContainsSubstring("differ in scale or offset"));
     } else {
@@ -463,4 +418,44 @@ TEST_CASE("a transfer refuses a source and a target that share their data",
                       ContainsSubstring("share their data"));
   REQUIRE_THROWS_WITH(transfers.operators[2].second->Apply(f, f),
                       ContainsSubstring("share their data"));
+}
+
+TEST_CASE("L2Integral::Distance checks the units of both fields; Inner does "
+          "not",
+          "[metadata]")
+{
+  const auto space = Space(8);
+  const auto other = Space(16);
+  auto u = space->CreateFunction<Real>("u", {.units = Units::Parse("m")});
+  auto v = other->CreateFunction<Real>("v", {.units = Units::Parse("cm")});
+  auto w = other->CreateFunction<Real>("w", {.units = Units::Parse("m")});
+  const pcms::L2Integral integral(space, other);
+  REQUIRE_NOTHROW(integral.Distance(u, w));
+  REQUIRE_NOTHROW(integral.Inner(u, v));
+  if constexpr (UnitsEnabled) {
+    REQUIRE_THROWS_WITH(integral.Distance(u, v),
+                        ContainsSubstring("L2Integral::Distance"));
+  } else {
+    REQUIRE_NOTHROW(integral.Distance(u, v));
+  }
+}
+
+TEST_CASE("Axpy checks the value bases", "[metadata]")
+{
+  const auto space = Space(8);
+  auto x = space->CreateFunction<Real>("x", {.units = Units::Parse("m")});
+  auto same = space->CreateFunction<Real>("y", {.units = Units::Parse("m")});
+  auto unset = space->CreateFunction<Real>("z");
+  auto vector =
+    space->CreateFunction<Real>("v", {.variance = pcms::values::Vector});
+  REQUIRE_NOTHROW(pcms::Axpy(1.0, x, same));
+  REQUIRE_NOTHROW(pcms::Axpy(1.0, x, unset));
+  REQUIRE_THROWS_WITH(pcms::Axpy(1.0, x, vector),
+                      ContainsSubstring("value bases differ"));
+  if constexpr (UnitsEnabled) {
+    auto kelvin =
+      space->CreateFunction<Real>("k", {.units = Units::Parse("K")});
+    REQUIRE_THROWS_WITH(pcms::Axpy(1.0, x, kelvin),
+                        ContainsSubstring("different dimensions"));
+  }
 }

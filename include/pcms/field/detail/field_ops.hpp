@@ -21,6 +21,18 @@ void CheckSameLayout(const Field<T>& a, const Field<T>& b, const char* what)
 }
 
 template <typename T>
+void CheckSameValues(const Field<T>& a, const Field<T>& b, const char* what)
+{
+  CheckSameLayout(a, b, what);
+  const auto& basis_a = a.GetData().GetValueBasis();
+  const auto& basis_b = b.GetData().GetValueBasis();
+  if (!SameValueBasis(basis_a, basis_b)) {
+    throw pcms_error(std::string(what) + ": the fields' value bases differ" +
+                     UnitsMismatch(basis_a, basis_b));
+  }
+}
+
+template <typename T>
 using OwnedValues = Rank2View<const T, DeviceMemorySpace>;
 
 /// @brief op(x, y) elementwise over values of the same shape
@@ -81,6 +93,17 @@ void AddToField(Field<T>& field,
     field.GetDOFHolderData().GetValues(), MakeConstRank2View(addend),
     KOKKOS_LAMBDA(const T a, const T b) { return a + b; })));
   field.Synchronize();
+}
+
+/// @brief y += a x over the owned values, whatever their value bases
+template <typename T>
+void AxpyValues(T a, const Field<T>& x, Field<T>& y)
+{
+  CheckSameLayout(x, y, "Axpy");
+  y.SetDOFHolderDataUnchecked(MakeConstRank2View(MapOwned<T>(
+    x.GetDOFHolderData().GetValues(), y.GetDOFHolderData().GetValues(),
+    KOKKOS_LAMBDA(const T u, const T v) { return a * u + v; })));
+  y.Synchronize();
 }
 
 /// @brief y = x over the owned values, whatever their value bases

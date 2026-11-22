@@ -7,8 +7,11 @@
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/gradient_source.hpp>
+#include <pcms/transfer/copy.hpp>
 #include <pcms/transfer/interpolator.hpp>
+#include <pcms/utility/coordinate_systems/parameter.hpp>
 #include "field_test_utils.hpp"
+#include <random>
 #include <vector>
 
 using Catch::Matchers::ContainsSubstring;
@@ -240,4 +243,204 @@ TEST_CASE("Gradients of vectors need Cartesian coordinates")
   pcms::ValueBasis s{cart, pcms::ComponentScaling::Physical,
                      pcms::values::Scalar, pcms::Parity::Odd};
   REQUIRE(pcms::detail::GradientBasis(s, cart).parity == pcms::Parity::Odd);
+}
+
+namespace
+{
+
+// P1 Lagrange spaces in (R, theta, Z): a source grid, and a target grid
+// strictly inside it.
+std::shared_ptr<const pcms::FunctionSpace> CylindricalSpace(bool target,
+                                                            int components)
+{
+  pcms::UniformGrid<3> grid;
+  grid.bot_left = {1.0, 0.0, -1.0};
+  grid.edge_length = {1.0, 1.0, 2.0};
+  grid.divisions = {4, 4, 4};
+  if (target) {
+    grid.bot_left = {1.2, 0.1, -0.8};
+    grid.edge_length = {0.6, 0.8, 1.6};
+    grid.divisions = {3, 3, 3};
+  }
+  return pcms::CreateLagrangeSpace(
+    pcms::uniform_grid::CreateGeometry(grid,
+                                       pcms::csys::CreateCylindricalRThetaZ()),
+    1, components);
+}
+
+void SetRandom(pcms::Function<Real>& f, std::mt19937& rng)
+{
+  std::uniform_real_distribution<Real> uniform(-1.0, 1.0);
+  const auto host = f.GetDOFHolderDataHost();
+  Kokkos::View<Real**, pcms::HostMemorySpace> values("random", host.extent(0),
+                                                     host.extent(1));
+  for (size_t i = 0; i < values.extent(0); ++i) {
+    for (size_t c = 0; c < values.extent(1); ++c) {
+      values(i, c) = uniform(rng);
+    }
+  }
+  f.SetDOFHolderDataHost(pcms::ValueView<const Real, pcms::HostMemorySpace>(
+    host.GetBasis(), pcms::MakeConstRank2View(values)));
+}
+
+Real Dot(const pcms::Function<Real>& a, const pcms::Function<Real>& b)
+{
+  const auto x = a.GetDOFHolderDataHost().GetValues();
+  const auto y = b.GetDOFHolderDataHost().GetValues();
+  Real sum = 0;
+  for (size_t i = 0; i < x.extent(0); ++i) {
+    for (size_t c = 0; c < x.extent(1); ++c) {
+      sum += x(i, c) * y(i, c);
+    }
+  }
+  return sum;
+}
+
+} // namespace
+
+TEST_CASE("A cylindrical gradient interpolated into a physical covector",
+          "[gradient][scaling]")
+{
+  const auto source = CylindricalSpace(false, 1);
+  const auto target = CylindricalSpace(true, 3);
+  auto f = source->CreateFunction<Real>("f");
+  pcms::test::SetFieldComponents(f, [](Real r, Real theta, Real z, Real* out) {
+    out[0] = 2.0 * r + 3.0 * theta - z;
+  });
+  auto gradient = target->CreateFunction<Real>(
+    "grad f", {.scaling = pcms::ComponentScaling::Physical,
+               .variance = pcms::values::Covector});
+  pcms::CreateInterpolator<Real>(pcms::Gradient(source), target)
+    ->Apply(f, gradient);
+  const auto coords = pcms::test::CopyCoordinatesToHost(
+    target->GetLayout()->GetDOFHolderCoordinates().GetValues());
+  const auto g = gradient.GetDOFHolderDataHost().GetValues();
+  for (size_t i = 0; i < coords.extent(0); ++i) {
+    CAPTURE(i);
+    REQUIRE_THAT(g(i, 0), WithinAbs(2.0, pcms::test::EvalTol));
+    REQUIRE_THAT(g(i, 1), WithinAbs(3.0 / coords(i, 0), pcms::test::EvalTol));
+    REQUIRE_THAT(g(i, 2), WithinAbs(-1.0, pcms::test::EvalTol));
+  }
+}
+
+TEST_CASE("An interpolator that converts the scaling keeps the fill value",
+          "[gradient][scaling]")
+{
+  const auto source = CylindricalSpace(false, 1);
+  pcms::UniformGrid<3> grid;
+  grid.bot_left = {1.2, 0.1, -0.8};
+  grid.edge_length = {1.8, 0.8, 1.6};
+  grid.divisions = {3, 3, 3};
+  const auto target =
+    pcms::CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(
+                                grid, pcms::csys::CreateCylindricalRThetaZ()),
+                              1, 3);
+  auto f = source->CreateFunction<Real>("f");
+  pcms::test::SetFieldComponents(f, [](Real r, Real theta, Real z, Real* out) {
+    out[0] = 2.0 * r + 3.0 * theta - z;
+  });
+  auto gradient = target->CreateFunction<Real>(
+    "grad f", {.scaling = pcms::ComponentScaling::Physical,
+               .variance = pcms::values::Covector});
+  pcms::CreateInterpolator<Real>(
+    pcms::Gradient(source), target,
+    pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::FILL, -7.0})
+    ->Apply(f, gradient);
+  const auto coords = pcms::test::CopyCoordinatesToHost(
+    target->GetLayout()->GetDOFHolderCoordinates().GetValues());
+  const auto g = gradient.GetDOFHolderDataHost().GetValues();
+  int filled = 0;
+  for (size_t i = 0; i < coords.extent(0); ++i) {
+    if (coords(i, 0) > 2.0) {
+      ++filled;
+      for (int c = 0; c < 3; ++c) {
+        CHECK(g(i, c) == -7.0);
+      }
+    }
+  }
+  CHECK(filled > 0);
+}
+
+TEST_CASE("An interpolator that converts the scaling has the transpose of its "
+          "evaluation",
+          "[scaling][adjoint]")
+{
+  const auto source = CylindricalSpace(false, 3);
+  const auto target = CylindricalSpace(true, 3);
+  const pcms::ValueBasis natural{.scaling = pcms::ComponentScaling::Natural,
+                                 .variance = pcms::values::Vector};
+  const pcms::ValueBasis physical{.scaling = pcms::ComponentScaling::Physical,
+                                  .variance = pcms::values::Vector};
+  auto x = source->CreateFunction<Real>("x", natural);
+  auto functional = source->CreateFunction<Real>("functional", natural);
+  auto ax = target->CreateFunction<Real>("Ax", physical);
+  auto y = target->CreateFunction<Real>("y", physical);
+  std::mt19937 rng(11);
+  SetRandom(x, rng);
+  SetRandom(y, rng);
+  const auto op = pcms::CreateInterpolator<Real>(source, target);
+  REQUIRE(op->SupportsTranspose());
+  op->Apply(x, ax);
+  op->ApplyTranspose(y, functional);
+  const Real lhs = Dot(ax, y);
+  const Real rhs = Dot(x, functional);
+  CHECK_THAT(lhs, WithinAbs(rhs, 1e-12 * (1 + std::abs(rhs))));
+}
+
+TEST_CASE("A copy converts natural components to physical ones and back",
+          "[scaling]")
+{
+  const auto space = CylindricalSpace(true, 3);
+  auto natural = space->CreateFunction<Real>(
+    "n", {.scaling = pcms::ComponentScaling::Natural,
+          .variance = pcms::values::Vector});
+  auto physical = space->CreateFunction<Real>(
+    "p", {.scaling = pcms::ComponentScaling::Physical,
+          .variance = pcms::values::Vector});
+  auto back = space->CreateFunction<Real>(
+    "b", {.scaling = pcms::ComponentScaling::Natural,
+          .variance = pcms::values::Vector});
+  pcms::test::SetFieldComponents(natural, [](Real, Real, Real, Real* out) {
+    out[0] = 1.0;
+    out[1] = 1.0;
+    out[2] = 1.0;
+  });
+  const auto copy = pcms::CreateCopy<Real>(space, space);
+  copy->Apply(natural, physical);
+  copy->Apply(physical, back);
+  const auto coords = pcms::test::CopyCoordinatesToHost(
+    space->GetLayout()->GetDOFHolderCoordinates().GetValues());
+  const auto p = physical.GetDOFHolderDataHost().GetValues();
+  const auto b = back.GetDOFHolderDataHost().GetValues();
+  for (size_t i = 0; i < coords.extent(0); ++i) {
+    CAPTURE(i);
+    CHECK_THAT(p(i, 0), WithinAbs(1.0, pcms::test::ExactTol));
+    CHECK_THAT(p(i, 1), WithinAbs(coords(i, 0), pcms::test::ExactTol));
+    CHECK_THAT(p(i, 2), WithinAbs(1.0, pcms::test::ExactTol));
+    for (int c = 0; c < 3; ++c) {
+      CHECK_THAT(b(i, c), WithinAbs(1.0, pcms::test::ExactTol));
+    }
+  }
+}
+
+TEST_CASE("Converting the scaling on a system without a metric throws",
+          "[scaling]")
+{
+  pcms::UniformGrid<2> grid;
+  grid.bot_left = {0.0, 0.0};
+  grid.edge_length = {1.0, 1.0};
+  grid.divisions = {2, 2};
+  const auto space = pcms::CreateLagrangeSpace(
+    pcms::uniform_grid::CreateGeometry(
+      grid, pcms::csys::CreateParameterSystem("xi", 2)),
+    1, 2);
+  const auto natural = space->CreateFunction<Real>(
+    "n", {.scaling = pcms::ComponentScaling::Natural,
+          .variance = pcms::values::Vector});
+  auto physical = space->CreateFunction<Real>(
+    "p", {.scaling = pcms::ComponentScaling::Physical,
+          .variance = pcms::values::Vector});
+  CHECK_THROWS_WITH(
+    pcms::CreateCopy<Real>(space, space)->Apply(natural, physical),
+    ContainsSubstring("which it does not have"));
 }

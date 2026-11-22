@@ -10,6 +10,7 @@
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
+#include <optional>
 
 namespace pcms::detail
 {
@@ -59,6 +60,31 @@ using MetricView = BoundCoordinateSystem::MetricView;
 /// @return [points][dim][dim]
 [[nodiscard]] Kokkos::View<Real***, DeviceMemorySpace> PullbackMetric(
   JacobianView jacobian, MetricView metric);
+
+/// @brief The transform of values written in `written` to the scaling of
+///        `declared` at `points`: ToPhysical or ToNatural from the metric of
+///        the declared system there.
+/// @return nothing unless the bases differ only in their scaling
+/// @throws pcms_error if the system has no metric, or `points` are not in it
+[[nodiscard]] std::optional<ValueTransform> ScalingTransform(
+  const ValueBasis& written, const ValueBasis& declared,
+  const CoordinateView<DeviceMemorySpace>& points);
+
+/// @brief ScalingTransform kept in `cache`, formed again only when the cached
+///        one does not take `written` to `declared`.
+/// @return the transform, or null if there is none
+inline const ValueTransform* CachedScalingTransform(
+  std::optional<ValueTransform>& cache, const ValueBasis& written,
+  const ValueBasis& declared, const CoordinateView<DeviceMemorySpace>& points)
+{
+  if (SameValueBasis(written, declared)) {
+    return nullptr;
+  }
+  if (!cache || !SameValueBasis(cache->OutputBasis(written), declared)) {
+    cache = ScalingTransform(written, declared, points);
+  }
+  return cache ? &*cache : nullptr;
+}
 
 } // namespace pcms::detail
 

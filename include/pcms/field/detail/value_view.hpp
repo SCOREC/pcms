@@ -56,6 +56,14 @@ namespace pcms::detail
   return a.scaling == ComponentScaling::Physical || a.variance == b.variance;
 }
 
+/// @brief Whether `a` and `b` are the same basis but for their scaling
+[[nodiscard]] inline bool SameValueBasisExceptScaling(const ValueBasis& a,
+                                                      ValueBasis b) noexcept
+{
+  b.scaling = a.scaling;
+  return SameValueBasis(a, b);
+}
+
 /// Gate for a tagged write: throws pcms_error unless the basis the caller
 /// claimed on the output view is the basis the callee is about to write.
 /// @param context callee name used to prefix the error message

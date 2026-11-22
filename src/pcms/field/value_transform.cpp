@@ -320,6 +320,30 @@ Kokkos::View<Real***, DeviceMemorySpace> PullbackMetric(JacobianView jacobian,
   return pulled;
 }
 
+std::optional<ValueTransform> ScalingTransform(
+  const ValueBasis& written, const ValueBasis& declared,
+  const CoordinateView<DeviceMemorySpace>& points)
+{
+  if (written.Rank() == 0 || written.scaling == declared.scaling ||
+      !SameValueBasisExceptScaling(written, declared)) {
+    return std::nullopt;
+  }
+  const auto& system = declared.system;
+  if (!system->HasMetric()) {
+    throw pcms_error("ScalingTransform: physical and natural components in '" +
+                     std::string(system->Kind()) +
+                     "' convert by its metric, which it does not have");
+  }
+  if (!SameCoordinateSystem(points.GetCoordinateSystem(), system)) {
+    throw pcms_error("ScalingTransform: the points must be in '" +
+                     std::string(system->Kind()) + "'");
+  }
+  const auto bound = system->Bind(points.GetValues());
+  return declared.scaling == ComponentScaling::Physical
+           ? ToPhysical(system, bound->Metric())
+           : ToNatural(system, bound->Metric());
+}
+
 } // namespace detail
 
 } // namespace pcms

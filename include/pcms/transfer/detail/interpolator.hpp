@@ -15,7 +15,9 @@
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
+#include <optional>
 #include <string>
+#include <type_traits>
 
 namespace pcms::detail
 {
@@ -71,6 +73,8 @@ public:
                                     .GetValues()
                                     .extent(0))),
       n_comp_(target_space_->GetLayout()->GetNumComponents()),
+      fill_(bound == nullptr ? T{}
+                             : static_cast<T>(bound->Policy().fill_value)),
       evaluator_(CreateEvaluator(*source_, *target_space_, std::move(bound))),
       target_values_("interp_output", num_points_, n_comp_)
   {
@@ -88,14 +92,21 @@ private:
     const auto& sd = source.GetData();
     const auto& td = target.GetData();
     const ValueBasis written = evaluator_->OutputBasis(sd.GetValueBasis());
-    if (!detail::SameValueBasis(written, td.GetValueBasis())) {
-      throw pcms_error(
-        "Interpolator: the basis written for the source's stored basis "
-        "differs from the target's declared basis" +
-        detail::UnitsMismatch(written, td.GetValueBasis()));
-    }
+    const auto* scaling = Scaling(written, td.GetValueBasis());
     evaluator_->Evaluate(source, ValueView<T, DeviceMemorySpace>(
                                    written, MakeRank2View(target_values_)));
+    if constexpr (std::is_same_v<T, Real>) {
+      if (scaling != nullptr) {
+        scaling->Apply(ValueView<const Real, DeviceMemorySpace>(
+                         written, MakeConstRank2View(target_values_)),
+                       ValueView<Real, DeviceMemorySpace>(
+                         td.GetValueBasis(), MakeRank2View(target_values_)));
+        if (const auto filled = evaluator_->FilledPoints();
+            filled.extent(0) > 0) {
+          detail::FillRows(MakeRank2View(target_values_), filled, fill_);
+        }
+      }
+    }
     target.SetDOFHolderDataUnchecked(MakeConstRank2View(target_values_));
     target.Synchronize();
   }
@@ -112,14 +123,44 @@ private:
       throw pcms_error("Interpolator::ApplyTranspose: the source must be a "
                        "field of the target space's layout");
     }
-    detail::CheckWrittenValueBasis("Interpolator::ApplyTranspose",
-                                   source.GetData().GetValueBasis(),
-                                   target.GetData().GetValueBasis());
+    const ValueBasis written =
+      evaluator_->OutputBasis(target.GetData().GetValueBasis());
+    const auto* scaling =
+      Scaling(written, source.GetData().GetValueBasis(), true);
+    auto loads = source.GetDOFHolderData().GetValues();
+    if constexpr (std::is_same_v<T, Real>) {
+      if (scaling != nullptr) {
+        scaling->ApplyTranspose(ValueView<const Real, DeviceMemorySpace>(
+                                  source.GetData().GetValueBasis(), loads),
+                                ValueView<Real, DeviceMemorySpace>(
+                                  written, MakeRank2View(target_values_)));
+        loads = MakeConstRank2View(target_values_);
+      }
+    }
     detail::SetZero(target);
-    evaluator_->EvaluateTranspose(ValueView<const T, DeviceMemorySpace>(
-                                    target.GetData().GetValueBasis(),
-                                    source.GetDOFHolderData().GetValues()),
-                                  target);
+    evaluator_->EvaluateTranspose(
+      ValueView<const T, DeviceMemorySpace>(written, loads), target);
+  }
+
+  // the conversion of values written in `written` to the scaling of the
+  // target's `declared` basis, or null; a mismatch names the units of the
+  // call's source first
+  const ValueTransform* Scaling(const ValueBasis& written,
+                                const ValueBasis& declared,
+                                bool transpose = false) const
+  {
+    if (!detail::SameValueBasisExceptScaling(written, declared) ||
+        (!std::is_same_v<T, Real> &&
+         !detail::SameValueBasis(written, declared))) {
+      throw pcms_error(
+        "Interpolator: the basis written for the source's stored basis "
+        "differs from the target's declared basis" +
+        (transpose ? detail::UnitsMismatch(declared, written)
+                   : detail::UnitsMismatch(written, declared)));
+    }
+    return CachedScalingTransform(
+      scaling_, written, declared,
+      target_space_->GetLayout()->GetDOFHolderCoordinates());
   }
 
   template <typename P>
@@ -162,8 +203,10 @@ private:
   std::shared_ptr<const FunctionSpace> target_space_;
   LO num_points_;
   int n_comp_;
+  T fill_;
   std::unique_ptr<PointEvaluator<T>> evaluator_;
   mutable Kokkos::View<T**, DeviceMemorySpace> target_values_;
+  mutable std::optional<ValueTransform> scaling_;
 };
 
 } // namespace pcms::detail

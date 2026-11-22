@@ -129,9 +129,9 @@ public:
   }
 
   /// @return the bound points where they were located, one row per point:
-  ///         the query points mapped by GetBoundMap() into the geometry's
-  ///         coordinate system, or a copy of the query points if the bind had
-  ///         no map
+  ///         the query points, mapped by GetBoundMap() into the geometry's
+  ///         coordinate system if the bind had a map, reduced by the
+  ///         identifications of their coordinate system
   [[nodiscard]] CoordinateView<DeviceMemorySpace> LocatedPoints() const;
 
   /// @return J(p, j, i) = d x_j / d xi_i, [points][system][parameter]: the
@@ -204,8 +204,7 @@ protected:
   void SetFound(Kokkos::View<const bool*, DeviceMemorySpace> found);
 
   /// @brief Replaces the located points by `points` (the query points
-  ///        reduced by a symmetry of the geometry); not for a bind with a
-  ///        map, whose located points are the mapped ones.
+  ///        reduced by a symmetry of the geometry).
   /// @param points [points][dimension], NumPoints() rows
   void ReplaceLocatedPoints(
     Kokkos::View<const Real**, DeviceMemorySpace> points);

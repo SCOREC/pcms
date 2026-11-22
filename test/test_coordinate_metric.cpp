@@ -86,8 +86,9 @@ TEST_CASE("Bound coordinate systems give the metric and the volume factor",
     CHECK(bound.metric[4] == 4.0);
     CHECK(bound.metric[9 + 4] == 9.0);
     CHECK(bound.metric[1] == 0.0);
-    CHECK(system->Period(1) == std::optional<Real>(2.0 * std::numbers::pi));
-    CHECK_FALSE(system->Period(0).has_value());
+    REQUIRE(system->Identifications().size() == 1);
+    CHECK(system->Identifications()[0] ==
+          pcms::Identification{1, 0.0, 2.0 * std::numbers::pi, nullptr});
   }
   SECTION("cylindrical (R, Z): identity metric, volume factor R")
   {
@@ -104,14 +105,15 @@ TEST_CASE("Parameter systems are labels without a metric",
           "[coordinate_system][metric]")
 {
   const auto system = pcms::csys::CreateParameterSystem(
-    "r_theta_zeta", 3, {std::nullopt, 2.0 * std::numbers::pi, 1.5});
+    "r_theta_zeta", 3, {{1, 0.0, 2.0 * std::numbers::pi}, {2, 0.0, 1.5}});
   CHECK(system->Kind() == "r_theta_zeta");
   CHECK(system->Dimension() == 3);
   CHECK_FALSE(system->HasMetric());
   CHECK_FALSE(system->IsOrthogonal());
-  CHECK_FALSE(system->Period(0).has_value());
-  CHECK(system->Period(1) == std::optional<Real>(2.0 * std::numbers::pi));
-  CHECK(system->Period(2) == std::optional<Real>(1.5));
+  REQUIRE(system->Identifications().size() == 2);
+  CHECK(system->Identifications()[0].length == 2.0 * std::numbers::pi);
+  CHECK(system->Identifications()[1].axis == 2);
+  CHECK(system->Identifications()[1].length == 1.5);
   CHECK(pcms::csys::CreateCartesian(2)->HasMetric());
   const auto coords = pcms::test::CreateDeviceRank2View({0.1, 0.2, 0.3}, 3);
   CHECK_THROWS_AS(system->Bind(pcms::MakeConstRank2View(coords)),
@@ -120,12 +122,12 @@ TEST_CASE("Parameter systems are labels without a metric",
   CHECK(*system == *system);
   CHECK_FALSE(*system == *pcms::csys::CreateParameterSystem(
                            "r_theta_zeta", 3,
-                           {std::nullopt, 2.0 * std::numbers::pi, 1.5}));
+                           {{1, 0.0, 2.0 * std::numbers::pi}, {2, 0.0, 1.5}}));
   CHECK_FALSE(*pcms::csys::CreateParameterSystem("x", 2) ==
               *pcms::csys::CreateCartesian(2));
   CHECK_THROWS(pcms::csys::CreateParameterSystem("x", 0));
-  CHECK_THROWS(pcms::csys::CreateParameterSystem("x", 2, {1.0}));
-  CHECK_THROWS(pcms::csys::CreateParameterSystem("x", 1, {-1.0}));
+  CHECK_THROWS(pcms::csys::CreateParameterSystem("x", 2, {{2, 0.0, 1.0}}));
+  CHECK_THROWS(pcms::csys::CreateParameterSystem("x", 1, {{0, 0.0, -1.0}}));
 }
 
 namespace

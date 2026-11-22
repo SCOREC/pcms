@@ -102,7 +102,8 @@ public:
     return false;
   }
 
-  /// @brief Localizes physical query points.
+  /// @brief Localizes physical query points, reduced by the identifications
+  ///        of the coordinate system they are located in.
   /// @param coords query points, in GetCoordinateSystem() or, with `map`, in
   ///        its source coordinate system; or, without a map, in
   ///        GetParameterSystem() when the geometry has one: the points are

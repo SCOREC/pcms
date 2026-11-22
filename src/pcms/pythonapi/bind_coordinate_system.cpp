@@ -1,7 +1,9 @@
 #include <functional>
 #include <memory>
+#include <numbers>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <pybind11/numpy.h>
@@ -100,10 +102,13 @@ void bind_coordinate_system_module(py::module& m)
     py::arg("dim"), "The Cartesian coordinate system of dimension 1..3");
   csys.def(
     "create_cylindrical_r_theta_z",
-    []() {
-      return Immutable<CoordinateSystem>{csys::CreateCylindricalRThetaZ()};
+    [](Real phi_period) {
+      return Immutable<CoordinateSystem>{
+        csys::CreateCylindricalRThetaZ(phi_period)};
     },
-    "Cylindrical (r, theta, z) with theta = atan2(y, x); dimension 3");
+    py::arg("phi_period") = 2 * std::numbers::pi_v<Real>,
+    "Cylindrical (r, theta, z) with theta = atan2(y, x), identified along "
+    "theta over [0, phi_period); dimension 3");
   csys.def(
     "create_cylindrical_rz",
     []() { return Immutable<CoordinateSystem>{csys::CreateCylindricalRZ()}; },
@@ -111,14 +116,18 @@ void bind_coordinate_system_module(py::module& m)
   csys.def(
     "create_parameter_system",
     [](std::string name, int dimension,
-       std::vector<std::optional<Real>> periods) {
+       const std::vector<std::tuple<int, Real, Real>>& translations) {
+      std::vector<Identification> identifications;
+      for (const auto& [axis, lower, length] : translations) {
+        identifications.push_back({axis, lower, length, nullptr});
+      }
       return Immutable<CoordinateSystem>{csys::CreateParameterSystem(
-        std::move(name), dimension, std::move(periods))};
+        std::move(name), dimension, std::move(identifications))};
     },
     py::arg("name"), py::arg("dimension"),
-    py::arg("periods") = std::vector<std::optional<Real>>{},
-    "Coordinates that are labels, of dimension 1..6, with no metric; periods "
-    "(None: not periodic) are empty or one per axis");
+    py::arg("translations") = std::vector<std::tuple<int, Real, Real>>{},
+    "Coordinates that are labels, of dimension 1..6, with no metric; "
+    "translations are (axis, lower, length) identifications");
 
   py::class_<PyCoordinateView>(m, "CoordinateView",
                                "Coordinates tagged with their coordinate "

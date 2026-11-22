@@ -1,6 +1,7 @@
 #include "periodic_test_utils.hpp"
 #include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/transfer/forms.hpp>
+#include <pcms/transfer/interpolator.hpp>
 #include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/projection.hpp>
 #include <pcms/transfer/linear_solver.hpp>
@@ -99,6 +100,30 @@ TEST_CASE("Periodic Lagrange order 1: nodes, midpoints and slopes",
   const auto wrapped = EvaluateAt(*space, u, {{1.0 + 3.0 - 0.25 * h}});
   CHECK(wrapped[0][0] ==
         Catch::Approx(0.25 * g[5] + 0.75 * g[0]).margin(1e-12));
+}
+
+TEST_CASE("Periodic Lagrange order 1: an interpolator reaches target sites "
+          "on the end of the period",
+          "[periodic][lagrange]")
+{
+  const auto source = pcms::CreateLagrangeSpace(Periodic(4), 1, 1);
+  pcms::UniformGrid<1> grid;
+  grid.bot_left = {TwoPi / 2};
+  grid.edge_length = {TwoPi / 2};
+  grid.divisions = {2};
+  const auto target = pcms::CreateLagrangeSpace(
+    pcms::uniform_grid::CreateGeometry(
+      grid, source->GetGeometry()->GetCoordinateSystem()),
+    1, 1);
+  auto u = source->CreateFunction<Real>();
+  SetDofs(u, {1, 4, -2, 0.5});
+  auto v = target->CreateFunction<Real>();
+  pcms::CreateInterpolator<Real>(source, target)->Apply(u, v);
+  // x = 2 pi is x = 0
+  const auto values = pcms::test::GetDofs(v);
+  REQUIRE(values.size() == 3);
+  CHECK(values[0] == Catch::Approx(-2).margin(1e-13));
+  CHECK(values[2] == Catch::Approx(1).margin(1e-13));
 }
 
 TEST_CASE("Periodic Hermite: cubics exactly away from the wrap, sine to "

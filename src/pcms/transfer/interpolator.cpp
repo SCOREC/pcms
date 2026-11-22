@@ -1,5 +1,6 @@
 #include "pcms/transfer/interpolator.hpp"
 #include "pcms/field/coordinate_map.hpp"
+#include "pcms/geometry/detail/geometry.hpp"
 
 namespace pcms
 {
@@ -19,11 +20,15 @@ bool SameDOFHolderSites(const BoundPoints& bound, const FieldLayout& layout)
   if (bound.NumPoints() != num_points) {
     return false;
   }
-  // a bind with a map located the mapped points
-  const auto va = bound.LocatedPoints().GetValues();
+  // a bind with a map located the mapped points, before their reduction;
+  // without one, the sites reduced by the periodic axes
   const bool mapped = bound.GetCoordinateMap() != nullptr;
-  const auto vb = mapped ? bound.GetCoordinateMap()->Bind(sites)->Mapped()
-                         : Kokkos::View<const Real**, DeviceMemorySpace>();
+  const auto va = mapped ? MakeConstRank2View(bound.GetBoundMap()->Mapped())
+                         : bound.LocatedPoints().GetValues();
+  const Kokkos::View<const Real**, DeviceMemorySpace> vb =
+    mapped ? bound.GetCoordinateMap()->Bind(sites)->Mapped()
+           : ReduceToPeriod(sites);
+  const bool other = vb.data() != nullptr;
   const auto num_dims = static_cast<int>(va.extent(1));
   LO num_different = 0;
   Kokkos::parallel_reduce(
@@ -31,7 +36,7 @@ bool SameDOFHolderSites(const BoundPoints& bound, const FieldLayout& layout)
     Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_points),
     KOKKOS_LAMBDA(const LO i, LO& count) {
       for (int d = 0; d < num_dims; ++d) {
-        if (va(i, d) != (mapped ? vb(i, d) : vs(i, d))) {
+        if (va(i, d) != (other ? vb(i, d) : vs(i, d))) {
           ++count;
           return;
         }

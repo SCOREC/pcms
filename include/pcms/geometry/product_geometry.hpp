@@ -26,10 +26,7 @@ struct ProductIdentification
 {
   /// axis of the first factor that wraps
   int wrap_axis = 0;
-  /// the wrapping interval of that axis: the period is the one the first
-  /// factor's coordinate system declares for the axis (CoordinateSystem::
-  /// Period), if it does, and may then be left 0; the lower end is a property
-  /// of the geometry
+  /// the wrapping interval of that axis
   Real lower = 0;
   Real period = 0;
   /// the shift, a function on a geometry whose coordinates are the other axes

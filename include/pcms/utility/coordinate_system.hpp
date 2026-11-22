@@ -6,7 +6,7 @@
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
-#include <optional>
+#include <span>
 #include <string_view>
 
 namespace pcms
@@ -55,11 +55,43 @@ private:
   Kokkos::View<const Real*, DeviceMemorySpace> volume_factor_;
 };
 
+class CoordinateSystem;
+
+/// @brief The map of an identification that is not a translation
+///        (CreateTwistShiftMap)
+class IdentificationMap
+{
+public:
+  /// @brief Applies the map `wraps(p)` times to point p.
+  /// @param points [points][dimension], the identified axis already reduced
+  /// @param wraps the number of lengths each point was moved down the
+  ///        identified axis
+  virtual void Apply(
+    Kokkos::View<Real**, DeviceMemorySpace> points,
+    Kokkos::View<const Real*, DeviceMemorySpace> wraps) const = 0;
+
+  virtual ~IdentificationMap() = default;
+};
+
+/// @brief Points of a coordinate system that are one point: x and x + length
+///        along `axis`, after `map` for a twist-shift.
+struct Identification
+{
+  int axis = 0;
+  /// the fundamental interval [lower, lower + length) of the axis
+  Real lower = 0;
+  Real length = 0;
+  /// what else changes per length crossed; null for a translation
+  std::shared_ptr<const IdentificationMap> map;
+
+  [[nodiscard]] bool operator==(const Identification&) const = default;
+};
+
 /// @brief A coordinate system: labels and closed forms, never data.
 ///
-/// A coordinate system says what its coordinates are (kind, dimension, periodic
-/// axes) and, when it has one, its closed-form metric (Bind); per-point values
-/// come only from bound objects. A parameter system
+/// A coordinate system says what its coordinates are (kind, dimension,
+/// identifications) and, when it has one, its closed-form metric (Bind);
+/// per-point values come only from bound objects. A parameter system
 /// (csys::CreateParameterSystem) has no metric: the metric of a geometry over
 /// it belongs to the geometry.
 class CoordinateSystem
@@ -83,12 +115,11 @@ public:
     return IsOrthogonal() && IsNormalized();
   }
 
-  /// @return the period of coordinate `axis` if the system is periodic along
-  ///         it (a point and its image a period away are the same point)
-  [[nodiscard]] virtual std::optional<Real> Period(int axis) const noexcept
+  /// @return the identifications, applied in order by Geometry::Bind
+  [[nodiscard]] virtual std::span<const Identification> Identifications()
+    const noexcept
   {
-    (void)axis;
-    return std::nullopt;
+    return {};
   }
 
   /// @return whether the coordinate system has a closed-form metric, so that

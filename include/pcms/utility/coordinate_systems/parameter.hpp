@@ -4,7 +4,6 @@
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/types.hpp"
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,13 +20,11 @@ namespace pcms::csys
 /// equals only itself.
 /// @param name what the coordinates are, e.g. "bout_index"; Kind() returns it
 /// @param dimension number of coordinates, 1 to 6
-/// @param periods the period of each periodic axis, none for the others;
-///        empty (no periodic axis) or one entry per axis
-/// @throws pcms_error if the dimension is out of range, `periods` has
-///         another number of entries, or a period is not positive
+/// @throws pcms_error if the dimension is out of range, or an identification
+///         has an axis outside the system or a length that is not positive
 [[nodiscard]] std::shared_ptr<const CoordinateSystem> CreateParameterSystem(
   std::string name, int dimension,
-  std::vector<std::optional<Real>> periods = {});
+  std::vector<Identification> identifications = {});
 
 } // namespace pcms::csys
 

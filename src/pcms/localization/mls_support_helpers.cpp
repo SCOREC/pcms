@@ -71,8 +71,13 @@ AxisPeriods MakeAxisPeriods(const CoordinateSystem& system)
                      std::string(system.Kind()) + "'");
   }
   AxisPeriods periods;
-  for (int d = 0; d < dim; ++d) {
-    periods.period[d] = system.Period(d).value_or(0.0);
+  for (const auto& id : system.Identifications()) {
+    if (id.map != nullptr) {
+      throw pcms_error("point cloud: only translation identifications are "
+                       "supported; '" +
+                       std::string(system.Kind()) + "' has another");
+    }
+    periods.period[id.axis] = id.length;
   }
   return periods;
 }

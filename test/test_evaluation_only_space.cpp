@@ -200,7 +200,7 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
   const int num_components = GENERATE(1, 2);
   auto source = MakeMockSpace(num_components);
   auto target = MakePoloidalTarget(mesh, num_components);
-  const Real theta0 = -0.3;
+  const Real theta0 = 0.3;
   const auto target_layout = target->GetLayout();
   const auto on_plane = source->GetGeometry()->Bind(
     target_layout->GetDOFHolderCoordinates(), pcms::OutOfBoundsPolicy{},

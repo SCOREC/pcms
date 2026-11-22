@@ -31,6 +31,12 @@ void CheckEntityIds(Kokkos::View<const LO*, DeviceMemorySpace> ids,
                     LO num_entities, const std::string& caller,
                     const std::string& entity);
 
+/// @return the points reduced by the identifications of their coordinate
+///         system, as Geometry::Bind locates them, or an empty view if it has
+///         none
+[[nodiscard]] Kokkos::View<Real**, DeviceMemorySpace> ReduceToPeriod(
+  const CoordinateView<DeviceMemorySpace>& coords);
+
 /// @brief Multiplies quadrature weights by the volume factor at their bound
 ///        points, making parameter-coordinate measures physical, or divides
 ///        them by it.

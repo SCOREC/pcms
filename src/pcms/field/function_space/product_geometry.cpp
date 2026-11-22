@@ -186,18 +186,6 @@ ProductGeometry::ProductGeometry(
   if (identification_) {
     const int da = a_->GetCoordinateSystem()->Dimension();
     auto& id = *identification_;
-    // a system that declares the wrap axis periodic gives the period, which
-    // must be the one given
-    if (id.wrap_axis >= 0 && id.wrap_axis < da) {
-      const auto declared = a_->GetCoordinateSystem()->Period(id.wrap_axis);
-      if (declared && id.period != 0 && id.period != *declared) {
-        throw pcms_error("CreateProductGeometry: the identification's period "
-                         "differs from the period of the coordinate system");
-      }
-      if (declared) {
-        id.period = *declared;
-      }
-    }
     if (id.wrap_axis < 0 || id.wrap_axis >= da || da < 2 || !(id.period > 0) ||
         id.shift == nullptr ||
         id.shift->GetSpace()

@@ -343,15 +343,15 @@ std::shared_ptr<const pcms::FunctionSpace> MakeSpace(
 TEST_CASE("parameter system axes: periods, validation and equality")
 {
   auto system =
-    pcms::csys::CreateParameterSystem("theta_energy", 2, {TwoPi, std::nullopt});
+    pcms::csys::CreateParameterSystem("theta_energy", 2, {{0, 0.0, TwoPi}});
   REQUIRE(system->Dimension() == 2);
   REQUIRE(system->Kind() == "theta_energy");
-  REQUIRE(system->Period(0) == std::optional<Real>(TwoPi));
-  REQUIRE_FALSE(system->Period(1).has_value());
+  REQUIRE(system->Identifications().size() == 1);
+  REQUIRE(system->Identifications()[0].length == TwoPi);
   REQUIRE_FALSE(*system == *pcms::csys::CreateParameterSystem(
-                             "theta_energy", 2, {TwoPi, std::nullopt}));
+                             "theta_energy", 2, {{0, 0.0, TwoPi}}));
   REQUIRE_FALSE(Phase(2)->HasMetric());
-  REQUIRE_THROWS_AS(pcms::csys::CreateParameterSystem("a", 1, {-1.0}),
+  REQUIRE_THROWS_AS(pcms::csys::CreateParameterSystem("a", 1, {{0, 0.0, -1.0}}),
                     pcms::pcms_error);
 }
 
@@ -393,7 +393,7 @@ TEST_CASE("point-cloud MLS uses the supports across a period")
 
   int missing = -1;
   auto periodic = values_at(
-    pcms::csys::CreateParameterSystem("theta_x", 2, {TwoPi, std::nullopt}),
+    pcms::csys::CreateParameterSystem("theta_x", 2, {{0, 0.0, TwoPi}}),
     missing);
   REQUIRE(missing == 0);
   for (std::size_t i = 0; i < 4; ++i) {

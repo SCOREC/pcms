@@ -20,12 +20,9 @@ namespace pcms
 /// factors of its points are those of its coordinate system.
 /// CreateQuadrature is Gauss-Legendre per cell.
 /// @param system one-dimensional coordinate system of the interval
-/// @param period the period. A system that declares its axis periodic
-///        (CoordinateSystem::Period(0)) gives it, and `period` may then be
-///        omitted; given too, it must be that period. Otherwise 2 pi unless
-///        given.
+/// @param period the period, 2 pi unless given
 /// @throws pcms_error unless `system` is one-dimensional, `num_cells` is
-///         positive and the period is positive and the system's, if it has one
+///         positive and the period is positive
 [[nodiscard]] std::shared_ptr<const Geometry> CreatePeriodicGeometry(
   std::shared_ptr<const CoordinateSystem> system, int num_cells,
   std::optional<Real> period = std::nullopt, Real origin = 0);

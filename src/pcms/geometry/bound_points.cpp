@@ -93,12 +93,10 @@ void BoundPoints::Reset(const BindRequest& request)
   const auto coords = request.coords.GetValues();
   num_points_ = static_cast<LO>(request.query_coords.GetValues().extent(0));
   PCMS_ALWAYS_ASSERT(static_cast<LO>(coords.extent(0)) == num_points_);
-  if (map_ == nullptr) {
-    detail::ReserveRows(points_, "bound_points", num_points_, coords.extent(1));
-    auto points = Kokkos::subview(
-      points_, Kokkos::make_pair(LO{0}, num_points_), Kokkos::ALL);
-    CopyPoints(points, coords);
-  }
+  detail::ReserveRows(points_, "bound_points", num_points_, coords.extent(1));
+  auto points = Kokkos::subview(points_, Kokkos::make_pair(LO{0}, num_points_),
+                                Kokkos::ALL);
+  CopyPoints(points, coords);
   // every point is found until SetFound
   detail::ReserveRows(point_indices_, "bound_point_indices", num_points_);
   num_found_ = num_points_;
@@ -113,19 +111,14 @@ void BoundPoints::Reset(const BindRequest& request)
 
 CoordinateView<DeviceMemorySpace> BoundPoints::LocatedPoints() const
 {
-  if (map_ != nullptr) {
-    return map_->MappedPoints();
-  }
   return CoordinateView<DeviceMemorySpace>(
-    system_, MakeConstRank2View(LocatedPointValues()));
+    map_ != nullptr ? map_->MappedPoints().GetCoordinateSystem() : system_,
+    MakeConstRank2View(LocatedPointValues()));
 }
 
 Kokkos::View<const Real**, DeviceMemorySpace> BoundPoints::LocatedPointValues()
   const noexcept
 {
-  if (map_ != nullptr) {
-    return map_->Mapped();
-  }
   return Kokkos::subview(points_, Kokkos::make_pair(LO{0}, num_points_),
                          Kokkos::ALL);
 }
@@ -133,8 +126,7 @@ Kokkos::View<const Real**, DeviceMemorySpace> BoundPoints::LocatedPointValues()
 void BoundPoints::ReplaceLocatedPoints(
   Kokkos::View<const Real**, DeviceMemorySpace> points)
 {
-  PCMS_ALWAYS_ASSERT(map_ == nullptr &&
-                     static_cast<LO>(points.extent(0)) == num_points_);
+  PCMS_ALWAYS_ASSERT(static_cast<LO>(points.extent(0)) == num_points_);
   CopyPoints(Kokkos::subview(points_, Kokkos::make_pair(LO{0}, num_points_),
                              Kokkos::ALL),
              MakeConstRank2View(points));

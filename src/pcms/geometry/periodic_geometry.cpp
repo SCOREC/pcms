@@ -102,16 +102,6 @@ std::shared_ptr<const Geometry> CreatePeriodicGeometry(
   std::shared_ptr<const CoordinateSystem> system, int num_cells,
   std::optional<Real> period, Real origin)
 {
-  if (system != nullptr && system->Dimension() == 1) {
-    const auto declared = system->Period(0);
-    if (declared && period && *declared != *period) {
-      throw pcms_error("CreatePeriodicGeometry: the period differs from the "
-                       "period the coordinate system declares for its axis");
-    }
-    if (declared) {
-      period = declared;
-    }
-  }
   return std::make_shared<PeriodicGeometry>(
     std::move(system), num_cells, period.value_or(2 * std::numbers::pi_v<Real>),
     origin);

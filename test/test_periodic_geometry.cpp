@@ -4,6 +4,7 @@
 #include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/utility/arrays.hpp>
 #include <pcms/utility/detail/arrays.hpp>
+#include <pcms/utility/detail/periodic.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include "field_test_utils.hpp"
 #include "pcms/geometry/periodic_binding.hpp"
@@ -64,6 +65,52 @@ TEST_CASE("Periodic geometry: points wrap modulo the period at Bind",
     CHECK(cell(i) == expected_cell[i]);
     CHECK(xi(i) == Catch::Approx(expected_xi[i]).margin(1e-13));
     CHECK(phase(i) == Catch::Approx(expected_phase[i]).margin(1e-13));
+  }
+}
+
+TEST_CASE("Periodic geometry: points at a multiple of the period reduce to the "
+          "lower end",
+          "[periodic]")
+{
+  for (const auto& [period, x] :
+       {std::pair{TwoPi, 33 * TwoPi},
+        std::pair{TwoPi, std::nextafter(33 * TwoPi, 0.0)},
+        std::pair{0.1, 3.9}}) {
+    CAPTURE(period, x);
+    const auto geometry = pcms::test::PeriodicGrid(4, period);
+    const auto points = pcms::test::DevicePoints({{x}});
+    const auto bound =
+      geometry->Bind(pcms::CoordinateView<pcms::DeviceMemorySpace>(
+        geometry->GetCoordinateSystem(), pcms::MakeConstRank2View(points)));
+    const auto located =
+      pcms::test::CopyCoordinatesToHost(bound->LocatedPoints().GetValues());
+    CHECK(located(0, 0) >= 0);
+    CHECK(located(0, 0) < period);
+  }
+}
+
+TEST_CASE("Periodic helpers: nearest images and reduction to the period",
+          "[periodic]")
+{
+  using pcms::detail::NearestImage;
+  using pcms::detail::WrapToPeriod;
+  const Real length = 2.5;
+  CHECK(NearestImage(length / 2, length) == -length / 2);
+  CHECK(NearestImage(-length / 2, length) == length / 2);
+  CHECK(NearestImage(0.3 + 4 * length, length) ==
+        Catch::Approx(0.3).margin(1e-14));
+  CHECK(NearestImage(7.0, 0.0) == 7.0);
+  Real wraps = 0;
+  CHECK(WrapToPeriod(1.0 + length, 1.0, length, wraps) == 1.0);
+  CHECK(wraps == 1.0);
+  CHECK(WrapToPeriod(0.5, 1.0, length, wraps) ==
+        Catch::Approx(0.5 + length).margin(1e-14));
+  CHECK(wraps == -1.0);
+  for (const Real x : {33 * TwoPi, std::nextafter(33 * TwoPi, 0.0)}) {
+    CAPTURE(x);
+    const Real y = WrapToPeriod(x, 0.0, TwoPi, wraps);
+    CHECK(y >= 0.0);
+    CHECK(y < TwoPi);
   }
 }
 

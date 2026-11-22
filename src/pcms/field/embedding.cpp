@@ -564,8 +564,8 @@ private:
 } // namespace
 
 // The search of an embedded geometry: the images of the parameter cells,
-// binned modulo the periods of the coordinate system and the symmetry, and the
-// position.
+// binned modulo the translation identifications of the coordinate system and
+// the symmetry, and the position.
 struct detail::EmbeddedSearch
 {
   Position position;
@@ -614,8 +614,10 @@ std::shared_ptr<const detail::EmbeddedSearch> CreateSearch(
     }
   }
   Kokkos::Array<Real, 3> period = {};
-  for (int j = 0; j < dt; ++j) {
-    period[j] = system->Period(j).value_or(0);
+  for (const auto& id : system->Identifications()) {
+    if (id.map == nullptr) {
+      period[id.axis] = id.length;
+    }
   }
   if (options.symmetry) {
     period[options.symmetry->axis] = options.symmetry->length;
@@ -750,7 +752,7 @@ private:
           return Search<Dim>(search_, grid->GetGrid(),
                              MakeConstRank2View(points));
         });
-      if (search_.symmetry && GetBoundMap() == nullptr) {
+      if (search_.symmetry) {
         ReplaceLocatedPoints(ReduceBySymmetry(points, *search_.symmetry));
       }
       SetParameters(*geometry_->GetParameterGeometry(), located.xi,

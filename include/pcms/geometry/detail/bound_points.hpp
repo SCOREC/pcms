@@ -4,9 +4,10 @@
 #include <Kokkos_Core.hpp>
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/coordinate_system.hpp"
-#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/detail/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 #include <cstddef>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -112,6 +113,21 @@ void ReserveRows(Kokkos::View<T**, DeviceMemorySpace>& storage,
     storage = Kokkos::View<T**, DeviceMemorySpace>(
       Kokkos::view_alloc(Kokkos::WithoutInitializing, label), rows, cols);
   }
+}
+
+/// @brief The mask of the `n` points that are in none of the missing lists.
+[[nodiscard]] inline Kokkos::View<bool*, DeviceMemorySpace> FoundMask(
+  LO n,
+  std::initializer_list<Kokkos::View<const LO*, DeviceMemorySpace>> missing)
+{
+  Kokkos::View<bool*, DeviceMemorySpace> found("found_mask", n);
+  Kokkos::deep_copy(found, true);
+  for (const auto& list : missing) {
+    ForEach(
+      "pcms::detail::FoundMask", static_cast<LO>(list.extent(0)),
+      KOKKOS_LAMBDA(const LO i) { found(list(i)) = false; });
+  }
+  return found;
 }
 
 } // namespace pcms::detail

@@ -375,15 +375,6 @@ void AcceptRound(UniformGrid<Dim> grid, Real slack,
     });
 }
 
-// Marks the listed points found, the others missing.
-void MarkFound(DeviceView<const LO*> indices, DeviceView<bool*> found)
-{
-  Kokkos::deep_copy(found, false);
-  detail::ForEach(
-    "embedded_mark_found", static_cast<LO>(indices.extent(0)),
-    KOKKOS_LAMBDA(const LO k) { found(indices(k)) = true; });
-}
-
 // The bounding boxes of the images of the cells under the position: of a
 // lattice of sample points of each cell, evaluated in batches of at most
 // detail::EmbeddingSampleBatch samples.
@@ -756,12 +747,12 @@ private:
       GetBoundMap() == nullptr &&
       pcms::detail::SameCoordinateSystem(GetCoordinateSystem(),
                                          geometry_->GetParameterSystem());
-    DeviceView<bool*> found("embedded_found", n);
+    DeviceView<bool*> found;
     if (parametric) {
       DeviceView<Real**> xi("embedded_xi", n, points.extent(1));
       Kokkos::deep_copy(xi, points);
       SetParameters(*geometry_->GetParameterGeometry(), xi, Policy());
-      MarkFound(Inner()->FoundPoints(), found);
+      found = detail::FoundMask(n, {Inner()->MissingPoints()});
     } else {
       const auto located = uniform_grid::VisitUniformGrid(
         geometry_->GetParameterGeometry(),

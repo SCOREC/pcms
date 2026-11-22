@@ -161,19 +161,6 @@ detail::PointRows KroneckerRows(
   return {offsets, holders, values, num_out};
 }
 
-/// 1 for the points the bound points evaluate, 0 for the missing ones
-Kokkos::View<const bool*, DeviceMemorySpace> FoundMask(const BoundPoints& bound)
-{
-  Kokkos::View<bool*, DeviceMemorySpace> found("product_found",
-                                               bound.NumPoints());
-  Kokkos::deep_copy(found, true);
-  const auto missing = bound.MissingPoints();
-  pcms::detail::ForEach(
-    "ProductFoundMask", static_cast<LO>(missing.extent(0)),
-    KOKKOS_LAMBDA(const LO i) { found(missing(i)) = false; });
-  return found;
-}
-
 PointMatrix<Real> MatrixOf(const FunctionSpace& space,
                            std::shared_ptr<const BoundPoints> bound,
                            DifferentialOperator op)
@@ -235,8 +222,10 @@ std::shared_ptr<const FunctionSpace> CreateProductSpace(
           m.gb =
             MatrixOf(*b, binding.FactorB(), DifferentialOperator::Gradient);
         }
-        return KroneckerRows(m, FoundMask(binding), da, db, gradient,
-                             holders_b);
+        return KroneckerRows(m,
+                             pcms::detail::FoundMask(binding.NumPoints(),
+                                                     {binding.MissingPoints()}),
+                             da, db, gradient, holders_b);
       });
   return std::make_shared<detail::QuadratureSpace>(
     layout, std::move(evaluator), geometry, [a, b, product] {

@@ -117,22 +117,6 @@ void ApplyIdentification(const ProductIdentification& id,
     });
 }
 
-/// found = found in both factors
-Kokkos::View<bool*, DeviceMemorySpace> BothFound(
-  LO n, Kokkos::View<const LO*, DeviceMemorySpace> missing_a,
-  Kokkos::View<const LO*, DeviceMemorySpace> missing_b)
-{
-  Kokkos::View<bool*, DeviceMemorySpace> found("product_found", n);
-  Kokkos::deep_copy(found, true);
-  pcms::detail::ForEach(
-    "ProductMissingA", static_cast<LO>(missing_a.extent(0)),
-    KOKKOS_LAMBDA(const LO i) { found(missing_a(i)) = false; });
-  pcms::detail::ForEach(
-    "ProductMissingB", static_cast<LO>(missing_b.extent(0)),
-    KOKKOS_LAMBDA(const LO i) { found(missing_b(i)) = false; });
-  return found;
-}
-
 CoordinateView<DeviceMemorySpace> FactorView(
   const Geometry& g, const Kokkos::View<Real**, DeviceMemorySpace>& points)
 {
@@ -175,7 +159,8 @@ void ProductBinding::Locate(bool rebind)
     b_ = product.FactorB()->Bind(view_b, Policy());
   }
   if (a_->MissingPoints().extent(0) + b_->MissingPoints().extent(0) > 0) {
-    SetFound(BothFound(NumPoints(), a_->MissingPoints(), b_->MissingPoints()));
+    SetFound(pcms::detail::FoundMask(
+      NumPoints(), {a_->MissingPoints(), b_->MissingPoints()}));
   }
 }
 

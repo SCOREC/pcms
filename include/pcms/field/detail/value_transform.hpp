@@ -22,52 +22,43 @@ using JacobianView =
 /// The metric g(p, a, b) of a coordinate system at points.
 using MetricView = BoundCoordinateSystem::MetricView;
 
-/// @brief The value transform of a map whose values flow against it: values
-///        in the components of `from` (the map's target, where the points
-///        were located) are expressed in those of `to` (the map's source,
-///        the coordinate system of the query points). Covectors by J^T, with no
-///        inverse (out_i = sum_j J(p, j, i) in_j); vectors by J^-1 (the
-///        solution of in_j = sum_i J(p, j, i) out_i), which needs J square.
-/// @param jacobian J(p, j, i) = d from_j / d to_i, [points][dim from][dim to];
-///        it must outlive the transform
-/// @param from the map's target coordinate system
-/// @param metric the metric of `from` at the mapped points, or empty if it
-///        has none; the scale factors of `to` are those of J^T g J, the
-///        metric pulled back to the query points
-/// @param to the map's source coordinate system
-/// @throws pcms_error if the extents of `jacobian` or `metric` do not match
-///         the coordinate systems
+/// @brief The value transform of a map whose values flow against it, from
+///        `from` (the map's target) to `to` (its source): vectors by J^-1,
+///        which needs J square, and covectors by J^T.
+/// @param jacobian J(p, j, i) = d from_j / d to_i, [points][dim from][dim to]
+/// @throws pcms_error if the extents of `jacobian` do not match the systems
 [[nodiscard]] ValueTransform Pullback(
   JacobianView jacobian, std::shared_ptr<const CoordinateSystem> from,
-  MetricView metric, std::shared_ptr<const CoordinateSystem> to);
+  std::shared_ptr<const CoordinateSystem> to);
 
-/// @brief The value transform along a map: components on the coordinates of
-///        `from` (the parameter system of a geometry) expressed in those of
-///        `to` (its coordinate system). Vectors by J (out_j = sum_i J(p, j, i)
-///        in_i, no inverse), covectors by J^-T (the solution of in_i = sum_j
-///        J(p, j, i) out_j), which needs J square.
-/// @param jacobian J(p, j, i) = d to_j / d from_i, [points][dim to][dim from];
-///        it must outlive the transform
-/// @param from the parameter system
-/// @param to the coordinate system
-/// @param metric the metric of `to` at the points, or empty if it has none;
-///        the scale factors of `from` are those of J^T g J
-/// @throws pcms_error if the extents of `jacobian` or `metric` do not match
-///         the coordinate systems
+/// @brief The value transform along a map, from `from` (its source) to `to`
+///        (its target): vectors by J, and covectors by J^-T, which needs J
+///        square.
+/// @param jacobian J(p, j, i) = d to_j / d from_i, [points][dim to][dim from]
+/// @throws pcms_error if the extents of `jacobian` do not match the systems
 [[nodiscard]] ValueTransform Pushforward(
   JacobianView jacobian, std::shared_ptr<const CoordinateSystem> from,
-  std::shared_ptr<const CoordinateSystem> to, MetricView metric);
+  std::shared_ptr<const CoordinateSystem> to);
 
-/// @brief Natural to physical components of an orthogonal coordinate system, or
-/// back: a
-///        vector component is multiplied by the scale factor sqrt(g_ii) of
-///        its axis, a covector component divided by it.
-/// @param system the coordinate system of the values
-/// @param metric the coordinate system's metric at the points
-/// @param to the scaling of the output
-[[nodiscard]] ValueTransform Scale(
-  std::shared_ptr<const CoordinateSystem> system, MetricView metric,
-  ComponentScaling to);
+/// @brief Physical to natural components of `system`: a vector component
+///        divided by sqrt(g_ii), a covector component by sqrt(g^ii).
+/// @param metric the metric of `system` at the points
+[[nodiscard]] ValueTransform ToNatural(
+  std::shared_ptr<const CoordinateSystem> system, MetricView metric);
+
+/// @brief Natural to physical components of `system`: a vector component
+///        multiplied by sqrt(g_ii), a covector component by sqrt(g^ii).
+/// @param metric the metric of `system` at the points
+[[nodiscard]] ValueTransform ToPhysical(
+  std::shared_ptr<const CoordinateSystem> system, MetricView metric);
+
+/// @brief The metric J^T G J that the map with Jacobian J pulls back from the
+///        metric G at the images of the points.
+/// @param jacobian J(p, j, i), [points][dim G][dim of the result]
+/// @param metric G(p, j, k) at the images
+/// @return [points][dim][dim]
+[[nodiscard]] Kokkos::View<Real***, DeviceMemorySpace> PullbackMetric(
+  JacobianView jacobian, MetricView metric);
 
 } // namespace pcms::detail
 

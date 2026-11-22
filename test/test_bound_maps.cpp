@@ -166,10 +166,10 @@ TEST_CASE("Bind with a map: vector evaluation rotates into the target basis")
   // natural components are re-expressed too (the map's Jacobian)
   REQUIRE(pcms::detail::SameValueBasis(
     evaluator->OutputBasis(natural_cylindrical), CartesianVector()));
-  REQUIRE_THROWS_WITH(evaluator->OutputBasis(
-                        ValueBasis{pcms::csys::CreateCylindricalRZ(),
-                                   ComponentScaling::Physical, values::Vector}),
-                      ContainsSubstring("takes components in"));
+  // a basis of another system passes through
+  const ValueBasis rz{pcms::csys::CreateCylindricalRZ(),
+                      ComponentScaling::Physical, values::Vector};
+  REQUIRE(pcms::detail::SameValueBasis(evaluator->OutputBasis(rz), rz));
 
   const auto coords = pcms::test::CopyCoordinatesToHost(pts.GetValues());
   const auto result =
@@ -514,13 +514,15 @@ TEST_CASE("Bind with a map: maps compose as separate binds")
   Kokkos::View<Real**, DeviceMemorySpace> out("out", n, 3);
   evaluator->Evaluate(b, ValueView<Real, DeviceMemorySpace>(
                            CartesianVector(), pcms::MakeRank2View(out)));
-  const auto& transform = to_cartesian->ValueTransform();
-  const auto cylindrical = transform.OutputBasis(CartesianVector());
-  REQUIRE(pcms::detail::SameValueBasis(cylindrical, CylindricalVector()));
-  transform.Apply(
-    ValueView<Real, DeviceMemorySpace>(CartesianVector(),
-                                       pcms::MakeRank2View(out)),
-    ValueView<Real, DeviceMemorySpace>(cylindrical, pcms::MakeRank2View(out)));
+  pcms::ValueBasis basis = CartesianVector();
+  for (const auto* transform : to_cartesian->ValueTransforms(basis)) {
+    const auto next = transform->OutputBasis(basis);
+    transform->Apply(
+      ValueView<Real, DeviceMemorySpace>(basis, pcms::MakeRank2View(out)),
+      ValueView<Real, DeviceMemorySpace>(next, pcms::MakeRank2View(out)));
+    basis = next;
+  }
+  REQUIRE(pcms::detail::SameValueBasis(basis, CylindricalVector()));
   auto result = Kokkos::create_mirror_view_and_copy(HostMemorySpace{}, out);
   for (int i = 0; i < n; ++i) {
     CAPTURE(i);

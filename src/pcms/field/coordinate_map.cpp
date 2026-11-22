@@ -92,20 +92,44 @@ CoordinateView<DeviceMemorySpace> BoundCoordinateMap::MappedPoints() const
                                            MakeConstRank2View(mapped_));
 }
 
-const ValueTransform& BoundCoordinateMap::ValueTransform() const
+std::vector<const ValueTransform*> BoundCoordinateMap::ValueTransforms(
+  const ValueBasis& in) const
 {
-  if (!value_transform_) {
-    // values flow against the map: from the target system, where the points
-    // were located, to the source system of the query points; the scale
-    // factors of both come from the target's metric at the mapped points
-    const auto metric = system_->HasMetric()
-                          ? system_->Bind(MakeConstRank2View(mapped_))
-                          : nullptr;
-    value_transform_.emplace(detail::Pullback(
-      Jacobian(), system_,
-      metric != nullptr ? metric->Metric() : detail::MetricView{}, source_));
+  if (in.Rank() == 0 ||
+      !pcms::detail::SameCoordinateSystem(in.system, system_)) {
+    return {};
   }
-  return *value_transform_;
+  // the target's metric at the mapped points
+  const auto metric = [this]() {
+    if (!system_->HasMetric()) {
+      throw pcms_error("BoundCoordinateMap::ValueTransforms: physical "
+                       "components need the metric of '" +
+                       std::string(system_->Kind()) + "'");
+    }
+    return system_->Bind(MakeConstRank2View(mapped_));
+  };
+  const bool physical = in.scaling == ComponentScaling::Physical;
+  std::vector<const pcms::ValueTransform*> transforms;
+  if (physical && !system_->IsOrthonormal()) {
+    if (!to_natural_) {
+      to_natural_.emplace(detail::ToNatural(system_, metric()->Metric()));
+    }
+    transforms.push_back(&*to_natural_);
+  }
+  if (!pullback_) {
+    pullback_.emplace(detail::Pullback(Jacobian(), system_, source_));
+  }
+  transforms.push_back(&*pullback_);
+  if (physical && !source_->IsOrthonormal()) {
+    if (!to_physical_) {
+      const auto g = detail::PullbackMetric(Jacobian(), metric()->Metric());
+      to_physical_.emplace(detail::ToPhysical(
+        source_, View<3, const Real, DeviceMemorySpace>(
+                   g.data(), g.extent(0), g.extent(1), g.extent(2))));
+    }
+    transforms.push_back(&*to_physical_);
+  }
+  return transforms;
 }
 
 CoordinateMap::CoordinateMap(std::shared_ptr<const CoordinateSystem> source,

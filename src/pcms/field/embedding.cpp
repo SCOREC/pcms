@@ -477,23 +477,6 @@ public:
     return inner_;
   }
 
-  /// @return the Pushforward of the Jacobian: parameter-system components to
-  ///         components in the geometry's coordinate system, at the points
-  [[nodiscard]] const ValueTransform& Pushforward() const
-  {
-    if (!pushforward_) {
-      const auto jacobian = Jacobian();
-      if (system_ == nullptr && position_.System()->HasMetric()) {
-        // a given metric: the coordinate system's is not bound yet
-        system_ = position_.System()->Bind(MakeConstRank2View(mapped_));
-      }
-      pushforward_.emplace(detail::Pushforward(
-        jacobian, position_.ParameterSystem(), position_.System(),
-        system_ != nullptr ? system_->Metric() : detail::MetricView{}));
-    }
-    return *pushforward_;
-  }
-
 protected:
   EmbeddedBound(std::shared_ptr<const Geometry> geometry,
                 const BindRequest& request, Position position,
@@ -513,8 +496,6 @@ protected:
       CoordinateView<DeviceMemorySpace>(parameter.GetCoordinateSystem(),
                                         MakeConstRank2View(xi_)),
       policy);
-    system_.reset();
-    pushforward_.reset();
   }
 
   // J from the Gradient of the position at the parameter coordinates of the
@@ -538,12 +519,13 @@ protected:
       GivenMetric(values, basis.variance[0] == Variance::Contravariant, metric,
                   volume);
     } else {
-      system_ = position_.System()->Bind(MakeConstRank2View(e.mapped));
+      const auto target =
+        position_.System()->Bind(MakeConstRank2View(e.mapped));
       InduceMetric(
         View<3, const Real, DeviceMemorySpace>(e.jacobian.data(), n, dt, dp),
-        *system_, metric, volume);
+        *target, metric, volume);
+      Kokkos::fence("embedding_induced_metric");
     }
-    mapped_ = e.mapped;
     return detail::GeometricFactors(
       static_cast<LO>(n), e.jacobian,
       std::make_shared<const BoundCoordinateSystem>(static_cast<LO>(n), metric,
@@ -555,10 +537,6 @@ private:
   std::shared_ptr<const Function<Real>> metric_;
   std::shared_ptr<const BoundPoints> inner_;
   DeviceView<Real**> xi_;
-  mutable DeviceView<Real**> mapped_;
-  // the coordinate system's metric at the mapped points
-  mutable std::shared_ptr<const BoundCoordinateSystem> system_;
-  mutable std::optional<ValueTransform> pushforward_;
 };
 
 } // namespace
@@ -740,9 +718,7 @@ private:
 };
 
 // Evaluates the fields of a space on the parameter geometry at the points of
-// an embedded geometry: at their parameter coordinates. Vectors and covectors
-// in parameter-system components come out in the geometry's coordinate system,
-// through the Pushforward of the position's Jacobian.
+// an embedded geometry: at their parameter coordinates.
 class EmbeddedEvaluatorFactory final : public PointEvaluatorFactory
 {
 public:
@@ -776,10 +752,16 @@ protected:
       std::make_unique<detail::TransformedPointEvaluator<Real>>(
         embedded,
         CreateUntransformedPointEvaluator<Real>(*space_, embedded->Inner(), op),
-        std::vector<detail::LazyValueTransform>{
-          [embedded]() -> const ValueTransform& {
-            return embedded->Pushforward();
-          }}));
+        [parameter = embedded_->GetParameterSystem()](
+          const ValueBasis& basis) -> std::vector<const ValueTransform*> {
+          if (basis.Rank() > 0 &&
+              detail::SameCoordinateSystem(basis.system, parameter)) {
+            throw pcms_error("CreatePointEvaluator: vectors and covectors in "
+                             "the parameter system of an embedded geometry "
+                             "are not yet supported");
+          }
+          return {};
+        }));
   }
 
 private:

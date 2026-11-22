@@ -10,6 +10,7 @@
 #include <Kokkos_Core.hpp>
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace pcms
 {
@@ -18,10 +19,9 @@ namespace pcms
 // computation the map needs: the mapped coordinates and the map's Jacobian
 // there. Values re-expressed at those points flow against the map, from the
 // target coordinate system where the points were located back to the source
-// system of the query points, through ValueTransform(): the Pullback of the
-// Jacobian, which does not depend on the value basis -- the basis only
-// selects the matrix -- so one bound map serves every field evaluated at
-// that point set. Scalars pass through it unchanged.
+// system of the query points, through ValueTransforms(): the Pullback of the
+// Jacobian, between conversions of physical components to natural ones and
+// back. One bound map serves every field evaluated at that point set.
 class BoundCoordinateMap
 {
 public:
@@ -49,12 +49,20 @@ public:
   [[nodiscard]] virtual View<3, const Real, DeviceMemorySpace> Jacobian()
     const = 0;
 
-  /// @return the transform of values evaluated at the mapped points into the
-  ///         source coordinate system of the query points: the Pullback of
-  ///         Jacobian() (covectors by J^T; vectors by J^-1, which needs a
-  ///         square J); built on the first call (like the lazy factors of a
-  ///         BoundPoints, not thread-safe)
-  [[nodiscard]] const pcms::ValueTransform& ValueTransform() const;
+  /// @brief The transforms, in order, that re-express values in `in`,
+  ///        evaluated at the mapped points, in the source coordinate system
+  ///        of the query points: the Pullback of Jacobian() (covectors by J^T;
+  ///        vectors by J^-1, which needs a square J), and physical components
+  ///        converted to natural ones before it and back after it.
+  ///
+  /// The transforms are built on first use (like the lazy factors of a
+  /// BoundPoints, not thread-safe) and live as long as the bound map.
+  /// @return no transform for values that pass unchanged: scalars, and
+  ///         values in another coordinate system than the target's
+  /// @throws pcms_error for physical components on a coordinate system
+  ///         without a metric
+  [[nodiscard]] std::vector<const pcms::ValueTransform*> ValueTransforms(
+    const ValueBasis& in) const;
 
   virtual ~BoundCoordinateMap() = default;
 
@@ -68,7 +76,9 @@ private:
   Kokkos::View<Real**, DeviceMemorySpace> mapped_;
   // the source system, set by CoordinateMap::Bind
   std::shared_ptr<const CoordinateSystem> source_;
-  mutable std::optional<pcms::ValueTransform> value_transform_;
+  mutable std::optional<pcms::ValueTransform> pullback_;
+  mutable std::optional<pcms::ValueTransform> to_natural_;
+  mutable std::optional<pcms::ValueTransform> to_physical_;
 };
 
 class CoordinateMap

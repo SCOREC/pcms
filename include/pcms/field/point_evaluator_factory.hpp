@@ -119,28 +119,15 @@ std::unique_ptr<PointEvaluator<T>> PointEvaluatorFactory::CreatePointEvaluator(
   std::shared_ptr<const BoundPoints> bound, DifferentialOperator op) const
 {
   auto evaluator = CreateUntransformedPointEvaluator<T>(*this, bound, op);
-  std::vector<detail::LazyValueTransform> transforms;
-  const auto& system = bound->GetGeometry()->GetCoordinateSystem();
-  if (evaluator->Operator() == DifferentialOperator::Gradient &&
-      system->HasMetric() && !system->IsOrthonormal()) {
-    // the kinds write partials along the coordinates, natural components;
-    // physical ones scale them by the coordinate system's metric at the
-    // located points (in the factors of a geometry whose parameter
-    // coordinates are its coordinate system's)
-    const auto scale = std::make_shared<const ValueTransform>(
-      detail::Scale(system, bound->Metric(), ComponentScaling::Physical));
-    transforms.emplace_back(
-      [scale]() -> const ValueTransform& { return *scale; });
-  }
-  if (const auto& map = bound->GetBoundMap()) {
-    transforms.emplace_back(
-      [map]() -> const ValueTransform& { return map->ValueTransform(); });
-  }
-  if (transforms.empty()) {
+  auto map = bound->GetBoundMap();
+  if (map == nullptr) {
     return evaluator;
   }
   return std::make_unique<detail::TransformedPointEvaluator<T>>(
-    std::move(bound), std::move(evaluator), std::move(transforms));
+    std::move(bound), std::move(evaluator),
+    [map = std::move(map)](const ValueBasis& basis) {
+      return map->ValueTransforms(basis);
+    });
 }
 
 } // namespace pcms

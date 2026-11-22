@@ -11,7 +11,6 @@
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/detail/arrays.hpp"
 #include "pcms/utility/detail/profile.hpp"
-#include <array>
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -21,16 +20,14 @@
 namespace pcms::detail
 {
 
-/// A value transform, obtained when it is first needed (a bound map builds
-/// its transform on first use).
-using LazyValueTransform = std::function<const ValueTransform&()>;
+/// The value transforms, in order, that re-express values in a basis.
+using ValueTransforms =
+  std::function<std::vector<const ValueTransform*>(const ValueBasis&)>;
 
 /// Point evaluator that re-expresses the values of an inner evaluator through
-/// a chain of value transforms, applied in order: the physical components of
-/// a gradient (Scale), the components of an embedded space's parameter system
-/// (Pushforward), the values of a bind with a coordinate map (the map's
-/// Pullback). Scalars pass through without building the transforms; other
-/// values are transformed in place, through scratch storage only where a
+/// the value transforms of their basis (those of a bind with a coordinate
+/// map). Values without transforms are written by the inner evaluator
+/// directly; others are transformed in place, through a buffer only where a
 /// transform changes the number of components.
 /// PointEvaluatorFactory::CreatePointEvaluator creates it.
 template <typename T>
@@ -40,10 +37,10 @@ public:
   /// @param bound BoundPoints of the query points
   /// @param inner evaluator created from `bound` that writes the values
   ///        before the transforms; not null
-  /// @param transforms the transforms, in the order they apply
+  /// @param transforms the transforms of the values of `inner`
   TransformedPointEvaluator(std::shared_ptr<const BoundPoints> bound,
                             std::unique_ptr<PointEvaluator<T>> inner,
-                            std::vector<LazyValueTransform> transforms)
+                            ValueTransforms transforms)
     : PointEvaluator<T>(std::move(bound), inner->Operator(),
                         inner->AcceptedLayout()),
       inner_(std::move(inner)),
@@ -58,25 +55,25 @@ public:
                     ValueView<T, DeviceMemorySpace> values) const override
   {
     PCMS_FUNCTION_TIMER;
-    const auto bases = Bases(field.GetData().GetValueBasis());
-    if (bases.size() == 1) {
+    const auto [bases, transforms] = Chain(field.GetData().GetValueBasis());
+    if (transforms.empty()) {
       inner_->Evaluate(field, values);
       return;
     }
     if constexpr (std::is_same_v<T, Real>) {
       const auto out = values.GetValues();
       const int dout = bases.back().system->Dimension();
-      Scratch scratch;
+      const std::size_t blocks = out.extent(1) / dout;
       // the output itself for as many components as it has
       const auto storage = [&](const ValueBasis& basis) {
-        return basis.system->Dimension() == dout
-                 ? out
-                 : Storage(scratch, basis, out.extent(0), out.extent(1) / dout);
+        const int dim = basis.system->Dimension();
+        return dim == dout ? out : Buffer(out.extent(0), blocks * dim);
       };
       inner_->Evaluate(field, ValueView<Real, DeviceMemorySpace>(
                                 bases.front(), storage(bases.front())));
       for (std::size_t k = 1; k < bases.size(); ++k) {
-        transforms_[k - 1]().Apply(
+        CheckOneBufferShape(bases[k - 1], bases[k], dout);
+        transforms[k - 1]->Apply(
           ValueView<const Real, DeviceMemorySpace>(bases[k - 1],
                                                    storage(bases[k - 1])),
           ValueView<Real, DeviceMemorySpace>(bases[k], storage(bases[k])));
@@ -100,6 +97,7 @@ public:
     PCMS_FUNCTION_TIMER;
     // the inner evaluator may count the points this evaluator fills as found
     Kokkos::View<T**, DeviceMemorySpace> masked;
+    bool writable = false;
     if (const auto filled = this->FilledPoints(); filled.extent(0) > 0) {
       masked = Kokkos::View<T**, DeviceMemorySpace>(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "transpose_masked"),
@@ -107,9 +105,11 @@ public:
       CopyDeviceRank2ViewToDeviceView(masked, values);
       FillRows(MakeRank2View(masked), filled, T{0});
       values = MakeConstRank2View(masked);
+      writable = true;
     }
-    const auto bases = Bases(functional.GetData().GetValueBasis());
-    if (bases.size() == 1) {
+    const auto [bases, transforms] =
+      Chain(functional.GetData().GetValueBasis());
+    if (transforms.empty()) {
       inner_->EvaluateTranspose(
         ValueView<const T, DeviceMemorySpace>(bases.front(), values),
         functional);
@@ -117,14 +117,21 @@ public:
     }
     if constexpr (std::is_same_v<T, Real>) {
       // E^T T_1^T ... T_n^T
-      const std::size_t blocks =
-        values.extent(1) / bases.back().system->Dimension();
-      Scratch scratch;
+      const int dout = bases.back().system->Dimension();
+      const std::size_t blocks = values.extent(1) / dout;
       Rank2View<const Real, DeviceMemorySpace> in = values;
       for (std::size_t k = bases.size() - 1; k > 0; --k) {
-        const auto out =
-          Storage(scratch, bases[k - 1], values.extent(0), blocks);
-        transforms_[k - 1]().ApplyTranspose(
+        CheckOneBufferShape(bases[k - 1], bases[k], dout);
+        const int dim = bases[k - 1].system->Dimension();
+        if (dim == dout && !writable) {
+          masked = Kokkos::View<T**, DeviceMemorySpace>(
+            Kokkos::view_alloc(Kokkos::WithoutInitializing, "transpose_values"),
+            values.extent(0), values.extent(1));
+          writable = true;
+        }
+        const auto out = dim == dout ? MakeRank2View(masked)
+                                     : Buffer(values.extent(0), blocks * dim);
+        transforms[k - 1]->ApplyTranspose(
           ValueView<const Real, DeviceMemorySpace>(bases[k], in),
           ValueView<Real, DeviceMemorySpace>(bases[k - 1], out));
         in = out;
@@ -140,45 +147,49 @@ public:
 
   [[nodiscard]] ValueBasis OutputBasis(const ValueBasis& stored) const override
   {
-    return Bases(stored).back();
+    return Chain(stored).first.back();
   }
 
 private:
-  // scratch values by number of components per block (dimension <= 3)
-  using Scratch = std::array<Kokkos::View<Real**, DeviceMemorySpace>, 4>;
-
-  // the storage of values in `basis`, [points][blocks * dimension]: the
-  // scratch of its dimension, allocated on first use
-  static Rank2View<Real, DeviceMemorySpace> Storage(Scratch& scratch,
-                                                    const ValueBasis& basis,
-                                                    std::size_t points,
-                                                    std::size_t blocks)
+  // the buffer of the values whose dimension is not the output's,
+  // [points][columns], reallocated on a change of shape
+  Rank2View<Real, DeviceMemorySpace> Buffer(std::size_t points,
+                                            std::size_t columns) const
   {
-    const int dim = basis.system->Dimension();
-    auto& view = scratch.at(dim);
-    if (view.extent(0) != points) {
-      view = Kokkos::View<Real**, DeviceMemorySpace>(
+    if (buffer_.extent(0) != points || buffer_.extent(1) != columns) {
+      buffer_ = Kokkos::View<Real**, DeviceMemorySpace>(
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "transformed_values"),
-        points, blocks * dim);
+        points, columns);
     }
-    return MakeRank2View(view);
+    return MakeRank2View(buffer_);
+  }
+
+  // one buffer holds the values of one dimension other than the output's
+  static void CheckOneBufferShape(const ValueBasis& a, const ValueBasis& b,
+                                  int dout)
+  {
+    const int da = a.system->Dimension();
+    const int db = b.system->Dimension();
+    PCMS_ALWAYS_ASSERT(da == dout || db == dout || da == db);
   }
 
   // the inner evaluator's basis for `stored`, then the output basis of each
-  // transform; only the first for scalars, which every transform passes
-  [[nodiscard]] std::vector<ValueBasis> Bases(const ValueBasis& stored) const
+  // of its transforms; and the transforms
+  [[nodiscard]] std::pair<std::vector<ValueBasis>,
+                          std::vector<const ValueTransform*>>
+  Chain(const ValueBasis& stored) const
   {
     std::vector<ValueBasis> bases{inner_->OutputBasis(stored)};
-    if (bases.front().Rank() > 0) {
-      for (const auto& transform : transforms_) {
-        bases.push_back(transform().OutputBasis(bases.back()));
-      }
+    auto transforms = transforms_(bases.front());
+    for (const auto* transform : transforms) {
+      bases.push_back(transform->OutputBasis(bases.back()));
     }
-    return bases;
+    return {std::move(bases), std::move(transforms)};
   }
 
   std::unique_ptr<PointEvaluator<T>> inner_;
-  std::vector<LazyValueTransform> transforms_;
+  ValueTransforms transforms_;
+  mutable Kokkos::View<Real**, DeviceMemorySpace> buffer_;
 };
 
 } // namespace pcms::detail

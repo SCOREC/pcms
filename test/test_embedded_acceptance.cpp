@@ -3,6 +3,7 @@
 // position function, as a reader of a BOUT++ grid file would build it.
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_for.hpp>
 #include <Omega_h_library.hpp>
@@ -16,6 +17,7 @@
 #include <cmath>
 #include <numbers>
 
+using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::WithinAbs;
 using Catch::Matchers::WithinRel;
 using pcms::DeviceMemorySpace;
@@ -266,33 +268,17 @@ TEST_CASE("BOUT++-like 2D grid: quadrature, induced metric and curvilinear "
       }
     }
   }
-  SECTION("curvilinear vectors have physical components")
+  SECTION("curvilinear vectors are not yet supported")
   {
-    // the constant field e_xi2 = d x / d xi2 of the logical grid
     const auto space = pcms::CreateEmbeddedSpace(
       section.embedded, pcms::CreateLagrangeSpace(section.grid, 1, 2));
-    auto e2 = space->CreateFunction<Real>(
+    const auto e2 = space->CreateFunction<Real>(
       "e2", {.system = section.embedded->GetParameterSystem(),
+             .scaling = pcms::ComponentScaling::Natural,
              .variance = pcms::values::Vector});
-    pcms::test::SetFieldComponents(e2, [](Real, Real, Real* out) {
-      out[0] = 0.0;
-      out[1] = 1.0;
-    });
-    const auto evaluator = space->CreatePointEvaluator<Real>(bound);
-    const auto basis = evaluator->OutputBasis(e2.GetData().GetValueBasis());
-    CHECK(basis.system->Kind() == "cylindrical_rz");
-    Kokkos::View<Real**, DeviceMemorySpace> values("values", n, 2);
-    evaluator->Evaluate(e2, pcms::ValueView<Real, DeviceMemorySpace>(
-                              basis, pcms::MakeRank2View(values)));
-    const auto result =
-      Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), values);
-    for (int p = 0; p < n; ++p) {
-      const auto j = ShapedTorus::Jacobian(Parameters[std::size_t{2} * p],
-                                           Parameters[std::size_t{2} * p + 1]);
-      CAPTURE(p);
-      CHECK_THAT(result(p, 0), WithinAbs(j[1][0], 5e-3));
-      CHECK_THAT(result(p, 1), WithinAbs(j[1][1], 5e-3));
-    }
+    CHECK_THROWS_WITH(space->CreatePointEvaluator<Real>(bound)->OutputBasis(
+                        e2.GetData().GetValueBasis()),
+                      ContainsSubstring("not yet supported"));
   }
 }
 
@@ -437,7 +423,8 @@ TEST_CASE("BOUT++-like 3D grid: a given metric g^ij", "[embedding][acceptance]")
   const auto metric_space = pcms::CreateLagrangeSpace(geometry, 1, 9);
   auto g_inv =
     std::make_shared<pcms::Function<Real>>(metric_space->CreateFunction<Real>(
-      "g^ij", {.variance = pcms::values::Tensor}));
+      "g^ij", {.scaling = pcms::ComponentScaling::Natural,
+               .variance = pcms::values::Tensor}));
   pcms::test::SetFieldComponents(*g_inv, [](Real x, Real y, Real z, Real* out) {
     const Real xi[3] = {x, y, z};
     Shifted::InverseMetric(xi, out);

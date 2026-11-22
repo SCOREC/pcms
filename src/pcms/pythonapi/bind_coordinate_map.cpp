@@ -27,20 +27,27 @@ void bind_coordinate_map_module(py::module& m)
     .def(
       "output_basis",
       [](const BoundCoordinateMap& self, const ValueBasis& stored) {
-        return self.ValueTransform().OutputBasis(stored);
+        ValueBasis basis = stored;
+        for (const auto* transform : self.ValueTransforms(stored)) {
+          basis = transform->OutputBasis(basis);
+        }
+        return basis;
       },
       py::arg("stored"),
       "The basis values stored in `stored` are re-expressed in")
     .def(
       "transform_values",
       [](const BoundCoordinateMap& self, PyValueView values) {
-        const auto& transform = self.ValueTransform();
-        const ValueBasis transformed = transform.OutputBasis(values.basis);
+        ValueBasis basis = values.basis;
         WithDeviceOutput(values.values, [&](auto out) {
-          transform.Apply(ValueView<Real, DeviceMemorySpace>(values.basis, out),
-                          ValueView<Real, DeviceMemorySpace>(transformed, out));
+          for (const auto* transform : self.ValueTransforms(values.basis)) {
+            const ValueBasis next = transform->OutputBasis(basis);
+            transform->Apply(ValueView<Real, DeviceMemorySpace>(basis, out),
+                             ValueView<Real, DeviceMemorySpace>(next, out));
+            basis = next;
+          }
         });
-        return PyValueView{transformed, values.values};
+        return PyValueView{basis, values.values};
       },
       py::arg("values"),
       "Re-express `values` (one row per query point, over a writeable "

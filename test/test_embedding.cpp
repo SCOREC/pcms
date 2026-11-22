@@ -86,7 +86,13 @@ TEST_CASE("Coordinates pass through value transforms", "[embedding]")
   const auto bound = f.map->Bind(f.xi.coordinate_view);
   const auto coordinates =
     pcms::ValueBasis::Coordinates(pcms::csys::CreateCartesian(3));
-  CHECK(bound->ValueTransform().OutputBasis(coordinates) == coordinates);
+  CHECK(bound->ValueTransforms(coordinates).empty());
+  const pcms::ValueBasis vector{pcms::csys::CreateCylindricalRZ(),
+                                pcms::ComponentScaling::Physical,
+                                pcms::values::Vector};
+  for (const auto* transform : bound->ValueTransforms(vector)) {
+    CHECK(transform->OutputBasis(coordinates) == coordinates);
+  }
   // coordinates are not scalars, and coordinates of different coordinate
   // systems differ
   CHECK_FALSE(pcms::detail::SameValueBasis(coordinates, pcms::ValueBasis{}));
@@ -258,49 +264,25 @@ TEST_CASE("The geometric factors of an embedded geometry are the position's "
   }
 }
 
-TEST_CASE("Parameter-system vectors and covectors come out in the coordinate "
-          "system of an "
-          "embedded geometry",
+TEST_CASE("Parameter-system vectors and covectors of an embedded space are "
+          "refused",
           "[embedding][embedded_geometry]")
 {
   const EmbeddedFixture f;
-  const auto grid_space = pcms::CreateLagrangeSpace(f.grid, 1, 2);
-  const auto space = pcms::CreateEmbeddedSpace(f.embedded, grid_space);
+  const auto space = pcms::CreateEmbeddedSpace(
+    f.embedded, pcms::CreateLagrangeSpace(f.grid, 1, 2));
   const auto bound =
     f.embedded->Bind(pcms::test::CreateDeviceCoordinateView(
                        Params, f.embedded->GetParameterSystem(), 2)
                        .coordinate_view);
+  const auto evaluator = space->CreatePointEvaluator<Real>(bound);
   for (const auto variance : {pcms::values::Vector, pcms::values::Covector}) {
-    // the constant field e_xi1 (or dxi1)
-    // components on the parameter system (the space's default is the
-    // coordinate system of the embedded geometry)
-    auto field = space->CreateFunction<Real>(
+    const auto field = space->CreateFunction<Real>(
       "e1", {.system = f.embedded->GetParameterSystem(),
              .scaling = pcms::ComponentScaling::Natural,
              .variance = variance});
-    pcms::test::SetFieldComponents(field, [](Real, Real, Real* out) {
-      out[0] = 1.0;
-      out[1] = 0.0;
-    });
-    const auto evaluator = space->CreatePointEvaluator<Real>(bound);
-    const auto basis = evaluator->OutputBasis(field.GetData().GetValueBasis());
-    CHECK(basis.system->Kind() == "cylindrical_rz");
-    CHECK(basis.scaling == pcms::ComponentScaling::Physical);
-    Kokkos::View<Real**, DeviceMemorySpace> out("out", 4, 2);
-    evaluator->Evaluate(field, pcms::ValueView<Real, DeviceMemorySpace>(
-                                 basis, pcms::MakeRank2View(out)));
-    const auto host =
-      Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), out);
-    const bool covariant = variance == pcms::values::Covector;
-    for (int p = 0; p < 4; ++p) {
-      const Real theta = Annulus::Theta(Params[2 * p + 1]);
-      // the vector e_xi1 is d x / d xi1 = 0.5 (cos, sin); the covector
-      // dxi1 has the physical components 2 (cos, sin)
-      const Real scale = covariant ? 2.0 : 0.5;
-      CAPTURE(p, covariant);
-      CHECK_THAT(host(p, 0), WithinAbs(scale * std::cos(theta), 1e-4));
-      CHECK_THAT(host(p, 1), WithinAbs(scale * std::sin(theta), 1e-4));
-    }
+    CHECK_THROWS_WITH(evaluator->OutputBasis(field.GetData().GetValueBasis()),
+                      ContainsSubstring("not yet supported"));
   }
 }
 
@@ -439,40 +421,30 @@ TEST_CASE("EvaluateTranspose through an embedded space is the transpose of "
   const auto evaluator = space->CreatePointEvaluator<Real>(bound);
   REQUIRE(evaluator->SupportsTranspose());
   std::mt19937 rng(23);
-  // a scalar field of two components, and vectors and covectors in
-  // parameter-system components, which come out in the coordinate system's
-  for (const auto variance :
-       {pcms::values::Scalar, pcms::values::Vector, pcms::values::Covector}) {
-    const pcms::ValueBasis basis_in{.system = f.embedded->GetParameterSystem(),
-                                    .variance = variance,
-                                    .kind = variance.Rank() == 0
-                                              ? pcms::ValueKind::Array
-                                              : pcms::ValueKind::Tensor};
-    auto x = space->CreateFunction<Real>("x", basis_in);
-    auto functional = space->CreateFunction<Real>("functional", basis_in);
-    const auto basis = evaluator->OutputBasis(x.GetData().GetValueBasis());
-    CHECK((variance == pcms::values::Scalar ||
-           basis.system->Kind() == "cylindrical_rz"));
-    const auto dofs =
-      RandomDeviceValues(grid_space->GetLayout()->GetNumDofHolder(), 2, rng);
-    x.SetDOFHolderData(pcms::ValueView<const Real, DeviceMemorySpace>(
-      x.GetData().GetValueBasis(), pcms::MakeConstRank2View(dofs)));
-    const auto y = RandomDeviceValues(4, 2, rng);
-    Kokkos::View<Real**, DeviceMemorySpace> ex("Ex", 4, 2);
-    evaluator->Evaluate(x, pcms::ValueView<Real, DeviceMemorySpace>(
-                             basis, pcms::MakeRank2View(ex)));
-    evaluator->EvaluateTranspose(pcms::ValueView<const Real, DeviceMemorySpace>(
-                                   basis, pcms::MakeConstRank2View(y)),
-                                 functional);
-    const auto host = [](const Kokkos::View<Real**, DeviceMemorySpace>& v) {
-      return Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), v);
-    };
-    const Real lhs = Pairing(host(ex), host(y));
-    const Real rhs =
-      Pairing(host(dofs), functional.GetDOFHolderDataHost().GetValues());
-    CAPTURE(lhs, rhs);
-    CHECK_THAT(lhs, WithinAbs(rhs, 1e-12 * (1 + std::abs(rhs))));
-  }
+  // a scalar field of two components
+  const pcms::ValueBasis basis_in{.kind = pcms::ValueKind::Array};
+  auto x = space->CreateFunction<Real>("x", basis_in);
+  auto functional = space->CreateFunction<Real>("functional", basis_in);
+  const auto basis = evaluator->OutputBasis(x.GetData().GetValueBasis());
+  const auto dofs =
+    RandomDeviceValues(grid_space->GetLayout()->GetNumDofHolder(), 2, rng);
+  x.SetDOFHolderData(pcms::ValueView<const Real, DeviceMemorySpace>(
+    x.GetData().GetValueBasis(), pcms::MakeConstRank2View(dofs)));
+  const auto y = RandomDeviceValues(4, 2, rng);
+  Kokkos::View<Real**, DeviceMemorySpace> ex("Ex", 4, 2);
+  evaluator->Evaluate(x, pcms::ValueView<Real, DeviceMemorySpace>(
+                           basis, pcms::MakeRank2View(ex)));
+  evaluator->EvaluateTranspose(pcms::ValueView<const Real, DeviceMemorySpace>(
+                                 basis, pcms::MakeConstRank2View(y)),
+                               functional);
+  const auto host = [](const Kokkos::View<Real**, DeviceMemorySpace>& v) {
+    return Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), v);
+  };
+  const Real lhs = Pairing(host(ex), host(y));
+  const Real rhs =
+    Pairing(host(dofs), functional.GetDOFHolderDataHost().GetValues());
+  CAPTURE(lhs, rhs);
+  CHECK_THAT(lhs, WithinAbs(rhs, 1e-12 * (1 + std::abs(rhs))));
 }
 
 TEST_CASE("An embedded geometry binds points of its parameter system without "
@@ -777,13 +749,8 @@ TEST_CASE("Physical components on a sheared parameter system scale by the "
   const std::array<Real, 2> vector_factors{std::sqrt(g[0]), std::sqrt(g[3])};
   const std::array<Real, 2> covector_factors{std::sqrt(g[3] / det),
                                              std::sqrt(g[0] / det)};
-  const auto to_physical =
-    pcms::detail::Scale(xi, bound->Metric(), ComponentScaling::Physical);
-  const auto to_natural =
-    pcms::detail::Scale(xi, bound->Metric(), ComponentScaling::Natural);
-  const auto space =
-    pcms::CreateEmbeddedSpace(embedded, pcms::CreateLagrangeSpace(grid, 1, 2));
-  const auto evaluator = space->CreatePointEvaluator<Real>(bound);
+  const auto to_physical = pcms::detail::ToPhysical(xi, bound->Metric());
+  const auto to_natural = pcms::detail::ToNatural(xi, bound->Metric());
   for (const bool covariant : {false, true}) {
     CAPTURE(covariant);
     const auto variance =
@@ -811,28 +778,5 @@ TEST_CASE("Physical components on a sheared parameter system scale by the "
     Kokkos::deep_copy(host, values);
     CHECK_THAT(host(0, 0), WithinAbs(1.0, 1e-12));
     CHECK_THAT(host(0, 1), WithinAbs(1.0, 1e-12));
-
-    // the physical component 1 along xi1 is a unit vector in (x, y): along
-    // d x / d xi1 = A e1, or grad xi1 = A^-T e1
-    auto field =
-      space->CreateFunction<Real>("e1", {.system = xi,
-                                         .scaling = ComponentScaling::Physical,
-                                         .variance = variance});
-    pcms::test::SetFieldComponents(field, [](Real, Real, Real* out) {
-      out[0] = 1.0;
-      out[1] = 0.0;
-    });
-    const auto basis = evaluator->OutputBasis(field.GetData().GetValueBasis());
-    CHECK(basis.scaling == ComponentScaling::Physical);
-    Kokkos::View<Real**, DeviceMemorySpace> out("out", 1, 2);
-    evaluator->Evaluate(field, pcms::ValueView<Real, DeviceMemorySpace>(
-                                 basis, pcms::MakeRank2View(out)));
-    Kokkos::deep_copy(host, out);
-    const std::array<Real, 2> direction =
-      covariant ? std::array<Real, 2>{A[1][1], -A[0][1]}
-                : std::array<Real, 2>{A[0][0], A[1][0]};
-    const Real length = std::hypot(direction[0], direction[1]);
-    CHECK_THAT(host(0, 0), WithinAbs(direction[0] / length, 1e-12));
-    CHECK_THAT(host(0, 1), WithinAbs(direction[1] / length, 1e-12));
   }
 }

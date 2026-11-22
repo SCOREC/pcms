@@ -245,11 +245,12 @@ public:
 
 } // namespace
 
-TEST_CASE("Gradients in cylindrical coordinates have physical components",
+TEST_CASE("Gradients in cylindrical coordinates are natural components; "
+          "ToPhysical scales them",
           "[coordinate_system][metric][gradient]")
 {
-  const auto layout = std::make_shared<pcms::field::EmptyFieldLayout>(
-    pcms::csys::CreateCylindricalRThetaZ(), 1);
+  const auto cyl = pcms::csys::CreateCylindricalRThetaZ();
+  const auto layout = std::make_shared<pcms::field::EmptyFieldLayout>(cyl, 1);
   const auto geometry = std::make_shared<Everywhere>();
   const auto space = std::make_shared<PartialsSpace>(
     layout, std::make_shared<PartialsFactory>(geometry, layout), geometry);
@@ -259,10 +260,17 @@ TEST_CASE("Gradients in cylindrical coordinates have physical components",
     pcms::test::Bind(*geometry, {2.0, 0.3, 1.0, 4.0, -1.0, 0.0});
   const auto evaluator = space->CreatePointEvaluator<Real>(
     bound, pcms::DifferentialOperator::Gradient);
+  const auto natural = evaluator->OutputBasis(f.GetData().GetValueBasis());
+  CHECK(natural.scaling == pcms::ComponentScaling::Natural);
   Kokkos::View<Real**, DeviceMemorySpace> values("gradient", 2, 3);
   evaluator->Evaluate(f, pcms::ValueView<Real, DeviceMemorySpace>(
-                           evaluator->OutputBasis(f.GetData().GetValueBasis()),
-                           pcms::MakeRank2View(values)));
+                           natural, pcms::MakeRank2View(values)));
+  const auto to_physical = pcms::detail::ToPhysical(cyl, bound->Metric());
+  to_physical.Apply(
+    pcms::ValueView<Real, DeviceMemorySpace>(natural,
+                                             pcms::MakeRank2View(values)),
+    pcms::ValueView<Real, DeviceMemorySpace>(to_physical.OutputBasis(natural),
+                                             pcms::MakeRank2View(values)));
   const auto host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), values);
   // (dR, dtheta / R, dZ)

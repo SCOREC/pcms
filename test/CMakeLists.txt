@@ -429,7 +429,8 @@ if(Catch2_FOUND)
       test_bounding_box.cpp
       test_error_handling.cpp
       test_spline_interpolator.cpp
-      test_derivatives.cpp)
+      test_derivatives.cpp
+      test_uniform_grid_1d.cpp)
   if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
     list(APPEND PCMS_UNIT_TEST_SOURCES
          test_polynomial_reconstruction_mls_evaluation.cpp

@@ -139,6 +139,49 @@ class TestUniformGridField:
             assert np.abs(results[i, 0] - expected) < 1e-6
 
 
+class TestUniformGrid1D:
+    """1D uniform grids: profiles and time series (no Omega_h needed)."""
+
+    @staticmethod
+    def _grid():
+        grid = pcms.UniformGrid1D()
+        grid.bot_left = [-1.0]
+        grid.edge_length = [4.0]
+        grid.divisions = [8]
+        return grid
+
+    def test_grid(self):
+        grid = self._grid()
+        assert grid.get_num_cells() == 8
+        assert grid.closest_cell_id(np.array([2.9])) == 7
+
+    def test_lagrange_and_spline_evaluation(self):
+        geometry = pcms.uniform_grid.create_geometry(self._grid())
+        pts = np.array([[-1.0], [0.3], [1.7], [3.0]])
+        for space, func, dfunc, order in (
+                (pcms.create_lagrange_space(geometry, 1, 1),
+                 lambda x: 3.0 * x - 1.0, None, 1),
+                (pcms.create_spline_space(geometry),
+                 lambda x: x**3 - 2.0 * x**2 + x + 3.0,
+                 lambda x: 3.0 * x**2 - 4.0 * x + 1.0, 3)):
+            field = space.create_function()
+            coords = _coordinates(field)
+            assert coords.shape == (9, 1)
+            field.set_dof_holder_data(func(coords))
+            bound = geometry.bind(pcms.CoordinateView(pts))
+            ops = [(pcms.DifferentialOperator.Value, func)]
+            if dfunc is not None:
+                ops.append((pcms.DifferentialOperator.Gradient, dfunc))
+            for op, expected in ops:
+                evaluator = space.create_point_evaluator(bound, op)
+                results = np.zeros((len(pts), 1))
+                basis = evaluator.output_basis(
+                    field.get_data().get_value_basis())
+                evaluator.evaluate(field, pcms.ValueView(basis, results))
+                np.testing.assert_allclose(results[:, 0], expected(pts[:, 0]),
+                                           atol=1e-10)
+
+
 class TestUniformGridOmegaHWorkflow:
     """Tests combining UniformGrid with Omega_h meshes (needs world)."""
 

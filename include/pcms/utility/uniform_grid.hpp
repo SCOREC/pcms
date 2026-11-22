@@ -141,6 +141,7 @@ private:
   }
 };
 
+using UniformGrid1D = UniformGrid<1>;
 using UniformGrid2D = UniformGrid<2>;
 using UniformGrid3D = UniformGrid<3>;
 

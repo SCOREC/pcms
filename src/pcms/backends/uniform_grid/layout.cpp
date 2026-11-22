@@ -9,90 +9,24 @@ namespace pcms::uniform_grid
 namespace
 {
 
-// Functor for initializing 2D grid coordinates on device
+// DOF-holder coordinates: order 1 the vertices, order 0 the cell centers
 template <unsigned Dim>
-struct InitGridCoordsFunctor2D
+struct InitGridCoordsFunctor
 {
   Kokkos::View<Real**, DeviceMemorySpace> coords_;
   UniformGrid<Dim> grid_;
   int order_;
-  Real vertex_spacing_0_;
-  Real vertex_spacing_1_;
-  LO nx_;
-
-  InitGridCoordsFunctor2D(Kokkos::View<Real**, DeviceMemorySpace> coords,
-                          const UniformGrid<Dim>& grid, int order, Real vs0,
-                          Real vs1, LO nx)
-    : coords_(coords),
-      grid_(grid),
-      order_(order),
-      vertex_spacing_0_(vs0),
-      vertex_spacing_1_(vs1),
-      nx_(nx)
-  {
-  }
 
   KOKKOS_INLINE_FUNCTION
   void operator()(LO dof_idx) const
   {
-    if (order_ == 1) {
-      LO i = dof_idx % nx_;
-      LO j = dof_idx / nx_;
-      coords_(dof_idx, 0) = grid_.bot_left[0] + i * vertex_spacing_0_;
-      coords_(dof_idx, 1) = grid_.bot_left[1] + j * vertex_spacing_1_;
-    } else {
-      LO i = dof_idx % grid_.divisions[0];
-      LO j = dof_idx / grid_.divisions[0];
-      coords_(dof_idx, 0) = grid_.bot_left[0] + (i + 0.5) * vertex_spacing_0_;
-      coords_(dof_idx, 1) = grid_.bot_left[1] + (j + 0.5) * vertex_spacing_1_;
-    }
-  }
-};
-
-// Functor for initializing 3D grid coordinates on device
-template <unsigned Dim>
-struct InitGridCoordsFunctor3D
-{
-  Kokkos::View<Real**, DeviceMemorySpace> coords_;
-  UniformGrid<Dim> grid_;
-  int order_;
-  Real vertex_spacing_0_;
-  Real vertex_spacing_1_;
-  Real vertex_spacing_2_;
-  LO nx_;
-  LO ny_;
-
-  InitGridCoordsFunctor3D(Kokkos::View<Real**, DeviceMemorySpace> coords,
-                          const UniformGrid<Dim>& grid, int order, Real vs0,
-                          Real vs1, Real vs2, LO nx, LO ny)
-    : coords_(coords),
-      grid_(grid),
-      order_(order),
-      vertex_spacing_0_(vs0),
-      vertex_spacing_1_(vs1),
-      vertex_spacing_2_(vs2),
-      nx_(nx),
-      ny_(ny)
-  {
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  void operator()(LO dof_idx) const
-  {
-    if (order_ == 1) {
-      LO i = dof_idx % nx_;
-      LO j = (dof_idx / nx_) % ny_;
-      LO k = dof_idx / (nx_ * ny_);
-      coords_(dof_idx, 0) = grid_.bot_left[0] + i * vertex_spacing_0_;
-      coords_(dof_idx, 1) = grid_.bot_left[1] + j * vertex_spacing_1_;
-      coords_(dof_idx, 2) = grid_.bot_left[2] + k * vertex_spacing_2_;
-    } else {
-      LO i = dof_idx % grid_.divisions[0];
-      LO j = (dof_idx / grid_.divisions[0]) % grid_.divisions[1];
-      LO k = dof_idx / (grid_.divisions[0] * grid_.divisions[1]);
-      coords_(dof_idx, 0) = grid_.bot_left[0] + (i + 0.5) * vertex_spacing_0_;
-      coords_(dof_idx, 1) = grid_.bot_left[1] + (j + 0.5) * vertex_spacing_1_;
-      coords_(dof_idx, 2) = grid_.bot_left[2] + (k + 0.5) * vertex_spacing_2_;
+    LO rest = dof_idx;
+    for (unsigned d = 0; d < Dim; ++d) {
+      const LO n = grid_.divisions[d] + order_;
+      const Real spacing = grid_.edge_length[d] / grid_.divisions[d];
+      coords_(dof_idx, d) =
+        grid_.bot_left[d] + (rest % n + (order_ == 1 ? 0.0 : 0.5)) * spacing;
+      rest /= n;
     }
   }
 };
@@ -159,33 +93,10 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
   Kokkos::deep_copy(gids_host_, gids_);
   Kokkos::deep_copy(owned_host_, owned_);
 
-  // Initialize DOF holder coordinates directly on device using parallel
-  // dispatch
-  Real vertex_spacing[Dim];
-  for (unsigned d = 0; d < Dim; ++d) {
-    vertex_spacing[d] = grid_.edge_length[d] / grid_.divisions[d];
-  }
-
-  if constexpr (Dim == 2) {
-    LO nx = (order_ == 1) ? (grid_.divisions[0] + 1) : grid_.divisions[0];
-    InitGridCoordsFunctor2D<Dim> functor(dof_holder_coords_, grid_, order_,
-                                         vertex_spacing[0], vertex_spacing[1],
-                                         nx);
-    Kokkos::parallel_for(
-      "InitUniformGrid2DCoords",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_dofs),
-      functor);
-  } else if constexpr (Dim == 3) {
-    LO nx = (order_ == 1) ? (grid_.divisions[0] + 1) : grid_.divisions[0];
-    LO ny = (order_ == 1) ? (grid_.divisions[1] + 1) : grid_.divisions[1];
-    InitGridCoordsFunctor3D<Dim> functor(dof_holder_coords_, grid_, order_,
-                                         vertex_spacing[0], vertex_spacing[1],
-                                         vertex_spacing[2], nx, ny);
-    Kokkos::parallel_for(
-      "InitUniformGrid3DCoords",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_dofs),
-      functor);
-  }
+  Kokkos::parallel_for(
+    "InitUniformGridCoords",
+    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_dofs),
+    InitGridCoordsFunctor<Dim>{dof_holder_coords_, grid_, order_});
 
   int entity_dim = (order_ == 0) ? static_cast<int>(Dim) : 0;
   LO n = CountDofHolders();
@@ -318,6 +229,7 @@ int UniformGridFieldLayout<Dim>::GetOrder() const
 }
 
 // Explicit template instantiations
+template class UniformGridFieldLayout<1>;
 template class UniformGridFieldLayout<2>;
 template class UniformGridFieldLayout<3>;
 

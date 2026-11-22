@@ -222,7 +222,8 @@ TEST_CASE("FieldSerializer round-trips a multi-component Omega_h field")
   auto space = pcms::CreateLagrangeSpace(
     geometry, 1, num_components,
     pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
-  auto field = space->CreateFunction<pcms::Real>();
+  auto field =
+    space->CreateFunction<pcms::Real>("", {.kind = pcms::ValueKind::Array});
 
   const int num_dof = field.GetLayout().GetNumDofHolder();
   std::vector<pcms::Real> data(static_cast<size_t>(num_dof) * num_components);

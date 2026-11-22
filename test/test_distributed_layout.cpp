@@ -145,7 +145,7 @@ void CheckLayout(Omega_h::Mesh& mesh, const pcms::FunctionSpace& space,
   // Field data: write the owned values and read them back. The backend's owned
   // entries are current right away and its ghosts keep their initial zero;
   // after Synchronize, every DOF holder holds the value its owner wrote.
-  auto field = space.CreateFunction<Real>();
+  auto field = space.CreateFunction<Real>("", {.kind = pcms::ValueKind::Array});
   std::vector<Real> values(static_cast<size_t>(n_owned) * nc);
   for (LO o = 0; o < n_owned; ++o) {
     for (int c = 0; c < nc; ++c) {

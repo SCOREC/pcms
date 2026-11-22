@@ -34,6 +34,15 @@ struct Quadrature
 [[nodiscard]] Quadrature CreateGaussQuadrature(
   const std::shared_ptr<const Geometry>& geometry, int order);
 
+/// @brief The equispaced rule of `num_points` points of a 1D uniform grid,
+///        each weighing extent / num_points: exact for the trigonometric
+///        polynomials of degree up to num_points - 1 when the axis is
+///        identified over the extent.
+/// @throws pcms_error if `geometry` is not a 1D uniform grid or `num_points`
+///         is not positive
+[[nodiscard]] Quadrature CreateTrapezoidQuadrature(
+  const std::shared_ptr<const Geometry>& geometry, int num_points);
+
 /// @brief Uniform random samples in each cell of `geometry`, each weighing
 ///        cell measure / samples_per_cell; a cell's samples depend only on
 ///        `seed` and its global id.

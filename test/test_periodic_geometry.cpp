@@ -1,13 +1,13 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <Kokkos_Core.hpp>
-#include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/utility/arrays.hpp>
 #include <pcms/utility/detail/arrays.hpp>
 #include <pcms/utility/detail/periodic.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include "field_test_utils.hpp"
-#include "pcms/geometry/periodic_binding.hpp"
+#include "periodic_test_utils.hpp"
+#include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
 #include <cmath>
 #include <numbers>
 
@@ -37,8 +37,7 @@ Real Integrate(const pcms::Quadrature& quadrature, F f)
 TEST_CASE("Periodic geometry: points wrap modulo the period at Bind",
           "[periodic]")
 {
-  const auto geometry =
-    pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), 4, 2.0, 1.0);
+  const auto geometry = pcms::test::PeriodicGrid(4, 2.0, 1.0);
   Kokkos::View<Real**, pcms::HostMemorySpace> host("p", 5, 1);
   const Real x[5] = {1.0, 1.6, 0.9, 7.25, -0.4};
   for (int i = 0; i < 5; ++i) {
@@ -50,9 +49,9 @@ TEST_CASE("Periodic geometry: points wrap modulo the period at Bind",
       geometry->GetCoordinateSystem(), pcms::MakeConstRank2View(points)));
   CHECK(bound->MissingPoints().extent(0) == 0);
   const auto& binding =
-    dynamic_cast<const pcms::detail::PeriodicBinding&>(*bound);
-  const auto phase = Kokkos::create_mirror_view_and_copy(
-    pcms::HostMemorySpace{}, binding.Phase());
+    dynamic_cast<const pcms::detail::UniformGridBinding<1>&>(*bound);
+  const auto located =
+    pcms::test::CopyCoordinatesToHost(bound->LocatedPoints().GetValues());
   const auto cell = Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{},
                                                         binding.CellIndices());
   const auto xi = Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{},
@@ -63,8 +62,9 @@ TEST_CASE("Periodic geometry: points wrap modulo the period at Bind",
   const Real expected_phase[5] = {0.0, 0.3, 0.95, 0.125, 0.3};
   for (int i = 0; i < 5; ++i) {
     CHECK(cell(i) == expected_cell[i]);
-    CHECK(xi(i) == Catch::Approx(expected_xi[i]).margin(1e-13));
-    CHECK(phase(i) == Catch::Approx(expected_phase[i]).margin(1e-13));
+    CHECK(xi(i, 0) == Catch::Approx(expected_xi[i]).margin(1e-13));
+    CHECK(located(i, 0) ==
+          Catch::Approx(1.0 + 2.0 * expected_phase[i]).margin(1e-13));
   }
 }
 
@@ -114,11 +114,23 @@ TEST_CASE("Periodic helpers: nearest images and reduction to the period",
   }
 }
 
+TEST_CASE("Periodic geometry: a grid outside the fundamental interval of its "
+          "periodic axis is refused",
+          "[periodic]")
+{
+  pcms::UniformGrid<1> grid;
+  grid.bot_left = {-TwoPi / 2};
+  grid.edge_length = {TwoPi};
+  grid.divisions = {4};
+  CHECK_THROWS_AS(pcms::uniform_grid::CreateGeometry(
+                    grid, pcms::csys::CreateCartesian(1, {{0, 0.0, TwoPi}})),
+                  pcms::pcms_error);
+}
+
 TEST_CASE("Periodic geometry: the geometric factors are its system's",
           "[periodic]")
 {
-  const auto geometry =
-    pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), 5, 2.0);
+  const auto geometry = pcms::test::PeriodicGrid(5, 2.0);
   const auto quadrature = pcms::CreateGaussQuadrature(geometry, 2);
   const auto jacobian = quadrature.points->Jacobian();
   const auto volume = quadrature.points->VolumeFactor();
@@ -140,8 +152,7 @@ TEST_CASE("Periodic geometry: Gauss per cell integrates polynomials of its "
           "order exactly",
           "[periodic][quadrature]")
 {
-  const auto geometry =
-    pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), 3, 3.0, -1.0);
+  const auto geometry = pcms::test::PeriodicGrid(3, 3.0, -1.0);
   for (int order = 0; order <= 9; ++order) {
     CAPTURE(order);
     const auto quadrature = pcms::CreateGaussQuadrature(geometry, order);
@@ -157,8 +168,7 @@ TEST_CASE("Periodic geometry: the trapezoid rule is exact for trigonometric "
           "polynomials",
           "[periodic][quadrature]")
 {
-  const auto geometry =
-    pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), 4);
+  const auto geometry = pcms::test::PeriodicGrid(4);
   const int n = 9; // exact up to degree 8
   const auto quadrature = pcms::CreateTrapezoidQuadrature(geometry, n);
   for (int j = 0; j <= 4; ++j) {

@@ -4,17 +4,33 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <Kokkos_Core.hpp>
+#include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/function_spaces.hpp>
+#include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <pcms/utility/arrays.hpp>
 #include <pcms/utility/detail/arrays.hpp>
 #include <cmath>
 #include <memory>
+#include <numbers>
 #include <vector>
 
 // Helpers of the tests of the periodic and product spaces: evaluation at
 // points given row by row, the adjoint identity and the evaluation matrix.
 namespace pcms::test
 {
+
+/// @brief A 1D uniform grid of `cells` cells over [origin, origin + period),
+///        identified along it.
+inline std::shared_ptr<const Geometry> PeriodicGrid(
+  int cells, Real period = 2 * std::numbers::pi_v<Real>, Real origin = 0)
+{
+  UniformGrid<1> grid;
+  grid.bot_left = {origin};
+  grid.edge_length = {period};
+  grid.divisions = {cells};
+  return uniform_grid::CreateGeometry(
+    grid, csys::CreateCartesian(1, {{0, origin, period}}));
+}
 
 inline Kokkos::View<Real**, DeviceMemorySpace> DevicePoints(
   const std::vector<std::vector<Real>>& points)

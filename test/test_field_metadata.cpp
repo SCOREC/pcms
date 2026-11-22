@@ -3,7 +3,6 @@
 #include <pcms/configuration.hpp>
 #include <pcms/field/detail/simple_field_data.hpp>
 #include <pcms/field/field_metadata.hpp>
-#include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/transfer/copy.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include <pcms/transfer/projection.hpp>
@@ -20,8 +19,8 @@ namespace
 
 std::shared_ptr<const pcms::FunctionSpace> Space(int cells)
 {
-  return pcms::CreatePeriodicLagrangeSpace(pcms::CreatePeriodicGeometry(
-    pcms::csys::CreateCartesian(1), cells, 1.0, 0.0));
+  return pcms::CreateLagrangeSpace(pcms::test::PeriodicGrid(cells, 1.0, 0.0), 1,
+                                   1);
 }
 
 // Every transfer between periodic Lagrange spaces: a copy, an interpolator and

@@ -3,11 +3,10 @@
 #include "embedding_test_utils.hpp"
 #include "field_test_utils.hpp"
 #include <Omega_h_library.hpp>
-#include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/geometry/product_geometry.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include "pcms/field/function_space/product_binding.hpp"
-#include "pcms/geometry/periodic_binding.hpp"
+#include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
 #include <numbers>
 
 namespace
@@ -19,8 +18,7 @@ constexpr Real TwoPi = 2 * std::numbers::pi_v<Real>;
 std::shared_ptr<const pcms::Geometry> Periodic(int cells, Real period,
                                                Real origin = 0)
 {
-  return pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), cells,
-                                      period, origin);
+  return pcms::test::PeriodicGrid(cells, period, origin);
 }
 
 template <typename F>
@@ -112,11 +110,11 @@ TEST_CASE("Product geometry: Bind splits the coordinates by factor and keeps "
   CHECK(binding.FactorB()->GetGeometry() == b);
   const auto cell_a = Kokkos::create_mirror_view_and_copy(
     pcms::HostMemorySpace{},
-    dynamic_cast<const pcms::detail::PeriodicBinding&>(*binding.FactorA())
+    dynamic_cast<const pcms::detail::UniformGridBinding<1>&>(*binding.FactorA())
       .CellIndices());
   const auto cell_b = Kokkos::create_mirror_view_and_copy(
     pcms::HostMemorySpace{},
-    dynamic_cast<const pcms::detail::PeriodicBinding&>(*binding.FactorB())
+    dynamic_cast<const pcms::detail::UniformGridBinding<1>&>(*binding.FactorB())
       .CellIndices());
   // a: h = 0.5, 0.6 -> 1, -0.1 -> 1.9 -> 3; b: [1, 4), h = 1, 1.5 -> 0,
   // 4.2 -> 1.2 -> 0
@@ -238,7 +236,7 @@ TEST_CASE("Product geometry: Rebind re-locates in place of the previous bind",
   const auto& binding = dynamic_cast<const pcms::ProductBinding&>(*bound);
   const auto cell = Kokkos::create_mirror_view_and_copy(
     pcms::HostMemorySpace{},
-    dynamic_cast<const pcms::detail::PeriodicBinding&>(*binding.FactorA())
+    dynamic_cast<const pcms::detail::UniformGridBinding<1>&>(*binding.FactorA())
       .CellIndices());
   CHECK(cell(0) == 3);
 }

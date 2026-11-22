@@ -12,6 +12,8 @@ namespace pcms::uniform_grid
 /// @brief The geometry of a uniform grid
 /// @param grid the grid
 /// @param system the grid's coordinate system, or null for Cartesian
+/// @throws pcms_error if the grid is not inside the fundamental interval of
+///         a periodic axis of `system`
 template <unsigned Dim>
 [[nodiscard]] std::shared_ptr<const Geometry> CreateGeometry(
   UniformGrid<Dim> grid, std::shared_ptr<const CoordinateSystem> system);

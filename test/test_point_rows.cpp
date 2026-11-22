@@ -1,6 +1,5 @@
 #include "periodic_test_utils.hpp"
 #include "pcms/field/point_rows.hpp"
-#include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
 #include <vector>
 
@@ -110,8 +109,8 @@ TEST_CASE("PointRows: the outputs of a point are component-major",
 TEST_CASE("PointRows: the matrix of a periodic space has the local holders",
           "[point_rows][periodic]")
 {
-  const auto space = pcms::CreatePeriodicHermiteSpace(
-    pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), 5, 2.0));
+  const auto space =
+    pcms::CreatePeriodicHermiteSpace(pcms::test::PeriodicGrid(5, 2.0));
   const auto points = pcms::test::DevicePoints({{0.1}, {0.7}, {1.9}});
   const auto bound =
     space->GetGeometry()->Bind(pcms::CoordinateView<pcms::DeviceMemorySpace>(

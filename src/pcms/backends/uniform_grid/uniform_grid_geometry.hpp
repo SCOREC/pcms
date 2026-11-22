@@ -118,11 +118,7 @@ public:
   /// Own it by std::shared_ptr, as CreateGeometry does: Bind uses
   /// shared_from_this().
   UniformGridGeometry(UniformGrid<Dim> grid,
-                      std::shared_ptr<const CoordinateSystem> system)
-    : grid_(grid),
-      system_(pcms::detail::ResolveCoordinateSystem(std::move(system), Dim))
-  {
-  }
+                      std::shared_ptr<const CoordinateSystem> system);
 
   [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
   GetCoordinateSystem() const noexcept override
@@ -140,11 +136,15 @@ public:
     return grid_;
   }
 
+  /// @return bit d set if axis d has a translation identification over the
+  ///         grid's extent: its last node is its first
+  [[nodiscard]] unsigned WrappedAxes() const noexcept { return wrapped_; }
+
   /// @brief The tensor Gauss-Legendre rule of the cells, exact for
   ///        polynomials of degree `order` in each coordinate, before binding.
   /// @return the points [point][axis] and their weights in the coordinate
   ///         measure
-  /// @throws pcms_error for an order below 1
+  /// @throws pcms_error for a negative order
   [[nodiscard]] std::pair<Kokkos::View<Real**, DeviceMemorySpace>,
                           Kokkos::View<Real*, DeviceMemorySpace>>
   CellRule(int order) const;
@@ -153,14 +153,16 @@ protected:
   [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override;
 
-  /// @brief The Gauss rule (CellRule), with the coordinate system's volume
-  ///        factor in the weights if the coordinate system has a metric.
+  /// @brief The Gauss rule (CellRule), or in 1D the trapezoid rule of the
+  ///        extent, with the coordinate system's volume factor in the weights
+  ///        if the coordinate system has a metric.
   [[nodiscard]] Quadrature CreateQuadrature(
     const pcms::detail::QuadratureRule& rule) const override;
 
 private:
   UniformGrid<Dim> grid_;
   std::shared_ptr<const CoordinateSystem> system_;
+  unsigned wrapped_ = 0;
 };
 
 // instantiated in geometry.cpp

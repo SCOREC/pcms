@@ -16,13 +16,15 @@ struct InitGridCoordsFunctor
   Kokkos::View<Real**, DeviceMemorySpace> coords_;
   UniformGrid<Dim> grid_;
   int order_;
+  unsigned wrapped_;
 
   KOKKOS_INLINE_FUNCTION
   void operator()(LO dof_idx) const
   {
     LO rest = dof_idx;
     for (unsigned d = 0; d < Dim; ++d) {
-      const LO n = grid_.divisions[d] + order_;
+      const LO n =
+        grid_.divisions[d] + (order_ == 1 && !((wrapped_ >> d) & 1U) ? 1 : 0);
       const Real spacing = grid_.edge_length[d] / grid_.divisions[d];
       coords_(dof_idx, d) =
         grid_.bot_left[d] + (rest % n + (order_ == 1 ? 0.0 : 0.5)) * spacing;
@@ -73,6 +75,7 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
     grid_(GridOf(geometry)),
     num_components_(num_components),
     order_(order),
+    wrapped_(geometry->WrappedAxes()),
     gids_("gids", CountDofHolders()),
     gids_host_("gids_host", CountDofHolders()),
     dof_holder_coords_("dof_holder_coords", CountDofHolders(), Dim),
@@ -95,7 +98,7 @@ UniformGridFieldLayout<Dim>::UniformGridFieldLayout(
   Kokkos::parallel_for(
     "InitUniformGridCoords",
     Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, num_dofs),
-    InitGridCoordsFunctor<Dim>{dof_holder_coords_, grid_, order_});
+    InitGridCoordsFunctor<Dim>{dof_holder_coords_, grid_, order_, wrapped_});
 
   int entity_dim = (order_ == 0) ? static_cast<int>(Dim) : 0;
   LO n = CountDofHolders();
@@ -177,7 +180,7 @@ LO UniformGridFieldLayout<Dim>::GetNumVertices() const
 {
   LO num_vertices = 1;
   for (unsigned d = 0; d < Dim; ++d) {
-    num_vertices *= (grid_.divisions[d] + 1);
+    num_vertices *= grid_.divisions[d] + (((wrapped_ >> d) & 1U) ? 0 : 1);
   }
   return num_vertices;
 }

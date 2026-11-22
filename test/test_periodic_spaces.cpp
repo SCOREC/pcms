@@ -1,5 +1,4 @@
 #include "periodic_test_utils.hpp"
-#include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/transfer/forms.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include <pcms/transfer/l2_inner_product.hpp>
@@ -20,8 +19,7 @@ constexpr Real TwoPi = 2 * std::numbers::pi_v<Real>;
 std::shared_ptr<const pcms::Geometry> Periodic(int cells, Real period = TwoPi,
                                                Real origin = 0)
 {
-  return pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), cells,
-                                      period, origin);
+  return pcms::test::PeriodicGrid(cells, period, origin);
 }
 
 std::vector<std::vector<Real>> Points(int n, Real lo, Real hi)
@@ -82,7 +80,7 @@ TEST_CASE("Periodic Lagrange order 1: nodes, midpoints and slopes",
   const int n = 6;
   const auto geometry = Periodic(n, 3.0, 1.0);
   const Real h = 0.5;
-  const auto space = pcms::CreatePeriodicLagrangeSpace(geometry);
+  const auto space = pcms::CreateLagrangeSpace(geometry, 1, 1);
   auto u = space->CreateFunction<Real>();
   const std::vector<Real> g = {1, 4, -2, 0.5, 3, 7};
   SetDofs(u, g);
@@ -184,7 +182,7 @@ TEST_CASE("Periodic cubic spline: interpolates the nodes, reproduces "
           "[periodic][spline]")
 {
   const auto error = [](int cells, bool slope) {
-    const auto space = pcms::CreatePeriodicSplineSpace(Periodic(cells, TwoPi));
+    const auto space = pcms::CreateSplineSpace(Periodic(cells, TwoPi));
     std::vector<Real> d;
     for (int i = 0; i < cells; ++i) {
       d.push_back(std::sin(TwoPi * i / cells));
@@ -214,7 +212,7 @@ TEST_CASE("Periodic cubic spline: interpolates the nodes, reproduces "
   CHECK(error(16, false) < 5e-4);
   CHECK(error(16, false) / error(32, false) > 12.0);
   CHECK(error(32, true) < 2e-3);
-  const auto space = pcms::CreatePeriodicSplineSpace(Periodic(7, 2.0, 1.0));
+  const auto space = pcms::CreateSplineSpace(Periodic(7, 2.0, 1.0));
   auto one = space->CreateFunction<Real>();
   SetDofs(one, std::vector<Real>(7, 3.5));
   const auto v = EvaluateAt(*space, one, Points(9, 0.0, 5.0));
@@ -224,7 +222,7 @@ TEST_CASE("Periodic cubic spline: interpolates the nodes, reproduces "
     CHECK(v[q][0] == Catch::Approx(3.5).margin(1e-12));
     CHECK(d[q][0] == Catch::Approx(0.0).margin(1e-11));
   }
-  CHECK_THROWS(pcms::CreatePeriodicSplineSpace(Periodic(2)));
+  CHECK_THROWS(pcms::CreateSplineSpace(Periodic(2)));
 }
 
 TEST_CASE("Periodic cubic spline: the circulant moments match the dense "
@@ -248,7 +246,7 @@ TEST_CASE("Periodic cubic spline: the circulant moments match the dense "
         m[i] += sum / n * f[j];
       }
     }
-    const auto space = pcms::CreatePeriodicSplineSpace(Periodic(n));
+    const auto space = pcms::CreateSplineSpace(Periodic(n));
     auto s = space->CreateFunction<Real>();
     SetDofs(s, f);
     const auto pts = Points(3 * n, 0.0, TwoPi);
@@ -265,7 +263,7 @@ TEST_CASE("Periodic cubic spline: the circulant moments match the dense "
     }
   }
   const auto start = std::chrono::steady_clock::now();
-  const auto fine = pcms::CreatePeriodicSplineSpace(Periodic(1024));
+  const auto fine = pcms::CreateSplineSpace(Periodic(1024));
   CHECK(std::chrono::steady_clock::now() - start < std::chrono::seconds(2));
   CHECK(fine->GetLayout()->GetNumDofHolder() == 1024);
 }
@@ -278,7 +276,7 @@ TEST_CASE("Periodic spaces: each of two components evaluates as a scalar "
   const std::vector<std::pair<std::shared_ptr<const pcms::FunctionSpace>,
                               std::shared_ptr<const pcms::FunctionSpace>>>
     spaces = {
-      {pcms::CreatePeriodicSplineSpace(geometry), pcms::CreatePeriodicSplineSpace(geometry, 2)},
+      {pcms::CreateSplineSpace(geometry), pcms::CreateSplineSpace(geometry, 2)},
       {pcms::CreatePeriodicHermiteSpace(geometry),
        pcms::CreatePeriodicHermiteSpace(geometry, 2)},
       {pcms::CreateFourierSpace(geometry, {0, 1, 2}),
@@ -330,12 +328,11 @@ TEST_CASE("Periodic spaces: <E x, y> = <x, E^T y> and the matrix is E",
   const auto points = Points(31, -5.0, 6.0);
   pcms::test::CheckAdjointAndMatrix(
     pcms::CreateFourierSpace(geometry, {0, 1, 2, 5}, 2), points);
-  pcms::test::CheckAdjointAndMatrix(pcms::CreatePeriodicLagrangeSpace(geometry),
+  pcms::test::CheckAdjointAndMatrix(pcms::CreateLagrangeSpace(geometry, 1, 1),
                                     points);
   pcms::test::CheckAdjointAndMatrix(pcms::CreatePeriodicHermiteSpace(geometry),
                                     points);
-  pcms::test::CheckAdjointAndMatrix(pcms::CreatePeriodicSplineSpace(geometry),
-                                    points);
+  pcms::test::CheckAdjointAndMatrix(pcms::CreateSplineSpace(geometry), points);
 }
 
 TEST_CASE("Periodic spaces: natural quadrature integrates products of two "
@@ -344,7 +341,7 @@ TEST_CASE("Periodic spaces: natural quadrature integrates products of two "
 {
   const auto geometry = Periodic(6, 2.0, 0.5);
   for (const auto& space : {pcms::CreateFourierSpace(geometry, {0, 1, 2, 3}),
-                            pcms::CreatePeriodicLagrangeSpace(geometry)}) {
+                            pcms::CreateLagrangeSpace(geometry, 1, 1)}) {
     const auto quadrature = space->CreateQuadrature();
     const auto weights = Kokkos::create_mirror_view_and_copy(
       pcms::HostMemorySpace{}, quadrature.weights);
@@ -403,7 +400,7 @@ TEST_CASE("Periodic spaces: Fourier projection reproduces the analytic "
   const auto fine_space = pcms::CreateFourierSpace(geometry, {1, 2});
   auto smooth = fine_space->CreateFunction<Real>();
   SetDofs(smooth, {0.0, 1.0, 0.3, 0.0});
-  for (const auto& space : {pcms::CreatePeriodicSplineSpace(Periodic(16)),
+  for (const auto& space : {pcms::CreateSplineSpace(Periodic(16)),
                             pcms::CreatePeriodicHermiteSpace(Periodic(16))}) {
     pcms::ProjectionOptions options;
     options.quadrature = pcms::CreateGaussQuadrature(space->GetGeometry(), 10);
@@ -425,9 +422,9 @@ TEST_CASE("Periodic Lagrange: the matrix-free projection onto a refined "
   // the target integrates (source) x (target basis) exactly and the
   // projection of a field whose space holds the constants keeps its integral
   const auto source_space =
-    pcms::CreatePeriodicLagrangeSpace(Periodic(8, 3.0, 1.0));
+    pcms::CreateLagrangeSpace(Periodic(8, 3.0, 1.0), 1, 1);
   const auto target_space =
-    pcms::CreatePeriodicLagrangeSpace(Periodic(16, 3.0, 1.0));
+    pcms::CreateLagrangeSpace(Periodic(16, 3.0, 1.0), 1, 1);
   auto source = source_space->CreateFunction<Real>();
   SetDofs(source, {1, 4, -2, 0.5, 3, 7, -1, 2});
   const Real expected = pcms::L2Integral(source_space).Apply(source);

@@ -391,8 +391,8 @@ TEST_CASE("Bind with a map: NEAREST_BOUNDARY follows the geometry")
   SECTION("a uniform grid extrapolates")
   {
     pcms::UniformGrid<3> grid;
-    grid.bot_left = {0.1, -3.2, 0.0};
-    grid.edge_length = {1.5, 6.4, 1.0};
+    grid.bot_left = {0.1, 0.0, 0.0};
+    grid.edge_length = {1.5, 6.2, 1.0};
     grid.divisions = {6, 16, 4};
     auto src =
       CreateLagrangeSpace(pcms::uniform_grid::CreateGeometry(

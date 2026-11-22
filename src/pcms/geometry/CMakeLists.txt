@@ -4,7 +4,6 @@ set(
         ../../../include/pcms/geometry/bound_points.hpp
         ../../../include/pcms/geometry/quadrature.hpp
         ../../../include/pcms/geometry/supports.hpp
-        ../../../include/pcms/geometry/periodic_geometry.hpp
         ../../../include/pcms/geometry/product_geometry.hpp
         ../../../include/pcms/geometry/detail/bound_points.hpp
         ../../../include/pcms/geometry/detail/geometry.hpp
@@ -15,7 +14,6 @@ set(
         PCMS_GEOMETRY_SOURCES
         geometry.cpp
         bound_points.cpp
-        periodic_geometry.cpp
         # Geometry::Bind binds coordinate maps; the map sits below the geometry
         # (its header stays in pcms/field), so it is compiled here
         ../field/coordinate_map.cpp

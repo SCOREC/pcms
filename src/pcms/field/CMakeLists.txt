@@ -13,6 +13,7 @@ set(PCMS_FIELD_HEADERS
         element_dispatch.hpp
         gid_permutation.hpp
         point_rows.hpp
+        function_space/periodic.hpp
         ../../../include/pcms/field/field_layout.hpp
         layout/empty.hpp
         layout/serial.hpp

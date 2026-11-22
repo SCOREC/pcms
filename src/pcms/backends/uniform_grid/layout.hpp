@@ -15,9 +15,9 @@ template <unsigned Dim = 2>
 class UniformGridFieldLayout : public FieldLayout
 {
 public:
-  /// The layout of order 0 (one DOF holder per cell) or 1 (one per vertex) on
-  /// the grid of `geometry`, which it is on; it takes the geometry's
-  /// coordinate system.
+  /// The layout of order 0 (one DOF holder per cell) or 1 (one per vertex,
+  /// the last of a wrapped axis being its first) on the grid of `geometry`,
+  /// which it is on; it takes the geometry's coordinate system.
   /// @throws pcms_error if `geometry` is null
   UniformGridFieldLayout(
     std::shared_ptr<const UniformGridGeometry<Dim>> geometry,
@@ -54,6 +54,7 @@ private:
   UniformGrid<Dim> grid_;
   int num_components_;
   int order_;
+  unsigned wrapped_;
   Kokkos::View<GO*, DeviceMemorySpace> gids_;
   Kokkos::View<bool*, DeviceMemorySpace> owned_;
   Kokkos::View<Real**, DeviceMemorySpace> dof_holder_coords_;

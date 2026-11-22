@@ -4,6 +4,9 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/memory_spaces.hpp"
 #include "pcms/utility/detail/profile.hpp"
+#include <algorithm>
+#include <cmath>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -50,6 +53,30 @@ void FillCellRule(UniformGrid<Dim> grid, DeviceView<const Real*> nodes,
 } // namespace
 
 template <unsigned Dim>
+UniformGridGeometry<Dim>::UniformGridGeometry(
+  UniformGrid<Dim> grid, std::shared_ptr<const CoordinateSystem> system)
+  : grid_(grid),
+    system_(pcms::detail::ResolveCoordinateSystem(std::move(system), Dim))
+{
+  for (const auto& id : system_->Identifications()) {
+    const Real extent = grid_.edge_length[id.axis];
+    const Real tol = 1e-12 * std::max(extent, id.length);
+    if (grid_.bot_left[id.axis] < id.lower - tol ||
+        grid_.bot_left[id.axis] + extent > id.lower + id.length + tol) {
+      throw pcms_error("uniform_grid::CreateGeometry: the grid along axis " +
+                       std::to_string(id.axis) +
+                       " is not inside the fundamental interval of its "
+                       "identification, where Bind locates points");
+    }
+    if (id.map == nullptr &&
+        std::abs(id.lower - grid_.bot_left[id.axis]) <= 1e-12 * extent &&
+        std::abs(id.length - extent) <= 1e-12 * extent) {
+      wrapped_ |= 1U << id.axis;
+    }
+  }
+}
+
+template <unsigned Dim>
 std::shared_ptr<BoundPoints> UniformGridGeometry<Dim>::BindImpl(
   const BindRequest& request) const
 {
@@ -63,8 +90,8 @@ std::pair<Kokkos::View<Real**, DeviceMemorySpace>,
           Kokkos::View<Real*, DeviceMemorySpace>>
 UniformGridGeometry<Dim>::CellRule(int order) const
 {
-  if (order < 1) {
-    throw pcms_error("CreateQuadrature: the order must be positive");
+  if (order < 0) {
+    throw pcms_error("CreateQuadrature: the order must not be negative");
   }
   std::vector<Real> nodes_host;
   std::vector<Real> weights_host;
@@ -93,6 +120,23 @@ template <unsigned Dim>
 Quadrature UniformGridGeometry<Dim>::CreateQuadrature(
   const pcms::detail::QuadratureRule& rule) const
 {
+  const auto* trapezoid = std::get_if<pcms::detail::TrapezoidRule>(&rule);
+  if (trapezoid != nullptr && Dim == 1) {
+    const LO n = trapezoid->num_points;
+    const Real h = grid_.edge_length[0] / n;
+    Kokkos::View<Real**, HostMemorySpace> xi("trapezoid_points", n, 1);
+    Kokkos::View<Real*, HostMemorySpace> weights("trapezoid_weights", n);
+    for (LO i = 0; i < n; ++i) {
+      xi(i, 0) = grid_.bot_left[0] + i * h;
+      weights(i) = h;
+    }
+    DeviceView<Real**> device_xi("trapezoid_points", n, 1);
+    DeepCopyMismatchLayouts(device_xi, xi);
+    return pcms::detail::BindQuadrature(
+      *this,
+      CoordinateView<DeviceMemorySpace>(system_, MakeConstRank2View(device_xi)),
+      Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, weights));
+  }
   const auto* gauss = std::get_if<pcms::detail::GaussRule>(&rule);
   if (gauss == nullptr) {
     return Geometry::CreateQuadrature(rule);

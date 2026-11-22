@@ -1,7 +1,6 @@
 #include "periodic_test_utils.hpp"
 #include "field_test_utils.hpp"
 #include <Omega_h_library.hpp>
-#include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/geometry/product_geometry.hpp>
 #include <pcms/configuration.hpp>
 #include <pcms/transfer/forms.hpp>
@@ -20,8 +19,7 @@ constexpr Real TwoPi = 2 * std::numbers::pi_v<Real>;
 
 std::shared_ptr<const pcms::Geometry> Periodic(int cells, Real period = TwoPi)
 {
-  return pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), cells,
-                                      period);
+  return pcms::test::PeriodicGrid(cells, period);
 }
 
 std::vector<std::vector<Real>> Points(int n, int dim, Real lo, Real hi)
@@ -205,7 +203,7 @@ TEST_CASE("Product space: value and gradient of representable functions",
   }
   // piecewise linear x Fourier, and nested: (Lagrange x Fourier) x Fourier
   {
-    const auto lagrange = pcms::CreatePeriodicLagrangeSpace(Periodic(6));
+    const auto lagrange = pcms::CreateLagrangeSpace(Periodic(6), 1, 1);
     const auto zs = pcms::CreateFourierSpace(Periodic(5), {0, 1, 2});
     const auto space = pcms::CreateProductSpace(lagrange, zs);
     const std::vector<Real> a = {1, 4, -2, 0.5, 3, 7};
@@ -267,11 +265,11 @@ TEST_CASE("Product space: <E x, y> = <x, E^T y> and the matrix is E",
   const auto periodic = Periodic(5, 3.0);
   const auto fourier = pcms::CreateFourierSpace(Periodic(4), {0, 1, 3});
   pcms::test::CheckAdjointAndMatrix(
-    pcms::CreateProductSpace(pcms::CreatePeriodicLagrangeSpace(periodic),
+    pcms::CreateProductSpace(pcms::CreateLagrangeSpace(periodic, 1, 1),
                              fourier),
     Points(23, 2, -4.0, 8.0));
   pcms::test::CheckAdjointAndMatrix(
-    pcms::CreateProductSpace(pcms::CreatePeriodicSplineSpace(periodic),
+    pcms::CreateProductSpace(pcms::CreateSplineSpace(periodic),
                              pcms::CreatePeriodicHermiteSpace(Periodic(4))),
     Points(23, 2, -4.0, 8.0));
   Omega_h::Library lib;

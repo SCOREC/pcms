@@ -4,7 +4,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/embedding.hpp>
-#include <pcms/geometry/periodic_geometry.hpp>
 #include <pcms/geometry/product_geometry.hpp>
 #include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/projection.hpp>
@@ -264,8 +263,8 @@ TEST_CASE("Product of a uniform grid and a periodic axis: transpose and "
           "[uniform_grid][product][adjoint]")
 {
   const auto plane = pcms::CreateLagrangeSpace(Grid2(), 1, 1);
-  const auto zs = pcms::CreateFourierSpace(
-    pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), 5), {0, 1, 2});
+  const auto zs =
+    pcms::CreateFourierSpace(pcms::test::PeriodicGrid(5), {0, 1, 2});
   const auto space = pcms::CreateProductSpace(plane, zs);
   auto points = Points(31, {-1.0, 0.5, -10.0}, {3.0, 2.0, 20.0});
   pcms::test::CheckAdjointAndMatrix(space, points);
@@ -470,7 +469,7 @@ TEST_CASE("Uniform-grid quadrature is exact for polynomials of its degree in "
                              MonomialIntegral(3, 0.5, 2.5))
                  .epsilon(1e-12));
   CHECK_THROWS(pcms::CreateMonteCarloQuadrature(rz, 2));
-  CHECK_THROWS(pcms::CreateGaussQuadrature(rz, 0));
+  CHECK_THROWS(pcms::CreateGaussQuadrature(rz, -1));
   CHECK(pcms::CreateLagrangeSpace(Grid2(), 0, 1)
           ->CreateQuadrature()
           .points->NumPoints() == 20);
@@ -485,9 +484,7 @@ TEST_CASE("Product of a uniform grid and a periodic axis: the tensor "
 {
   const auto plane = pcms::CreateLagrangeSpace(Grid2(), 1, 1);
   const auto space = pcms::CreateProductSpace(
-    plane, pcms::CreateFourierSpace(
-             pcms::CreatePeriodicGeometry(pcms::csys::CreateCartesian(1), 5),
-             {0, 1, 2}));
+    plane, pcms::CreateFourierSpace(pcms::test::PeriodicGrid(5), {0, 1, 2}));
   const auto u = ProductFunction(*plane, *space);
   const Real expected = (MonomialIntegral(1, -1.0, 2.0) * 2.0 +
                          2 * 3.0 * MonomialIntegral(1, 0.5, 2.5)) *

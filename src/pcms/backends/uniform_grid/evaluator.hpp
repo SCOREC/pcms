@@ -18,13 +18,14 @@ namespace detail
 
 /// @brief The rows of the order 0 or 1 Lagrange fields of a uniform grid at
 ///        points.
+/// @param wrapped bit d set if the last node of axis d is its first
 /// @param cells the cell of each point
 /// @param t the position of each point in its cell
 /// @param missing points whose rows are zero
 /// @return the rows
 template <unsigned Dim>
 pcms::detail::PointRows BuildGridRows(
-  UniformGrid<Dim> grid, int order, bool gradient,
+  UniformGrid<Dim> grid, unsigned wrapped, int order, bool gradient,
   Kokkos::View<const LO*, DeviceMemorySpace> cells,
   Kokkos::View<const Real**, DeviceMemorySpace> t,
   Kokkos::View<const LO*, DeviceMemorySpace> missing)
@@ -51,20 +52,21 @@ pcms::detail::PointRows BuildGridRows(
       // cell indices in axis order (GetDimensionedIndex gives them reversed),
       // and the vertex numbering with the first axis fastest
       const auto reversed = grid.GetDimensionedIndex(cells(i));
-      LO first_vertex = 0;
+      LO nodes[Dim];
       LO vertex_stride[Dim];
       Real h[Dim];
       LO next = 1;
       for (unsigned d = 0; d < Dim; ++d) {
+        nodes[d] = grid.divisions[d] + (((wrapped >> d) & 1U) ? 0 : 1);
         vertex_stride[d] = next;
-        next *= grid.divisions[d] + 1;
+        next *= nodes[d];
         h[d] = grid.edge_length[d] / grid.divisions[d];
-        first_vertex += reversed[Dim - 1 - d] * vertex_stride[d];
       }
       for (int corner = 0; corner < stride; ++corner) {
-        LO vertex = first_vertex;
+        LO vertex = 0;
         for (unsigned d = 0; d < Dim; ++d) {
-          vertex += ((corner >> d) & 1) * vertex_stride[d];
+          const LO node = reversed[Dim - 1 - d] + ((corner >> d) & 1);
+          vertex += (node % nodes[d]) * vertex_stride[d];
         }
         for (int r = 0; r < num_out; ++r) {
           Real weight = 1;
@@ -104,13 +106,14 @@ std::shared_ptr<const PointEvaluatorFactory> CreateLagrangeEvaluatorFactory(
   std::shared_ptr<const UniformGridFieldLayout<Dim>> layout)
 {
   using Bound = pcms::detail::UniformGridBinding<Dim>;
+  const unsigned wrapped = geometry->WrappedAxes();
   return std::make_shared<pcms::detail::RowsEvaluatorFactory<Bound>>(
     std::move(geometry), layout, std::set{DifferentialOperator::Gradient},
-    [grid = layout->GetGrid(),
+    [grid = layout->GetGrid(), wrapped,
      order = layout->GetOrder()](const Bound& bound, DifferentialOperator op) {
       return detail::BuildGridRows<Dim>(
-        grid, order, op == DifferentialOperator::Gradient, bound.CellIndices(),
-        bound.Parametric(),
+        grid, wrapped, order, op == DifferentialOperator::Gradient,
+        bound.CellIndices(), bound.Parametric(),
         bound.Policy().mode == OutOfBoundsMode::FILL
           ? bound.MissingPoints()
           : Kokkos::View<const LO*, DeviceMemorySpace>{});

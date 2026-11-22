@@ -1,15 +1,13 @@
 #ifndef PCMS_FIELD_FUNCTION_SPACE_PRODUCT_BINDING_HPP
 #define PCMS_FIELD_FUNCTION_SPACE_PRODUCT_BINDING_HPP
 
-// Private: the product geometry class and its binding. (Compiled in pcms_field,
-// not pcms_geometry: the twist-shift identification evaluates a Function.)
+// Private: the product geometry class and its binding.
 
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/geometry/product_geometry.hpp"
 #include "pcms/utility/detail/memory_spaces.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
-#include <optional>
 
 namespace pcms
 {
@@ -38,11 +36,6 @@ public:
 protected:
   void RebindImpl() override;
 
-  /// The block composition of the factors' geometric factors: the
-  /// block-diagonal Jacobian and metric, and the product of the volume
-  /// factors.
-  [[nodiscard]] detail::GeometricFactors ComputeFactors() const override;
-
 private:
   void Locate(bool rebind);
 
@@ -55,7 +48,7 @@ class ProductGeometry final : public Geometry
 public:
   ProductGeometry(std::shared_ptr<const Geometry> a,
                   std::shared_ptr<const Geometry> b,
-                  std::optional<ProductIdentification> identification);
+                  std::shared_ptr<const CoordinateSystem> system);
 
   [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
   GetCoordinateSystem() const noexcept override
@@ -73,12 +66,6 @@ public:
   [[nodiscard]] const std::shared_ptr<const Geometry>& FactorB() const noexcept
   {
     return b_;
-  }
-
-  [[nodiscard]] const std::optional<ProductIdentification>& Identification()
-    const noexcept
-  {
-    return identification_;
   }
 
   /// The tensor product of a rule of each factor: the point (i, k) is the
@@ -99,7 +86,6 @@ private:
   std::shared_ptr<const Geometry> a_;
   std::shared_ptr<const Geometry> b_;
   std::shared_ptr<const CoordinateSystem> system_;
-  std::optional<ProductIdentification> identification_;
 };
 
 } // namespace pcms

@@ -1,7 +1,9 @@
 #include "periodic_test_utils.hpp"
 #include "field_test_utils.hpp"
 #include <Omega_h_library.hpp>
+#include <pcms/field/identification.hpp>
 #include <pcms/geometry/product_geometry.hpp>
+#include <pcms/utility/coordinate_systems/parameter.hpp>
 #include <pcms/configuration.hpp>
 #include <pcms/transfer/forms.hpp>
 #include <pcms/transfer/projection.hpp>
@@ -377,11 +379,13 @@ TEST_CASE("Product space: twist-shift identification wraps the plane's y into "
   const auto delta = [](Real x) { return 0.3 + 0.8 * std::cos(TwoPi * x); };
   const auto geometry = pcms::CreateProductGeometry(
     plane->GetGeometry(), zs->GetGeometry(),
-    pcms::ProductIdentification{
-      .wrap_axis = 1,
-      .lower = 0.0,
-      .period = 1.0,
-      .shift = std::make_shared<const pcms::Function<Real>>(std::move(shift))});
+    pcms::csys::CreateParameterSystem(
+      "twisted", 3,
+      {{1, 0.0, 1.0,
+        pcms::CreateTwistShiftMap(
+          2, std::make_shared<const pcms::Function<Real>>(std::move(shift)),
+          {0})},
+       {2, 0.0, TwoPi}}));
   const auto space = pcms::CreateProductSpace(plane, zs, geometry);
   auto u = space->CreateFunction<Real>();
   SetDofs(u, Outer(NodalValues(*plane->GetLayout(),
@@ -415,8 +419,7 @@ TEST_CASE("Product space: twist-shift identification wraps the plane's y into "
   }
   pcms::test::CheckAdjointAndMatrix(space, pts);
   // invalid identifications
-  CHECK_THROWS(pcms::CreateProductGeometry(
-    plane->GetGeometry(), zs->GetGeometry(),
-    pcms::ProductIdentification{
-      .wrap_axis = 2, .period = 1.0, .shift = nullptr}));
+  CHECK_THROWS(pcms::CreateTwistShiftMap(2, nullptr, {0}));
+  // the twist-shift of a second factor would shift the wrong product axes
+  CHECK_THROWS(pcms::CreateProductGeometry(zs->GetGeometry(), geometry));
 }

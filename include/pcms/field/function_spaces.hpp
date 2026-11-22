@@ -90,9 +90,8 @@ struct LagrangeOptions
 /// of the partials); the natural quadrature is the tensor product of the
 /// factors'. Serial: the factors' layouts are on one rank.
 /// @param geometry the product geometry to create the space on, or null for
-///        CreateProductGeometry(a's geometry, b's geometry); to use the one
-///        made with a twist-shift identification, or to share one between
-///        spaces
+///        CreateProductGeometry(a's geometry, b's geometry); to use one
+///        made with its own coordinate system, or to share one between spaces
 /// @throws pcms_error if a factor is null or not scalar, `geometry` is not the
 ///         product geometry of the factors' geometries, or a factor's layout
 ///         is distributed

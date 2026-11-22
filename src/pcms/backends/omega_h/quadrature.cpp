@@ -6,6 +6,7 @@
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Random.hpp>
 #include <Omega_h_for.hpp>
+#include <Omega_h_map.hpp>
 #include <Omega_h_shape.hpp>
 #include <cstdint>
 #include <string>
@@ -62,7 +63,7 @@ KOKKOS_INLINE_FUNCTION Omega_h::Vector<Dim + 1> UniformBarycentric(
 }
 
 // The reference rule of `order` (order > 0) or `samples` uniform random
-// samples (samples > 0) on each element.
+// samples (samples > 0) on each owned element.
 template <int Dim>
 Quadrature CreateSimplexQuadrature(const OmegaHGeometry& geometry, int order,
                                    int samples, std::uint64_t seed)
@@ -87,8 +88,10 @@ Quadrature CreateSimplexQuadrature(const OmegaHGeometry& geometry, int order,
 #endif
   }
   Omega_h::Mesh& mesh = geometry.GetMesh();
-  const LO nelems = mesh.nelems();
-  const auto num_points = static_cast<std::size_t>(nelems) * per_cell;
+  // a ghosted mesh also holds copies of its neighbours' elements
+  const auto owned = Omega_h::collect_marked(mesh.owned(Dim));
+  const LO num_owned = owned.size();
+  const auto num_points = static_cast<std::size_t>(num_owned) * per_cell;
   Kokkos::View<LO*, DeviceMemorySpace> elements("quadrature_elements",
                                                 num_points);
   Kokkos::View<Real**, DeviceMemorySpace> coords("quadrature_coords",
@@ -100,12 +103,13 @@ Quadrature CreateSimplexQuadrature(const OmegaHGeometry& geometry, int order,
   const auto determinant = geometry.CellJacobian().determinant;
   Kokkos::parallel_for(
     "OmegaHGeometry::CreateQuadrature",
-    Kokkos::RangePolicy<DefaultExecutionSpace>(0, nelems),
-    KOKKOS_LAMBDA(const LO e) {
+    Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_owned),
+    KOKKOS_LAMBDA(const LO k) {
+      const LO e = owned[k];
       const auto verts = Omega_h::gather_verts<Dim + 1>(elem_verts, e);
       const Real measure = Kokkos::fabs(determinant(e));
       const auto fill = [&](int q, const Omega_h::Vector<Dim + 1>& b, Real w) {
-        const LO i = e * per_cell + q;
+        const LO i = k * per_cell + q;
         elements(i) = e;
         weights(i) = w * measure;
         for (int d = 0; d < Dim; ++d) {

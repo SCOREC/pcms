@@ -37,10 +37,16 @@ Quadrature CreateIntersectionQuadratureImpl(
   const auto bary_coords = rule.bary_coords;
   const auto rule_weights = rule.weights;
   const int nelems = target_mesh.nelems();
+  // the owned target elements only: a ghosted mesh also holds copies of its
+  // neighbours'
+  const auto owned = target_mesh.owned(Dim);
 
   Omega_h::Write<Omega_h::LO> counts(nelems, 0, "quadrature_counts");
   Kokkos::parallel_for(
     "CreateIntersectionQuadrature::count", nelems, KOKKOS_LAMBDA(int elm) {
+      if (!owned[elm]) {
+        return;
+      }
       int count = 0;
       transfer::detail::ForEachIntersectionSubsimplex<Dim>(
         elm, intersections, tgt_coords, src_coords, tgt_elems2nodes,
@@ -63,6 +69,9 @@ Quadrature CreateIntersectionQuadratureImpl(
                                                  num_points);
   Kokkos::parallel_for(
     "CreateIntersectionQuadrature::fill", nelems, KOKKOS_LAMBDA(int elm) {
+      if (!owned[elm]) {
+        return;
+      }
       int i = offsets[elm];
       transfer::detail::ForEachIntersectionSubsimplex<Dim>(
         elm, intersections, tgt_coords, src_coords, tgt_elems2nodes,

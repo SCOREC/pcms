@@ -12,7 +12,7 @@
 
 using Catch::Approx;
 
-TEST_CASE("L2InnerProduct is exact for polynomials of the space",
+TEST_CASE("L2Integral is exact for polynomials of the space",
           "[l2][quadrature]")
 {
   Omega_h::Library lib;
@@ -26,10 +26,10 @@ TEST_CASE("L2InnerProduct is exact for polynomials of the space",
     u, [](pcms::Real x, pcms::Real y, pcms::Real* out) { out[0] = x; });
   pcms::test::SetFieldComponents(
     v, [](pcms::Real x, pcms::Real y, pcms::Real* out) { out[0] = x + y; });
-  const pcms::L2InnerProduct product(space, space);
+  const pcms::L2Integral product(space, space);
   // int x (x + y) = 1/3 + 1/4 on the unit square and cube
-  CHECK(product.Apply(u, v) == Approx(7.0 / 12.0).epsilon(1e-13));
-  CHECK(product.Apply(u, u) == Approx(1.0 / 3.0).epsilon(1e-13));
+  CHECK(product.Inner(u, v) == Approx(7.0 / 12.0).epsilon(1e-13));
+  CHECK(product.Inner(u, u) == Approx(1.0 / 3.0).epsilon(1e-13));
   // |x - (x + y)|^2 = y^2
   CHECK(product.Distance(u, v) == Approx(std::sqrt(1.0 / 3.0)).epsilon(1e-13));
   const pcms::L2Integral integral(space);
@@ -37,7 +37,7 @@ TEST_CASE("L2InnerProduct is exact for polynomials of the space",
   CHECK(integral.Norm(u) == Approx(std::sqrt(1.0 / 3.0)).epsilon(1e-13));
 }
 
-TEST_CASE("L2InnerProduct pairs a function with a source on another mesh",
+TEST_CASE("L2Integral pairs a function with a source on another mesh",
           "[l2][quadrature]")
 {
   Omega_h::Library lib;
@@ -52,17 +52,17 @@ TEST_CASE("L2InnerProduct pairs a function with a source on another mesh",
   };
   pcms::test::SetFieldComponents(u, linear);
   pcms::test::SetFieldComponents(v, linear);
-  const pcms::L2InnerProduct product(coarse_space, fine_space);
+  const pcms::L2Integral product(coarse_space, fine_space);
   CHECK(product.Distance(u, v) < 1e-14);
-  CHECK(product.Apply(u, v) == Approx(2.0 / 3.0).epsilon(1e-13)); // E[f^2]
+  CHECK(product.Inner(u, v) == Approx(2.0 / 3.0).epsilon(1e-13)); // E[f^2]
   // a given quadrature must be on u's geometry
-  CHECK_THROWS_AS(pcms::L2InnerProduct(
-                    coarse_space, fine_space,
-                    pcms::CreateGaussQuadrature(fine_space->GetGeometry(), 2)),
-                  pcms::pcms_error);
+  CHECK_THROWS_AS(
+    pcms::L2Integral(coarse_space, fine_space,
+                     pcms::CreateGaussQuadrature(fine_space->GetGeometry(), 2)),
+    pcms::pcms_error);
 }
 
-TEST_CASE("L2InnerProduct::Distance of nearly equal fields keeps its accuracy",
+TEST_CASE("L2Integral::Distance of nearly equal fields keeps its accuracy",
           "[l2][quadrature]")
 {
   Omega_h::Library lib;
@@ -79,13 +79,13 @@ TEST_CASE("L2InnerProduct::Distance of nearly equal fields keeps its accuracy",
     v, [=](pcms::Real x, pcms::Real y, pcms::Real* out) {
       out[0] = offset + x + epsilon * y;
     });
-  const pcms::L2InnerProduct product(space, space);
+  const pcms::L2Integral product(space, space);
   const double exact = epsilon * std::sqrt(1.0 / 3.0);
   CHECK(product.Distance(u, v) == Approx(exact).epsilon(1e-6));
   // the expansion would not: |u|^2 - 2 u.v + |v|^2 is a difference of numbers
   // near 1e8 with a result near 1e-13
   const double expanded =
-    product.Apply(u, u) - 2 * product.Apply(u, v) + product.Apply(v, v);
+    product.Inner(u, u) - 2 * product.Inner(u, v) + product.Inner(v, v);
   CHECK(std::abs(expanded - exact * exact) > 1e-3 * exact * exact);
 }
 

@@ -703,12 +703,12 @@ TEST_CASE("L2 inner products of vectors refuse systems with a varying "
   const auto cylindrical = pcms::CreateLagrangeSpace(
     pcms::omega_h::CreateGeometry(mesh, pcms::csys::CreateCylindricalRThetaZ()),
     1, 3, pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
-  const pcms::L2InnerProduct product(cylindrical, cylindrical);
+  const pcms::L2Integral product(cylindrical, cylindrical);
   auto scalar = cylindrical->CreateFunction<pcms::Real>(
     "scalar", pcms::test::ComponentsBasis(*cylindrical));
   auto vector = cylindrical->CreateFunction<pcms::Real>(
     "vector", {.scaling = pcms::ComponentScaling::Physical,
                .variance = pcms::values::Vector});
-  CHECK_NOTHROW(product.Apply(scalar, scalar));
-  CHECK_THROWS_AS(product.Apply(vector, vector), pcms::pcms_error);
+  CHECK_NOTHROW(product.Inner(scalar, scalar));
+  CHECK_THROWS_AS(product.Inner(vector, vector), pcms::pcms_error);
 }

@@ -10,11 +10,14 @@
 #include "pcms/field/field_ops.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
+#include "pcms/transfer/l2_inner_product.hpp"
+#include "pcms/transfer/omega_h_intersection_quadrature.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/types.hpp"
 
 #include <cmath>
 #include <cstdio>
+#include <memory>
 #include <type_traits>
 #include <vector>
 
@@ -229,11 +232,12 @@ void check_distributed_evaluation(Omega_h::Mesh& mesh,
     std::printf("distributed field test passed\n");
 }
 
-// Ensure that the reductions of fields on an element-partitioned n x n unit
-// square sum over the ranks
-void check_reductions(const pcms::FunctionSpace& space, int n)
+// Ensure that the reductions of fields on a distributed n x n unit square sum
+// over the ranks, each element once
+void check_reductions(const std::shared_ptr<const pcms::FunctionSpace>& space,
+                      int n)
 {
-  const auto& layout = *space.GetLayout();
+  const auto& layout = *space->GetLayout();
   require(layout.IsDistributed(), "the layout is not distributed");
   const LO n_owned = layout.GetNumDofHolder();
   const auto coords = copy_coordinates_to_host(
@@ -242,7 +246,7 @@ void check_reductions(const pcms::FunctionSpace& space, int n)
   for (LO o = 0; o < n_owned; ++o) {
     values[static_cast<size_t>(o)] = 1.0 + linear_f(coords(o, 0), coords(o, 1));
   }
-  auto u = space.CreateFunction<Real>();
+  auto u = space->CreateFunction<Real>();
   u.SetDOFHolderDataHost(distributed_test::TagLike(
     u, pcms::Rank2View<const Real, pcms::HostMemorySpace>(values.data(),
                                                           n_owned, 1)));
@@ -257,6 +261,25 @@ void check_reductions(const pcms::FunctionSpace& space, int n)
           "Dot is not the sum over the ranks");
   require(std::fabs(pcms::NormInf(u) - 4.0) < 1.0e-12,
           "NormInf is not the maximum over the ranks");
+
+  u.Synchronize();
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
+  // the integrals of 1 + x + 2y and of its square on the unit square
+  const pcms::L2Integral integral(space);
+  require(std::fabs(integral.Apply(u) - 2.5) < 1.0e-12,
+          "L2Integral::Apply is not the sum over the ranks");
+  require(std::fabs(integral.Inner(u, u) - 20.0 / 3.0) < 1.0e-12,
+          "L2Integral::Inner is not the sum over the ranks");
+  require(std::fabs(integral.Norm(u) - std::sqrt(20.0 / 3.0)) < 1.0e-12,
+          "L2Integral::Norm is not the sum over the ranks");
+  require(integral.Distance(u, u) == 0.0, "L2Integral::Distance(u, u) != 0");
+  const auto geometry = space->GetGeometry();
+  const pcms::L2Integral intersection(
+    space, nullptr,
+    pcms::omega_h::CreateIntersectionQuadrature(geometry, geometry, 2));
+  require(std::fabs(intersection.Apply(u) - 2.5) < 1.0e-12,
+          "the intersection rule is not the sum over the ranks");
+#endif
 }
 } // namespace
 
@@ -280,11 +303,12 @@ int main(int argc, char** argv)
         pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
 
       check_distributed_evaluation(mesh, *space);
+      check_reductions(space, n);
 
       auto partitioned = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0,
                                             0.0, n, n, 0, false);
       check_reductions(
-        *pcms::CreateLagrangeSpace(
+        pcms::CreateLagrangeSpace(
           pcms::CreateGeometry(partitioned, pcms::detail::DeferredCartesian()),
           1, 1,
           pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH}),

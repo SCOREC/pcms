@@ -55,10 +55,6 @@ LinearForm::LinearForm(std::shared_ptr<const FunctionSpace> space,
                      "space's geometry and have one weight per point");
   }
   evaluator_ = space_->CreatePointEvaluator<Real>(quadrature_.points);
-  if (!evaluator_->SupportsTranspose()) {
-    throw pcms_error("LinearForm: the space's evaluator does not support the "
-                     "transpose");
-  }
   const auto& layout = *space_->GetLayout();
   weighted_ = Kokkos::View<Real**, DeviceMemorySpace>(
     "linear_form_weighted", quadrature_.points->NumPoints(),
@@ -92,6 +88,10 @@ BilinearForm::BilinearForm(std::shared_ptr<const FunctionSpace> space,
     samples_("bilinear_form_samples", form_.GetQuadrature().points->NumPoints(),
              form_.Space()->GetLayout()->GetNumComponents())
 {
+  if (!form_.Evaluator().SupportsTranspose()) {
+    throw pcms_error("BilinearForm: the space's evaluator does not support "
+                     "the transpose");
+  }
 }
 
 void BilinearForm::Apply(const Field<Real>& u, Field<Real>& functional) const

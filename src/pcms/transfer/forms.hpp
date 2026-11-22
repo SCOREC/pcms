@@ -43,11 +43,11 @@ class LinearForm
 {
 public:
   /// @param quadrature points bound on the space's geometry, one weight each
-  /// @throws pcms_error if the quadrature is not on the space's geometry or
-  ///         the evaluator of the space does not support the transpose
+  /// @throws pcms_error if the quadrature is not on the space's geometry
   LinearForm(std::shared_ptr<const FunctionSpace> space, Quadrature quadrature);
 
-  /// functional = E^T W samples. `samples` holds one row per point and one
+  /// functional = E^T W samples (the evaluator must support the transpose).
+  /// `samples` holds one row per point and one
   /// column per component, tagged with the basis of the functional's data;
   /// the functional is a field of the space's layout (overwritten).
   void Assemble(ValueView<const Real, DeviceMemorySpace> samples,
@@ -83,6 +83,8 @@ private:
 class BilinearForm
 {
 public:
+  /// @throws pcms_error as LinearForm, or if the evaluator of the space does
+  ///         not support the transpose
   BilinearForm(std::shared_ptr<const FunctionSpace> space,
                Quadrature quadrature);
 

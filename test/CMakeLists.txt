@@ -41,6 +41,7 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
              $<TARGET_FILE:test_distributed_layout>)
   endif()
   add_exe(test_distributed_field)
+  target_link_libraries(test_distributed_field pcms::transfer)
   if(HOST_NPROC GREATER_EQUAL 2)
     mpi_test(test_distributed_field_2p 2
              $<TARGET_FILE:test_distributed_field>)

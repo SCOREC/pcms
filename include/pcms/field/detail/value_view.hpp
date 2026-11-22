@@ -154,22 +154,20 @@ inline ValueBasis DefaultValueBasis(int num_components)
 }
 
 /// @brief The basis of a new field: an unset system is the space's, an unset
-///        scaling is Physical where the metric is the identity.
+///        scaling is Physical for scalars and where the metric is the
+///        identity.
 /// @throws pcms_error if a vector or tensor on another system does not state
 ///         its scaling
 inline ValueBasis ResolveValueBasis(
   const std::shared_ptr<const CoordinateSystem>& space_system, ValueBasis basis)
 {
-  if (basis.Rank() == 0) {
-    return basis; // no components to scale
-  }
-  if (basis.system == nullptr) {
+  if (basis.Rank() > 0 && basis.system == nullptr) {
     basis.system = space_system;
   }
   if (basis.scaling) {
     return basis;
   }
-  if (!basis.system->IsOrthonormal()) {
+  if (basis.Rank() > 0 && !basis.system->IsOrthonormal()) {
     throw pcms_error(
       "CreateFunction: physical and natural components differ on coordinate "
       "system '" +

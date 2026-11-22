@@ -122,8 +122,9 @@ enum class ValueKind : std::uint8_t
 
 /// Basis the components of a value are expressed in: coordinate system,
 /// component scaling, index variance, parity and units. Curl produces Odd
-/// output; reflections negate Odd values. An unset `system` (scaling) at
-/// creation is the space's own (derived from the system).
+/// output; reflections negate Odd values.
+/// At creation an unset `system` is the space's own; an unset `scaling` must
+/// be stated for vectors and tensors on a system that is not orthonormal.
 struct ValueBasis
 {
   std::shared_ptr<const CoordinateSystem> system = nullptr;

@@ -9,6 +9,8 @@
 #include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/projection.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
+#include <pcms/utility/coordinate_systems/parameter.hpp>
 
 using Catch::Matchers::ContainsSubstring;
 using pcms::Extent;
@@ -146,8 +148,11 @@ TEST_CASE("creation takes metadata and a value basis", "[metadata]")
     REQUIRE(f.GetName() == "p");
     REQUIRE(f.GetMetadata().extent == Extent::Extensive);
     REQUIRE(f.GetData().GetValueBasis().Rank() == 0);
+    REQUIRE(f.GetData().GetValueBasis().scaling ==
+            pcms::ComponentScaling::Physical);
   }
-  SECTION("metadata with a vector basis: system and scaling are derived")
+  SECTION("metadata with a vector basis: the space's Cartesian system, "
+          "physical components")
   {
     const auto f = space->CreateFunction<Real>(
       FieldMetadata{.name = "v"},
@@ -159,6 +164,17 @@ TEST_CASE("creation takes metadata and a value basis", "[metadata]")
     REQUIRE(pcms::detail::SameCoordinateSystem(basis.system,
                                                space->GetCoordinateSystem()));
     REQUIRE(basis.scaling == pcms::ComponentScaling::Physical);
+  }
+  SECTION("a vector on a system that is not orthonormal states its scaling")
+  {
+    for (const auto& system : {pcms::csys::CreateCylindricalRThetaZ(),
+                               pcms::csys::CreateParameterSystem("xi", 1)}) {
+      CAPTURE(system->Kind());
+      REQUIRE_THROWS_WITH(
+        space->CreateFunction<Real>(
+          "v", {.system = system, .variance = pcms::values::Vector}),
+        ContainsSubstring("scaling must be stated"));
+    }
   }
   SECTION("the name shorthand takes the basis too")
   {

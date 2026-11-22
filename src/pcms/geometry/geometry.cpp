@@ -171,13 +171,26 @@ void detail::CheckNeighbourhoodArguments(
 }
 
 void detail::ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
-                                 const BoundPoints& bound)
+                                 const BoundPoints& bound, bool divide)
 {
   const auto volume = bound.VolumeFactor();
   pcms::detail::ForEach(
     "ScaleByVolumeFactor", static_cast<LO>(weights.extent(0)),
-    KOKKOS_LAMBDA(const LO i) { weights(i) *= volume(i); });
+    KOKKOS_LAMBDA(const LO i) {
+      weights(i) = divide ? weights(i) / volume(i) : weights(i) * volume(i);
+    });
   Kokkos::fence("ScaleByVolumeFactor");
+}
+
+Quadrature detail::BindQuadrature(
+  const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& points,
+  Kokkos::View<Real*, DeviceMemorySpace> weights, const OwnerHints& owners)
+{
+  auto bound = geometry.Bind(points, owners);
+  if (geometry.GetCoordinateSystem()->HasMetric()) {
+    ScaleByVolumeFactor(weights, *bound);
+  }
+  return Quadrature{std::move(bound), weights, {}};
 }
 
 void detail::CheckEntityIds(Kokkos::View<const LO*, DeviceMemorySpace> ids,

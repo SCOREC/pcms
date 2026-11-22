@@ -32,17 +32,28 @@ void CheckEntityIds(Kokkos::View<const LO*, DeviceMemorySpace> ids,
                     const std::string& entity);
 
 /// @brief Multiplies quadrature weights by the volume factor at their bound
-///        points, making parameter-coordinate measures physical.
+///        points, making parameter-coordinate measures physical, or divides
+///        them by it.
 /// @param weights one weight per point of `bound`; scaled in place
 /// @param bound the bound points of the weights
 void ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
-                         const BoundPoints& bound);
+                         const BoundPoints& bound, bool divide = false);
 
-/// @brief The n-point Gauss-Legendre rule on [-1, 1].
-/// @param n number of points
+/// @brief The quadrature of points whose weights are in the parameter measure.
+/// @param weights one weight per point; scaled in place by the volume factor
+///        when the geometry's coordinate system has a metric
+/// @param owners the owners of the points, as for Geometry::Bind
+[[nodiscard]] Quadrature BindQuadrature(
+  const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& points,
+  Kokkos::View<Real*, DeviceMemorySpace> weights,
+  const OwnerHints& owners = {});
+
+/// @brief The Gauss-Legendre rule on [-1, 1] exact for polynomials of degree
+///        `order`: order / 2 + 1 nodes.
 /// @param nodes the nodes, ascending
 /// @param weights the weights of the nodes
-void GaussLegendre(int n, std::vector<Real>& nodes, std::vector<Real>& weights);
+void GaussLegendre(int order, std::vector<Real>& nodes,
+                   std::vector<Real>& weights);
 
 } // namespace pcms::detail
 

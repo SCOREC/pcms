@@ -124,11 +124,6 @@ protected:
     const pcms::detail::QuadratureRule& rule) const override;
 
 private:
-  /// binds points given as a host view of positions
-  [[nodiscard]] Quadrature MakeQuadrature(
-    Kokkos::View<Real**, HostMemorySpace> points,
-    Kokkos::View<Real*, HostMemorySpace> weights) const;
-
   std::shared_ptr<const CoordinateSystem> system_;
   LO num_cells_;
   Real period_;

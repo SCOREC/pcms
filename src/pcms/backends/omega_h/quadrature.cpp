@@ -130,12 +130,11 @@ Quadrature CreateSimplexQuadrature(const OmegaHGeometry& geometry, int order,
         }
       }
     });
-  auto bound =
-    geometry.Bind(CoordinateView<DeviceMemorySpace>(
-                    geometry.GetCoordinateSystem(), MakeConstRank2View(coords)),
-                  OwnerHints{geometry.shared_from_this(), Dim, elements});
-  pcms::detail::ScaleByVolumeFactor(weights, *bound);
-  return Quadrature{std::move(bound), weights, {}};
+  return pcms::detail::BindQuadrature(
+    geometry,
+    CoordinateView<DeviceMemorySpace>(geometry.GetCoordinateSystem(),
+                                      MakeConstRank2View(coords)),
+    weights, OwnerHints{geometry.shared_from_this(), Dim, elements});
 }
 
 } // namespace

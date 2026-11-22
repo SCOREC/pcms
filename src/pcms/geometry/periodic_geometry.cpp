@@ -12,9 +12,10 @@
 namespace pcms
 {
 
-void detail::GaussLegendre(int n, std::vector<Real>& nodes,
+void detail::GaussLegendre(int order, std::vector<Real>& nodes,
                            std::vector<Real>& weights)
 {
+  const int n = order / 2 + 1;
   nodes.assign(n, 0);
   weights.assign(n, 0);
   for (int i = 0; i < n; ++i) {
@@ -61,54 +62,40 @@ std::shared_ptr<BoundPoints> PeriodicGeometry::BindImpl(
     shared_from_this(), request, num_cells_, origin_, period_);
 }
 
-Quadrature PeriodicGeometry::MakeQuadrature(
-  Kokkos::View<Real**, HostMemorySpace> points,
-  Kokkos::View<Real*, HostMemorySpace> weights) const
-{
-  const auto device_points = pcms::detail::ToDeviceView(points);
-  const auto device_weights =
-    Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, weights);
-  return Quadrature{Bind(CoordinateView<DeviceMemorySpace>(
-                      system_, MakeConstRank2View(device_points))),
-                    device_weights,
-                    {}};
-}
-
 Quadrature PeriodicGeometry::CreateQuadrature(
   const pcms::detail::QuadratureRule& rule) const
 {
-  if (const auto* trapezoid = std::get_if<detail::TrapezoidRule>(&rule)) {
-    const int num_points = trapezoid->num_points;
-    Kokkos::View<Real**, HostMemorySpace> points("trapezoid_points", num_points,
-                                                 1);
-    Kokkos::View<Real*, HostMemorySpace> weights("trapezoid_weights",
-                                                 num_points);
-    for (int i = 0; i < num_points; ++i) {
-      points(i, 0) = origin_ + period_ * i / num_points;
-      weights(i) = period_ / num_points;
-    }
-    return MakeQuadrature(points, weights);
-  }
+  const auto* trapezoid = std::get_if<detail::TrapezoidRule>(&rule);
   const auto* gauss_rule = std::get_if<detail::GaussRule>(&rule);
-  if (gauss_rule == nullptr) {
+  if (trapezoid == nullptr && gauss_rule == nullptr) {
     return Geometry::CreateQuadrature(rule);
   }
-  const int n = std::max(1, gauss_rule->order / 2 + 1);
-  std::vector<Real> nodes;
-  std::vector<Real> gauss;
-  detail::GaussLegendre(n, nodes, gauss);
-  const Real h = period_ / num_cells_;
+  // per cell, the trapezoid rule's one node or the Gauss nodes, on [-1, 1]
+  std::vector<Real> nodes = {-1};
+  std::vector<Real> gauss = {2};
+  const LO num_cells =
+    trapezoid != nullptr ? trapezoid->num_points : num_cells_;
+  if (gauss_rule != nullptr) {
+    detail::GaussLegendre(gauss_rule->order, nodes, gauss);
+  }
+  const auto n = static_cast<int>(nodes.size());
+  const Real h = period_ / num_cells;
   Kokkos::View<Real**, HostMemorySpace> points(
-    "gauss_points", static_cast<std::size_t>(num_cells_) * n, 1);
+    "periodic_quadrature_points", static_cast<std::size_t>(num_cells) * n, 1);
   Kokkos::View<Real*, HostMemorySpace> weights(
-    "gauss_weights", static_cast<std::size_t>(num_cells_) * n);
-  for (LO c = 0; c < num_cells_; ++c) {
+    "periodic_quadrature_weights", static_cast<std::size_t>(num_cells) * n);
+  for (LO c = 0; c < num_cells; ++c) {
     for (int i = 0; i < n; ++i) {
       points(c * n + i, 0) = origin_ + (c + 0.5 * (1 + nodes[i])) * h;
       weights(c * n + i) = 0.5 * h * gauss[i];
     }
   }
-  return MakeQuadrature(points, weights);
+  const auto device_points = pcms::detail::ToDeviceView(points);
+  return detail::BindQuadrature(
+    *this,
+    CoordinateView<DeviceMemorySpace>(system_,
+                                      MakeConstRank2View(device_points)),
+    Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, weights));
 }
 
 std::shared_ptr<const Geometry> CreatePeriodicGeometry(

@@ -66,10 +66,10 @@ UniformGridGeometry<Dim>::CellRule(int order) const
   if (order < 1) {
     throw pcms_error("CreateQuadrature: the order must be positive");
   }
-  const int per_axis = (order + 2) / 2;
   std::vector<Real> nodes_host;
   std::vector<Real> weights_host;
-  pcms::detail::GaussLegendre(per_axis, nodes_host, weights_host);
+  pcms::detail::GaussLegendre(order, nodes_host, weights_host);
+  const auto per_axis = static_cast<int>(nodes_host.size());
   DeviceView<Real*> nodes("gauss_nodes", per_axis);
   DeviceView<Real*> rule("gauss_weights", per_axis);
   Kokkos::deep_copy(nodes,
@@ -98,12 +98,9 @@ Quadrature UniformGridGeometry<Dim>::CreateQuadrature(
     return Geometry::CreateQuadrature(rule);
   }
   auto [xi, weights] = CellRule(gauss->order);
-  auto bound =
-    Bind(CoordinateView<DeviceMemorySpace>(system_, MakeConstRank2View(xi)));
-  if (system_->HasMetric()) {
-    pcms::detail::ScaleByVolumeFactor(weights, *bound);
-  }
-  return Quadrature{std::move(bound), weights, {}};
+  return pcms::detail::BindQuadrature(
+    *this, CoordinateView<DeviceMemorySpace>(system_, MakeConstRank2View(xi)),
+    weights);
 }
 
 template class UniformGridGeometry<1>;

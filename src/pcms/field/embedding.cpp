@@ -579,18 +579,6 @@ struct detail::EmbeddedSearch
 namespace
 {
 
-// A quadrature of an embedded geometry from a rule in the parameter
-// coordinates: `xi` bound on the geometry, `weights` (in the parameter
-// measure) scaled in place by the volume factor.
-Quadrature MapQuadrature(const EmbeddedGeometry& geometry,
-                         const CoordinateView<DeviceMemorySpace>& xi,
-                         DeviceView<Real*> weights)
-{
-  auto bound = geometry.Bind(xi);
-  pcms::detail::ScaleByVolumeFactor(weights, *bound);
-  return Quadrature{std::move(bound), weights, {}};
-}
-
 // The search over the cells of `grid`: the bounding boxes of their images,
 // from a lattice of sample points of each cell, padded.
 template <unsigned Dim>
@@ -824,16 +812,6 @@ private:
   std::shared_ptr<const FunctionSpace> space_;
 };
 
-/// @brief Divides `weights` by the volume factor at the points of `bound`.
-void DivideByVolumeFactor(DeviceView<Real*> weights, const BoundPoints& bound)
-{
-  const auto volume = bound.VolumeFactor();
-  detail::ForEach(
-    "DivideByVolumeFactor", static_cast<LO>(weights.extent(0)),
-    KOKKOS_LAMBDA(const LO i) { weights(i) /= volume(i); });
-  Kokkos::fence("DivideByVolumeFactor");
-}
-
 /// @brief A space on the parameter geometry evaluated on an embedded
 ///        geometry; its quadrature is the space's, in the physical measure.
 class EmbeddedSpace final : public FunctionSpace
@@ -857,10 +835,10 @@ public:
       parameter.weights.extent(0));
     Kokkos::deep_copy(weights, parameter.weights);
     if (embedded_->GetParameterSystem()->HasMetric()) {
-      DivideByVolumeFactor(weights, *parameter.points);
+      detail::ScaleByVolumeFactor(weights, *parameter.points, true);
     }
-    return MapQuadrature(*embedded_, parameter.points->LocatedPoints(),
-                         weights);
+    return detail::BindQuadrature(*embedded_, parameter.points->LocatedPoints(),
+                                  weights);
   }
 
 private:
@@ -914,10 +892,11 @@ Quadrature EmbeddedGeometry::CreateQuadrature(
   }
   return uniform_grid::VisitUniformGrid(parameter_, [&](const auto& grid) {
     auto [xi, weights] = grid->CellRule(gauss->order);
-    return MapQuadrature(*this,
-                         CoordinateView<DeviceMemorySpace>(
-                           GetParameterSystem(), MakeConstRank2View(xi)),
-                         weights);
+    return detail::BindQuadrature(
+      *this,
+      CoordinateView<DeviceMemorySpace>(GetParameterSystem(),
+                                        MakeConstRank2View(xi)),
+      weights);
   });
 }
 

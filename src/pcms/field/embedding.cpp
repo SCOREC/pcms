@@ -45,35 +45,30 @@ void ReshapeJacobian(DeviceView<const Real**> gradient,
     });
 }
 
-// The metric g = J^T G J induced in the parameter system and its volume factor:
-// the physical volume element per unit of parameter volume, sqrt(det g) times
-// the factor of the coordinate system's volume element relative to its metric.
-void InduceMetric(View<3, const Real, DeviceMemorySpace> jacobian,
-                  const BoundCoordinateSystem& target,
-                  DeviceView<Real***> metric, DeviceView<Real*> volume)
+// The volume factor of the metric g induced in the parameter system: the
+// physical volume element per unit of parameter volume, sqrt(det g) times the
+// factor of the coordinate system's volume element relative to its metric.
+void InducedVolume(DeviceView<const Real***> metric,
+                   const BoundCoordinateSystem& target,
+                   DeviceView<Real*> volume)
 {
   const int dp = metric.extent(1);
-  const int dt = jacobian.extent(1);
   const auto g_target = target.Metric();
+  const int dt = g_target.extent(1);
   const auto volume_target = target.VolumeFactor();
   detail::ForEach(
-    "embedding_induced_metric", static_cast<LO>(metric.extent(0)),
+    "embedding_induced_volume", static_cast<LO>(metric.extent(0)),
     KOKKOS_LAMBDA(const LO p) {
       Real g[3][3] = {};
       Real g_t[3][3] = {};
+      for (int a = 0; a < dp; ++a) {
+        for (int b = 0; b < dp; ++b) {
+          g[a][b] = metric(p, a, b);
+        }
+      }
       for (int j = 0; j < dt; ++j) {
         for (int k = 0; k < dt; ++k) {
           g_t[j][k] = g_target(p, j, k);
-        }
-      }
-      for (int a = 0; a < dp; ++a) {
-        for (int b = 0; b < dp; ++b) {
-          for (int j = 0; j < dt; ++j) {
-            for (int k = 0; k < dt; ++k) {
-              g[a][b] += jacobian(p, j, a) * g_t[j][k] * jacobian(p, k, b);
-            }
-          }
-          metric(p, a, b) = g[a][b];
         }
       }
       volume(p) = Kokkos::sqrt(detail::Determinant(g, dp)) * volume_target(p) /
@@ -507,9 +502,10 @@ protected:
     const auto n = xi_.extent(0);
     const int dp = position_.ParameterSystem()->Dimension();
     const int dt = position_.System()->Dimension();
-    DeviceView<Real***> metric("parameter_metric", n, dp, dp);
+    DeviceView<Real***> metric;
     DeviceView<Real*> volume("parameter_volume_factor", n);
     if (metric_ != nullptr) {
+      metric = DeviceView<Real***>("parameter_metric", n, dp, dp);
       const ValueBasis basis = metric_->GetData().GetValueBasis();
       DeviceView<Real**> values("given_metric", n,
                                 static_cast<std::size_t>(dp) * dp);
@@ -521,10 +517,11 @@ protected:
     } else {
       const auto target =
         position_.System()->Bind(MakeConstRank2View(e.mapped));
-      InduceMetric(
+      metric = detail::PullbackMetric(
         View<3, const Real, DeviceMemorySpace>(e.jacobian.data(), n, dt, dp),
-        *target, metric, volume);
-      Kokkos::fence("embedding_induced_metric");
+        target->Metric());
+      InducedVolume(metric, *target, volume);
+      Kokkos::fence("embedding_induced_volume");
     }
     return detail::GeometricFactors(
       static_cast<LO>(n), e.jacobian,

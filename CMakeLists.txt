@@ -151,7 +151,7 @@ option(PCMS_PETSC_LINK_STATIC "Use pkg-config --static results for PETSc"
 # interfaces this is important because adios2 build with clang/gfortran is
 # broken
 if(PCMS_ENABLE_COUPLER)
-  pcms_find_package(COUPLER redev 4.3.0)
+  pcms_find_package(COUPLER redev 4.3.2)
 endif()
 
 if (PCMS_ENABLE_PYTHON)

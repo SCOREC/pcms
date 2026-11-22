@@ -55,9 +55,12 @@ public:
     // Current implementation requires that Receive is always called in Sync
     // mode because we make an immediate call to deserialize after a call to
     // receive.
-    auto data = comm_.Recv(redev::Mode::Synchronous);
-    serializer_.Deserialize(field_, detail::make_const_array_view(data),
-                            layout_comm_.GetPermutationArray());
+    receive_buffer_.resize(comm_.GetReceiveCount());
+    comm_.Recv(receive_buffer_.data(), receive_buffer_.size(),
+               redev::Mode::Synchronous);
+    serializer_.Deserialize(
+      field_, detail::make_const_array_view(receive_buffer_),
+      layout_comm_.GetPermutationArray());
     // Deserialize writes owned DOF holders only, so ghost copies still hold
     // their previous values. Anything that evaluates the field reads ghosts
     // (an owned element can have vertices another rank owns), so bring them up
@@ -67,6 +70,7 @@ public:
 
 private:
   std::vector<T> comm_buffer_;
+  std::vector<T> receive_buffer_;
   redev::BidirectionalComm<T> comm_;
   FieldLayoutCommunicator& layout_comm_;
   Field<T>& field_;

@@ -33,8 +33,8 @@ namespace pcms::point_cloud
 /// point cloud, by distance. It holds only the site layout, and the layout
 /// never holds a point-cloud geometry built on it.
 /// Create it with CreateGeometry (pcms/backends/point_cloud/geometry.hpp).
-/// @throws pcms_error on construction if the sites' coordinate system does not
-///         have the identity metric
+/// @throws pcms_error on construction if the sites' coordinate system has a
+///         metric that is not the identity
 class PointCloudGeometry final : public Geometry
 {
 public:
@@ -42,17 +42,11 @@ public:
   /// shared_from_this().
   PointCloudGeometry(std::shared_ptr<const FieldLayout> site_layout,
                      NeighbourhoodOptions options)
-    : site_layout_(std::move(site_layout)), options_(std::move(options))
+    : site_layout_(std::move(site_layout)),
+      options_(std::move(options)),
+      periods_(
+        pcms::detail::MakeAxisPeriods(*site_layout_->GetCoordinateSystem()))
   {
-    // MLS distances are based on the unweighted Euclidean measure, which is
-    // valid only with the identity metric; this almost certainly should be
-    // generalized to take the metric for distances
-    if (!site_layout_->GetCoordinateSystem()->IsOrthonormal()) {
-      throw pcms_error(
-        "PointCloudGeometry: MLS point-cloud evaluation requires a "
-        "coordinate system whose metric is the identity; got '" +
-        std::string(site_layout_->GetCoordinateSystem()->Kind()) + "'");
-    }
   }
 
   [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&
@@ -109,7 +103,7 @@ public:
       pcms::detail::FlattenRows(sites, "src_coords"),
       pcms::detail::FlattenRows(coords.GetValues(), "tgt_coords"),
       static_cast<int>(sites.extent(1)), options.radius, options.min_supports,
-      options.adapt_radius);
+      options.adapt_radius, 100, periods_);
   }
 
 protected:
@@ -128,12 +122,13 @@ protected:
 
     return std::make_shared<pcms::detail::MLSBinding>(
       shared_from_this(), request, std::move(source_coords),
-      std::move(supports), site_dim, options_);
+      std::move(supports), site_dim, options_, periods_);
   }
 
 private:
   std::shared_ptr<const FieldLayout> site_layout_;
   NeighbourhoodOptions options_;
+  pcms::detail::AxisPeriods periods_;
 };
 
 } // namespace pcms::point_cloud

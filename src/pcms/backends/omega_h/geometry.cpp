@@ -229,6 +229,12 @@ SupportResults OmegaHGeometry::Neighbourhood(
 {
   pcms::detail::CheckNeighbourhoodArguments(*this, coords, options,
                                             "OmegaHGeometry::Neighbourhood");
+  // the search measures Euclidean distances
+  if (!GetCoordinateSystem()->IsOrthonormal()) {
+    throw pcms_error("OmegaHGeometry::Neighbourhood: requires a coordinate "
+                     "system whose metric is the identity; got '" +
+                     std::string(GetCoordinateSystem()->Kind()) + "'");
+  }
   if (site_dim != 0 && site_dim != mesh_.dim()) {
     throw pcms_error("OmegaHGeometry::Neighbourhood: the sites must be the "
                      "mesh vertices (site_dim 0) or the element centroids "

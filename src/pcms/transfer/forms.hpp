@@ -76,7 +76,6 @@ private:
   std::shared_ptr<const FunctionSpace> space_;
   Quadrature quadrature_;
   std::unique_ptr<PointEvaluator<Real>> evaluator_;
-  Kokkos::View<Real**, DeviceMemorySpace> zeros_; // [owned][components]
   mutable Kokkos::View<Real**, DeviceMemorySpace> weighted_; // [points][comps]
 };
 

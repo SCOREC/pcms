@@ -83,6 +83,15 @@ void AddToField(Field<T>& field,
   field.Synchronize();
 }
 
+/// @brief y = x over the owned values, whatever their value bases
+template <typename T>
+void CopyValues(const Field<T>& x, Field<T>& y)
+{
+  CheckSameLayout(x, y, "Copy");
+  y.SetDOFHolderDataUnchecked(x.GetDOFHolderData().GetValues());
+  y.Synchronize();
+}
+
 /// @brief Sets every owned value of the field to zero.
 template <typename T>
 void SetZero(Field<T>& field)

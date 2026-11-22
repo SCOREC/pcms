@@ -45,33 +45,15 @@ using OwnedVec = PetscOwner<Vec, VecDestroy>;
 using OwnedKsp = PetscOwner<KSP, KSPDestroy>;
 #endif
 
-void CopyOwned(const Field<Real>& from, Field<Real>& to)
-{
-  to.SetDOFHolderDataUnchecked(from.GetDOFHolderData().GetValues());
-  to.Synchronize();
-}
-
 } // namespace
 
 void Divide(const Field<Real>& numerator, const Field<Real>& denominator,
             Field<Real>& out)
 {
-  const auto n = numerator.GetDOFHolderData().GetValues();
-  const auto d = denominator.GetDOFHolderData().GetValues();
-  Kokkos::View<Real**, DeviceMemorySpace> quotient(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "pcms::transfer::Divide"),
-    n.extent(0), n.extent(1));
-  const auto num_components = static_cast<int>(n.extent(1));
-  Kokkos::parallel_for(
-    "pcms::transfer::Divide",
-    Kokkos::RangePolicy<DefaultExecutionSpace>(
-      0, static_cast<int>(n.extent(0)) * num_components),
-    KOKKOS_LAMBDA(const int k) {
-      quotient(k / num_components, k % num_components) =
-        n(k / num_components, k % num_components) /
-        d(k / num_components, k % num_components);
-    });
-  out.SetDOFHolderDataUnchecked(MakeConstRank2View(quotient));
+  out.SetDOFHolderDataUnchecked(MakeConstRank2View(pcms::detail::MapOwned<Real>(
+    numerator.GetDOFHolderData().GetValues(),
+    denominator.GetDOFHolderData().GetValues(),
+    KOKKOS_LAMBDA(const Real n, const Real d) { return n / d; })));
   out.Synchronize();
 }
 
@@ -98,9 +80,6 @@ LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
     cg_ = std::make_unique<CgScratch>(
       CgScratch{ScratchFunction(*space), ScratchFunction(*space),
                 ScratchFunction(*space), ScratchFunction(*space)});
-    zeros_ = Kokkos::View<Real**, DeviceMemorySpace>("linear_solver_zeros",
-                                                     layout.GetNumDofHolder(),
-                                                     layout.GetNumComponents());
     if (form_.SupportsMatrix() && !layout.IsDistributed()) {
       form_.AssembleDiagonal(*diagonal_);
     } else {
@@ -239,18 +218,17 @@ int LinearSolver::Solve(const Field<Real>& functional,
     if (diagonal_) {
       Divide(r, *diagonal_, z);
     } else {
-      CopyOwned(r, z);
+      pcms::detail::CopyValues(r, z);
     }
   };
-  solution.SetDOFHolderDataUnchecked(MakeConstRank2View(zeros_));
-  solution.Synchronize();
-  CopyOwned(functional, r);
+  pcms::detail::SetZero(solution);
+  pcms::detail::CopyValues(functional, r);
   const Real target = options_.relative_tolerance * Norm2(functional);
   if (Norm2(r) <= target) {
     return 0;
   }
   precondition();
-  CopyOwned(z, p);
+  pcms::detail::CopyValues(z, p);
   Real rz = Apply(r, z);
   const int max_iterations =
     options_.max_iterations > 0

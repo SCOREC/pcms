@@ -1,13 +1,20 @@
 #include "pcms/transfer/omega_h_intersection_quadrature.hpp"
+#include "pcms/configuration.hpp"
+#include "pcms/utility/assert.hpp"
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
+#include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/transfer/omega_h_form_integrator_utils.hpp"
 #include "pcms/utility/arrays.hpp"
 #include <Omega_h_for.hpp>
 #include <Omega_h_shape.hpp>
+#include <algorithm>
+#endif
 
 namespace pcms::omega_h
 {
 
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 namespace
 {
 
@@ -88,19 +95,33 @@ Quadrature CreateIntersectionQuadratureImpl(
 }
 
 } // namespace
+#endif
 
-Quadrature CreateIntersectionQuadrature(
-  std::shared_ptr<const OmegaHGeometry> source,
-  std::shared_ptr<const OmegaHGeometry> target, int order)
+Quadrature CreateIntersectionQuadrature(std::shared_ptr<const Geometry> source,
+                                        std::shared_ptr<const Geometry> target,
+                                        int order)
 {
+#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
+  auto s = std::dynamic_pointer_cast<const OmegaHGeometry>(std::move(source));
+  auto t = std::dynamic_pointer_cast<const OmegaHGeometry>(std::move(target));
+  if (s == nullptr || t == nullptr) {
+    throw pcms_error("CreateIntersectionQuadrature: the geometries must be "
+                     "Omega_h geometries");
+  }
   // order 1 is the lowest rule; it is exact for order 0
   order = std::max(1, order);
-  if (target->GetMesh().dim() == 3) {
-    return CreateIntersectionQuadratureImpl<3>(std::move(source),
-                                               std::move(target), order);
+  if (t->GetMesh().dim() == 3) {
+    return CreateIntersectionQuadratureImpl<3>(std::move(s), std::move(t),
+                                               order);
   }
-  return CreateIntersectionQuadratureImpl<2>(std::move(source),
-                                             std::move(target), order);
+  return CreateIntersectionQuadratureImpl<2>(std::move(s), std::move(t), order);
+#else
+  (void)source;
+  (void)target;
+  (void)order;
+  throw pcms_error("CreateIntersectionQuadrature: not available in this build "
+                   "(needs PCMS_ENABLE_OMEGA_H_MESHFIELDS)");
+#endif
 }
 
 } // namespace pcms::omega_h

@@ -15,9 +15,12 @@
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
 #include "pcms/utility/types.hpp"
-#if defined(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
+#include "pcms/geometry/quadrature.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
 #include <cstdint>
+#include <optional>
+#if defined(PCMS_ENABLE_OMEGA_H)
+#include "pcms/transfer/omega_h_intersection_quadrature.hpp"
 #endif
 
 namespace py = pybind11;
@@ -110,9 +113,7 @@ void bind_transfer_field_module(py::module& m)
     py::arg("source_space"), py::arg("target_space"),
     "Create a copy operator for function spaces sharing a layout.");
 
-#if defined(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
-  // Mass-matrix formulation for the Galerkin projections. Bound before the
-  // projection classes so it can be used as a default argument value.
+  // Bound before the projections, which take it as a default argument value.
   py::enum_<MassMatrixType>(m, "MassMatrixType")
     .value("Consistent", MassMatrixType::Consistent,
            "Full Galerkin mass matrix")
@@ -120,6 +121,70 @@ void bind_transfer_field_module(py::module& m)
            "Row-sum lumped diagonal mass matrix (exact diagonal solve; "
            "conserves the integral but adds lumping error)")
     .export_values();
+
+  py::class_<Quadrature>(m, "Quadrature",
+                         "Points bound on a geometry, with one weight each")
+    .def("num_points",
+         [](const Quadrature& self) { return self.points->NumPoints(); });
+
+  m.def(
+    "create_gauss_quadrature",
+    [](const Immutable<Geometry>& geometry, int order) {
+      return CreateGaussQuadrature(geometry.ptr, order);
+    },
+    py::arg("geometry"), py::arg("order"),
+    "The Gauss rule of each cell of the geometry, exact for polynomials of "
+    "degree `order`.");
+
+  m.def(
+    "create_monte_carlo_quadrature",
+    [](const Immutable<Geometry>& geometry, int samples_per_cell,
+       std::uint64_t seed) {
+      return CreateMonteCarloQuadrature(geometry.ptr, samples_per_cell, seed);
+    },
+    py::arg("geometry"), py::arg("samples_per_cell"),
+    py::arg("seed") = DefaultQuadratureSeed,
+    "Uniform random samples in each cell of the geometry.");
+
+#if defined(PCMS_ENABLE_OMEGA_H)
+  m.def(
+    "create_intersection_quadrature",
+    [](const Immutable<Geometry>& source, const Immutable<Geometry>& target,
+       int order) {
+      return omega_h::CreateIntersectionQuadrature(source.ptr, target.ptr,
+                                                   order);
+    },
+    py::arg("source"), py::arg("target"), py::arg("order"),
+    "The quadrature of the intersection of two Omega_h meshes, bound on the "
+    "target geometry, exact for polynomials of degree `order` on the pieces.");
+#endif
+
+  m.def(
+    "create_projection",
+    [](const Immutable<PointEvaluatorFactory>& source,
+       const Immutable<FunctionSpace>& target_space,
+       std::optional<Quadrature> quadrature, bool control_variate,
+       MassMatrixType mass_matrix_type,
+       const std::optional<Immutable<CoordinateMap>>& to_source) {
+      return CreateProjection(
+        source.ptr, target_space.ptr,
+        ProjectionOptions{.quadrature = std::move(quadrature),
+                          .control_variate = control_variate,
+                          .mass_matrix_type = mass_matrix_type,
+                          .to_source = to_source ? to_source->ptr : nullptr});
+    },
+    py::arg("source"), py::arg("target_space"),
+    py::arg("quadrature") = py::none(), py::arg("control_variate") = false,
+    py::arg("mass_matrix_type") = MassMatrixType::Consistent,
+    py::arg("to_source") = py::none(),
+    "Create a Galerkin projection of `source` onto the target space, with "
+    "the right-hand side on `quadrature` (a quadrature of the target space's "
+    "geometry; None is the Gauss rule of degree 2). control_variate projects "
+    "only the residual of the source from its interpolation. to_source maps "
+    "the target's coordinate system to the source's, or None if they are the "
+    "same. Setup is cached; call apply() repeatedly.");
+
+#if defined(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
 
   m.def(
     "create_conservative_projection",

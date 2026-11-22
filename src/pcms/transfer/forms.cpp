@@ -1,4 +1,5 @@
 #include "pcms/transfer/forms.hpp"
+#include "pcms/field/detail/field_ops.hpp"
 #include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
@@ -59,8 +60,6 @@ LinearForm::LinearForm(std::shared_ptr<const FunctionSpace> space,
                      "transpose");
   }
   const auto& layout = *space_->GetLayout();
-  zeros_ = Kokkos::View<Real**, DeviceMemorySpace>(
-    "linear_form_zeros", layout.GetNumDofHolder(), layout.GetNumComponents());
   weighted_ = Kokkos::View<Real**, DeviceMemorySpace>(
     "linear_form_weighted", quadrature_.points->NumPoints(),
     layout.GetNumComponents());
@@ -83,7 +82,7 @@ void LinearForm::Assemble(ValueView<const Real, DeviceMemorySpace> samples,
                           Field<Real>& functional) const
 {
   const auto weighted = Weight(samples);
-  functional.SetDOFHolderDataUnchecked(MakeConstRank2View(zeros_));
+  pcms::detail::SetZero(functional);
   evaluator_->EvaluateTranspose(weighted, functional);
 }
 

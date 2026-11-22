@@ -51,7 +51,6 @@ private:
   // MatrixFree scratch
   mutable std::optional<Function<Real>> diagonal_;
   std::unique_ptr<CgScratch> cg_;
-  mutable Kokkos::View<Real**, DeviceMemorySpace> zeros_;
 };
 
 } // namespace pcms::transfer::detail

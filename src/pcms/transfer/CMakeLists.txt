@@ -23,22 +23,19 @@ set(PCMS_FIELD_TRANSFER_SOURCES
 
 
 if(PCMS_ENABLE_OMEGA_H)
-  # the Omega_h mesh intersection (Omega_h backend code used by the
-  # projections)
+  # the Omega_h mesh intersection and its quadrature
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
-      ../backends/omega_h/mesh_intersection.hpp)
+      ../backends/omega_h/mesh_intersection.hpp
+      ../../../include/pcms/transfer/omega_h_intersection_quadrature.hpp)
   list(APPEND PCMS_FIELD_TRANSFER_SOURCES
-      ../backends/omega_h/mesh_intersection.cpp)
+      ../backends/omega_h/mesh_intersection.cpp
+      omega_h_intersection_quadrature.cpp)
 endif()
 
 if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
-  # the quadrature of the intersection of two Omega_h meshes, on MeshFields'
-  # reference rules (CreateConservativeProjection)
+  # MeshFields' reference rules of the intersection quadrature
   list(APPEND PCMS_FIELD_TRANSFER_HEADERS
-      omega_h_intersection_quadrature.hpp
       omega_h_form_integrator_utils.hpp)
-  list(APPEND PCMS_FIELD_TRANSFER_SOURCES
-      omega_h_intersection_quadrature.cpp)
 endif()
 
 if(PCMS_ENABLE_PETSC)

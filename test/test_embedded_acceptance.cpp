@@ -372,16 +372,13 @@ TEST_CASE("BOUT++-like 3D grid: toroidal shift, periodic phi and a wedge "
   const auto space = pcms::CreateLagrangeSpace(logical, 1, 1);
   const auto position = pcms::test::MakePositionFunction(
     pcms::CreateLagrangeSpace(logical, 1, 3), Shifted::Position,
-    pcms::csys::CreateCylindricalRThetaZ());
-  const auto embedded = pcms::CreateEmbeddedGeometry(
-    logical, position, {.symmetry = pcms::TranslationSymmetry{1, wedge}});
+    pcms::csys::CreateCylindricalRThetaZ(wedge));
+  const auto embedded = pcms::CreateEmbeddedGeometry(logical, position);
   CHECK(embedded->TopologicalDimension() == 3);
   const auto fields = pcms::CreateEmbeddedSpace(embedded, space);
   auto g = fields->CreateFunction<Real>("g");
   pcms::test::SetField(
     g, KOKKOS_LAMBDA(Real x, Real y, Real z) { return x + 2 * y + 3 * z; });
-  CHECK_THROWS(pcms::CreateEmbeddedGeometry(
-    logical, position, {.symmetry = pcms::TranslationSymmetry{3, 1.0}}));
 
   // (x, y, z) of points in the wedge, including phi in the overlap of the two
   // windows (the shift makes the image wider than the wedge)
@@ -436,7 +433,7 @@ TEST_CASE("BOUT++-like 3D grid: a given metric g^ij", "[embedding][acceptance]")
   const auto geometry = pcms::uniform_grid::CreateGeometry(grid, logical);
   const auto position = pcms::test::MakePositionFunction(
     pcms::CreateLagrangeSpace(geometry, 1, 3), Shifted::Position,
-    pcms::csys::CreateCylindricalRThetaZ());
+    pcms::csys::CreateCylindricalRThetaZ(wedge));
   const auto metric_space = pcms::CreateLagrangeSpace(geometry, 1, 9);
   auto g_inv =
     std::make_shared<pcms::Function<Real>>(metric_space->CreateFunction<Real>(
@@ -445,11 +442,9 @@ TEST_CASE("BOUT++-like 3D grid: a given metric g^ij", "[embedding][acceptance]")
     const Real xi[3] = {x, y, z};
     Shifted::InverseMetric(xi, out);
   });
-  const auto given = pcms::CreateEmbeddedGeometry(
-    geometry, position,
-    {.symmetry = pcms::TranslationSymmetry{1, wedge}, .metric = g_inv});
-  const auto induced = pcms::CreateEmbeddedGeometry(
-    geometry, position, {.symmetry = pcms::TranslationSymmetry{1, wedge}});
+  const auto given =
+    pcms::CreateEmbeddedGeometry(geometry, position, {.metric = g_inv});
+  const auto induced = pcms::CreateEmbeddedGeometry(geometry, position);
   CHECK(given->GetMetric() == g_inv);
   CHECK(given->GetPosition() == position);
   CHECK(*given->GetParameterSystem() == *logical);

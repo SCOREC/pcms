@@ -336,7 +336,7 @@ struct Bout
     const auto space = pcms::CreateLagrangeSpace(grid, 1, 1);
     const auto position = pcms::test::MakePositionFunction(
       pcms::CreateLagrangeSpace(grid, 1, 3), Shifted,
-      pcms::csys::CreateCylindricalRThetaZ());
+      pcms::csys::CreateCylindricalRThetaZ(Wedge));
     auto g_inv = std::make_shared<pcms::Function<Real>>(
       pcms::CreateLagrangeSpace(grid, 1, 9)
         ->CreateFunction<Real>(
@@ -347,9 +347,7 @@ struct Bout
         out[k] = GInv[k];
       }
     });
-    geometry = pcms::CreateEmbeddedGeometry(
-      grid, position,
-      {.symmetry = pcms::TranslationSymmetry{1, Wedge}, .metric = g_inv});
+    geometry = pcms::CreateEmbeddedGeometry(grid, position, {.metric = g_inv});
     fields = pcms::CreateEmbeddedSpace(geometry, space);
   }
 };

@@ -203,12 +203,6 @@ protected:
   /// @throws pcms_error in OutOfBoundsMode::ERROR if a point is not found
   void SetFound(Kokkos::View<const bool*, DeviceMemorySpace> found);
 
-  /// @brief Replaces the located points by `points` (the query points
-  ///        reduced by a symmetry of the geometry).
-  /// @param points [points][dimension], NumPoints() rows
-  void ReplaceLocatedPoints(
-    Kokkos::View<const Real**, DeviceMemorySpace> points);
-
   /// @brief Takes the points of a rebind, as the constructor does, into the
   ///        storage of this source when they fit in its capacity.
   /// @param request query points of the rebind, without a map

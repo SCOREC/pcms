@@ -6,11 +6,11 @@ include(CMakeFindDependencyMacro)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}")
 
 # Public dependencies: needed by every consumer.
-find_dependency(Kokkos CONFIG)
+find_dependency(Kokkos CONFIG HINTS "@Kokkos_DIR@")
 if(@PCMS_ENABLE_COUPLER@)
     # the coupler's public headers use redev (and through it ADIOS2 and MPI)
-    find_dependency(redev CONFIG)
-    find_dependency(ADIOS2 CONFIG)
+    find_dependency(redev CONFIG HINTS "@redev_DIR@")
+    find_dependency(ADIOS2 CONFIG HINTS "@ADIOS2_DIR@")
 endif()
 # MPI is public for the coupler and the C/Fortran APIs, private otherwise
 if(@PCMS_ENABLE_COUPLER@ OR @PCMS_ENABLE_C@ OR @PCMS_ENABLE_FORTRAN@
@@ -20,21 +20,21 @@ endif()
 if(@PCMS_ENABLE_OMEGA_H@)
     # a private dependency of the core libraries, and what users of the
     # Omega_h backend header (pcms/backends/omega_h/omega_h.hpp) link
-    find_dependency(Omega_h CONFIG)
+    find_dependency(Omega_h CONFIG HINTS "@Omega_h_DIR@")
 endif()
 if(@PCMS_ENABLE_MFEM@)
     # the MFEM backend is part of pcms::field and links MFEM publicly
-    find_dependency(MFEM CONFIG)
+    find_dependency(MFEM CONFIG HINTS "@MFEM_DIR@")
 endif()
 
 # Private dependencies: a shared PCMS resolves them itself (RPATH); a static
 # PCMS needs them at the consumer's link step.
 if(NOT @PCMS_BUILD_SHARED@)
     if(@PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION@)
-        find_dependency(KokkosKernels CONFIG)
+        find_dependency(KokkosKernels CONFIG HINTS "@KokkosKernels_DIR@")
     endif()
     if(@PCMS_ENABLE_OMEGA_H_MESHFIELDS@)
-        find_dependency(meshfields CONFIG)
+        find_dependency(meshfields CONFIG HINTS "@meshfields_DIR@")
     endif()
     if(@PCMS_ENABLE_CONSERVATIVE_PROJECTION@)
         if(NOT DEFINED PETSC_DIR)

@@ -1,10 +1,13 @@
 #include "periodic_test_utils.hpp"
+#include <catch2/generators/catch_generators.hpp>
+#include <pcms/field/identification.hpp>
 #include <pcms/transfer/forms.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/transfer/projection.hpp>
 #include <pcms/transfer/linear_solver.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/parameter.hpp>
 #include <chrono>
 #include <numbers>
 
@@ -441,4 +444,71 @@ TEST_CASE("Periodic Lagrange: the matrix-free projection onto a refined "
       ->Apply(source, target);
     CHECK(integral.Apply(target) == Catch::Approx(expected).epsilon(1e-13));
   }
+}
+
+TEST_CASE("Twist-shift identification: points just across the seam evaluate "
+          "as the shifted interior, in either identification order",
+          "[periodic][twist]")
+{
+  const bool translation_first = GENERATE(false, true);
+  CAPTURE(translation_first);
+  // S(x) = 0.3 + 0.5 x on a radial grid in another system
+  pcms::UniformGrid<1> radial;
+  radial.bot_left = {0.0};
+  radial.edge_length = {1.0};
+  radial.divisions = {4};
+  const auto s_space = pcms::CreateLagrangeSpace(
+    pcms::uniform_grid::CreateGeometry(radial, pcms::csys::CreateCartesian(1)),
+    1, 1);
+  auto shift = s_space->CreateFunction<Real>();
+  SetDofs(shift, {0.3, 0.425, 0.55, 0.675, 0.8});
+  const auto s = [](Real x) { return 0.3 + 0.5 * x; };
+  // index coordinates (x, y, z): y twist-shifted by S(x), z periodic
+  const pcms::Identification twist{
+    1, 0.0, 1.0,
+    pcms::CreateTwistShiftMap(
+      2, std::make_shared<const pcms::Function<Real>>(std::move(shift)), {0})};
+  const pcms::Identification translation{2, 0.0, TwoPi};
+  const auto index = pcms::csys::CreateParameterSystem(
+    "index", 3,
+    translation_first ? std::vector{translation, twist}
+                      : std::vector{twist, translation});
+  pcms::UniformGrid<3> grid;
+  grid.bot_left = {0.0, 0.0, 0.0};
+  grid.edge_length = {1.0, 1.0, TwoPi};
+  grid.divisions = {4, 4, 8};
+  const auto space = pcms::CreateLagrangeSpace(
+    pcms::uniform_grid::CreateGeometry(grid, index), 1, 1);
+  // y keeps its last node, z drops it
+  REQUIRE(space->GetLayout()->GetNumDofHolder() == 5 * 5 * 8);
+  std::vector<Real> dofs;
+  for (int i = 0; i < 200; ++i) {
+    dofs.push_back(std::sin(1.7 * i) + 0.1 * i);
+  }
+  auto u = space->CreateFunction<Real>();
+  SetDofs(u, dofs);
+  const Real eps = 0.01;
+  for (const Real x : {0.1, 0.55, 0.9}) {
+    for (const Real z : {0.2, 3.0, TwoPi - 0.1}) {
+      CAPTURE(x, z);
+      const auto across =
+        EvaluateAt(*space, u, {{x, 1 + eps, z}, {x, -eps, z}, {x, 2 + eps, z}});
+      const auto interior = EvaluateAt(*space, u,
+                                       {{x, eps, z + s(x)},
+                                        {x, 1 - eps, z - s(x) + TwoPi},
+                                        {x, eps, z + 2 * s(x)}});
+      for (int p = 0; p < 3; ++p) {
+        CHECK(across[p][0] == Catch::Approx(interior[p][0]).margin(1e-12));
+      }
+    }
+  }
+  // outside the domain of S, the policy of the bind applies
+  const auto geometry = space->GetGeometry();
+  const auto outside = pcms::test::DevicePoints({{1.5, 0.5, 1.0}});
+  const auto bound = geometry->Bind(
+    pcms::CoordinateView<pcms::DeviceMemorySpace>(
+      geometry->GetCoordinateSystem(), pcms::MakeConstRank2View(outside)),
+    pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::FILL});
+  CHECK(bound->MissingPoints().extent(0) == 1);
+  CHECK_THROWS(pcms::CreateTwistShiftMap(2, nullptr, {0}));
 }

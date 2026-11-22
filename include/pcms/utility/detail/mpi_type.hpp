@@ -1,11 +1,11 @@
-#ifndef PCMS_UTILITY_MPI_TYPE_HPP
-#define PCMS_UTILITY_MPI_TYPE_HPP
+#ifndef PCMS_UTILITY_DETAIL_MPI_TYPE_HPP
+#define PCMS_UTILITY_DETAIL_MPI_TYPE_HPP
 
 #include "pcms/utility/types.hpp"
 #include <complex>
 #include <mpi.h>
 
-namespace pcms::utility
+namespace pcms::detail
 {
 
 template <class T>
@@ -66,12 +66,12 @@ template <class T>
   } else if constexpr (std::is_same_v<T, std::complex<long double>>) {
     return MPI_CXX_LONG_DOUBLE_COMPLEX;
   } else {
-    static_assert(detail::dependent_always_false<T>::value,
+    static_assert(dependent_always_false<T>::value,
                   "type has unknown map to MPI_Datatype");
     return {};
   }
 }
 
-} // namespace pcms::utility
+} // namespace pcms::detail
 
-#endif // PCMS_UTILITY_MPI_TYPE_HPP
+#endif // PCMS_UTILITY_DETAIL_MPI_TYPE_HPP

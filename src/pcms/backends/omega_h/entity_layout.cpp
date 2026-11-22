@@ -175,9 +175,9 @@ void OmegaHEntityLayout::BuildOwnedViews()
   owned_indices_ = owned.owned_indices;
 }
 
-bool OmegaHEntityLayout::IsDistributed() const
+MPI_Comm OmegaHEntityLayout::GetCommunicator() const
 {
-  return true;
+  return mesh_.comm()->get_impl();
 }
 
 EntOffsetsArray OmegaHEntityLayout::GetEntOffsets() const

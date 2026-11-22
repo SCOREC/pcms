@@ -41,9 +41,7 @@ public:
   Kokkos::View<const LO*, HostMemorySpace> GetOwnedIndicesHost() const override;
   Kokkos::View<const LO*, DeviceMemorySpace> GetOwnedIndices() const override;
 
-  // returns true if the field layout is distributed: on several ranks it may
-  // hold ghost DOF holders in addition to the owned ones (see HasGhosts)
-  [[nodiscard]] bool IsDistributed() const override;
+  [[nodiscard]] MPI_Comm GetCommunicator() const override;
 
   int GetDimension() const override;
   int GetDOFHolderEntityDim() const override;

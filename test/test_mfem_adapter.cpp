@@ -44,7 +44,7 @@ TEST_CASE("MFEM vertex-scalar field adapter", "[mfem]")
     REQUIRE(layout.GetNumComponents() == 1);
     REQUIRE(layout.GetDimension() == 2);
     REQUIRE(layout.GetNumDofHolder() == pmesh.GetNV());
-    REQUIRE(layout.IsDistributed());
+    REQUIRE(layout.GetCommunicator() == pmesh.GetComm());
 
     auto gids = layout.GetGidsHost();
     REQUIRE(static_cast<int>(gids.size()) == pmesh.GetNV());

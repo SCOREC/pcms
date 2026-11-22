@@ -6,6 +6,7 @@
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
 #include <cmath>
+#include <mpi.h>
 
 namespace pcms
 {
@@ -16,24 +17,37 @@ namespace pcms
 // pairing of a functional with a function is Apply.
 //
 // The operands of an operation share a layout. The operations that write leave
-// the field consistent (ghost copies are synchronized). They are collective
-// over the data's ranks in the kinds that override the FieldData operations;
-// the generic defaults are single-rank (see FieldData::Scale).
+// the field consistent (ghost copies are synchronized); the reductions are
+// collective over the layout's communicator.
 
-/// y *= a
+/// @brief y *= a
 template <typename T>
 void Scale(T a, Field<T>& y)
 {
-  y.GetData().Scale(a);
+  const auto values = y.GetDOFHolderData().GetValues();
+  y.SetDOFHolderDataUnchecked(MakeConstRank2View(detail::MapOwned<T>(
+    values, values, KOKKOS_LAMBDA(const T v, const T) { return a * v; })));
   y.Synchronize();
 }
 
-/// y += a x
+/// @brief y += a x
 template <typename T>
 void Axpy(T a, const Field<T>& x, Field<T>& y)
 {
   detail::CheckSameLayout(x, y, "Axpy");
-  y.GetData().Axpy(a, x.GetData());
+  y.SetDOFHolderDataUnchecked(MakeConstRank2View(detail::MapOwned<T>(
+    x.GetDOFHolderData().GetValues(), y.GetDOFHolderData().GetValues(),
+    KOKKOS_LAMBDA(const T u, const T v) { return a * u + v; })));
+  y.Synchronize();
+}
+
+/// @brief y = x
+/// @throws pcms_error if the layouts or the value bases differ
+template <typename T>
+void Copy(const Field<T>& x, Field<T>& y)
+{
+  detail::CheckSameLayout(x, y, "Copy");
+  y.SetDOFHolderData(x.GetDOFHolderData());
   y.Synchronize();
 }
 
@@ -42,49 +56,49 @@ template <typename T>
 [[nodiscard]] T Dot(const Field<T>& x, const Field<T>& y)
 {
   detail::CheckSameLayout(x, y, "Dot");
-  return x.GetData().Dot(y.GetData());
+  return detail::SumOwned<T>(
+    x.GetLayout(), x.GetDOFHolderData().GetValues(),
+    y.GetDOFHolderData().GetValues(),
+    KOKKOS_LAMBDA(const T u, const T v) { return u * v; });
 }
 
 /// @return the Euclidean norm of the DOF vector
 template <typename T>
 [[nodiscard]] T Norm2(const Field<T>& x)
 {
-  return std::sqrt(x.GetData().Dot(x.GetData()));
+  return std::sqrt(Dot(x, x));
 }
 
 /// @return the largest absolute entry of the DOF vector
 template <typename T>
 [[nodiscard]] T NormInf(const Field<T>& x)
 {
-  return x.GetData().MaxAbs();
+  const auto values = x.GetDOFHolderData().GetValues();
+  const auto nc = static_cast<int>(values.extent(1));
+  T local{};
+  Kokkos::parallel_reduce(
+    "pcms::NormInf",
+    Kokkos::RangePolicy<DefaultExecutionSpace>(
+      0, static_cast<int>(values.extent(0)) * nc),
+    KOKKOS_LAMBDA(const int k, T& partial) {
+      partial = Kokkos::max(partial, T(Kokkos::abs(values(k / nc, k % nc))));
+    },
+    Kokkos::Max<T>(local));
+  return detail::Allreduce(x.GetLayout(), Kokkos::max(local, T{}), MPI_MAX);
 }
 
-/// @return sqrt(sum_i (w_i x_i)^2 / N) over the N owned entries, the weighted
-///         RMS norm of error control (the weights are a field of the same
-///         layout)
+/// @return sqrt(sum_i (w_i x_i)^2 / N) over the N entries, the weighted RMS
+///         norm of error control (the weights are a field of the same layout)
 template <typename T>
 [[nodiscard]] T WeightedRmsNorm(const Field<T>& x, const Field<T>& weights)
 {
   detail::CheckSameLayout(x, weights, "WeightedRmsNorm");
-  const auto* xa = x.GetData().GetDOFAccess();
-  const auto* wa = weights.GetData().GetDOFAccess();
-  if (xa == nullptr || wa == nullptr) {
-    throw pcms_error("WeightedRmsNorm: the data provides no DOFAccess");
-  }
-  const auto xv = xa->GetValues();
-  const auto wv = wa->GetValues();
-  const auto n = static_cast<int>(xv.extent(0));
-  const auto nc = static_cast<int>(xv.extent(1));
-  T sum = T{};
-  Kokkos::parallel_reduce(
-    "pcms::WeightedRmsNorm",
-    Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n * nc),
-    KOKKOS_LAMBDA(const int k, T& partial) {
-      const T v = wv(k / nc, k % nc) * xv(k / nc, k % nc);
-      partial += v * v;
-    },
-    sum);
-  return n * nc == 0 ? T{} : std::sqrt(sum / static_cast<T>(n * nc));
+  const T sum = detail::SumOwned<T>(
+    x.GetLayout(), x.GetDOFHolderData().GetValues(),
+    weights.GetDOFHolderData().GetValues(),
+    KOKKOS_LAMBDA(const T u, const T w) { return (w * u) * (w * u); });
+  const auto n = x.GetLayout().GlobalSize();
+  return n == 0 ? T{} : std::sqrt(sum / static_cast<T>(n));
 }
 
 /// @brief The pairing of a functional (e.g. the moments E^T W f of a function
@@ -94,8 +108,7 @@ template <typename T>
 template <typename T>
 [[nodiscard]] T Apply(const Field<T>& functional, const Function<T>& u)
 {
-  detail::CheckSameLayout(functional, u, "Apply");
-  return functional.GetData().Dot(u.GetData());
+  return Dot<T>(functional, u);
 }
 
 } // namespace pcms

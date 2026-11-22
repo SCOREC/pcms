@@ -7,6 +7,7 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/backends/omega_h/omega_h_geometry.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
+#include "pcms/field/field_ops.hpp"
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -227,6 +228,36 @@ void check_distributed_evaluation(Omega_h::Mesh& mesh,
   if (rank == 0)
     std::printf("distributed field test passed\n");
 }
+
+// Ensure that the reductions of fields on an element-partitioned n x n unit
+// square sum over the ranks
+void check_reductions(const pcms::FunctionSpace& space, int n)
+{
+  const auto& layout = *space.GetLayout();
+  require(layout.IsDistributed(), "the layout is not distributed");
+  const LO n_owned = layout.GetNumDofHolder();
+  const auto coords = copy_coordinates_to_host(
+    layout.GetDOFHolderCoordinates().GetValues(), n_owned, 2);
+  std::vector<Real> values(static_cast<size_t>(n_owned));
+  for (LO o = 0; o < n_owned; ++o) {
+    values[static_cast<size_t>(o)] = 1.0 + linear_f(coords(o, 0), coords(o, 1));
+  }
+  auto u = space.CreateFunction<Real>();
+  u.SetDOFHolderDataHost(distributed_test::TagLike(
+    u, pcms::Rank2View<const Real, pcms::HostMemorySpace>(values.data(),
+                                                          n_owned, 1)));
+  Real dot = 0.0;
+  for (int i = 0; i <= n; ++i) {
+    for (int j = 0; j <= n; ++j) {
+      const Real v = 1.0 + linear_f(Real(i) / n, Real(j) / n);
+      dot += v * v;
+    }
+  }
+  require(std::fabs(pcms::Dot(u, u) - dot) < 1.0e-12 * dot,
+          "Dot is not the sum over the ranks");
+  require(std::fabs(pcms::NormInf(u) - 4.0) < 1.0e-12,
+          "NormInf is not the maximum over the ranks");
+}
 } // namespace
 
 int main(int argc, char** argv)
@@ -249,6 +280,15 @@ int main(int argc, char** argv)
         pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
 
       check_distributed_evaluation(mesh, *space);
+
+      auto partitioned = Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1.0, 1.0,
+                                            0.0, n, n, 0, false);
+      check_reductions(
+        *pcms::CreateLagrangeSpace(
+          pcms::CreateGeometry(partitioned, pcms::detail::DeferredCartesian()),
+          1, 1,
+          pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH}),
+        n);
     }
     MPI_Finalize();
     return 0;

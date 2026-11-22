@@ -128,9 +128,9 @@ GlobalIDView<HostMemorySpace> XGCFieldLayout::GetGidsHost() const
   return pcms::detail::make_const_array_view(gids_host_);
 }
 
-bool XGCFieldLayout::IsDistributed() const
+MPI_Comm XGCFieldLayout::GetCommunicator() const
 {
-  return false;
+  return MPI_COMM_SELF;
 }
 
 EntOffsetsArray XGCFieldLayout::GetEntOffsets() const

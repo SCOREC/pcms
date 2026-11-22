@@ -24,7 +24,7 @@ set(
         dense_linear_algebra.hpp
         mesh_geometry.hpp
         ../../../include/pcms/utility/memory_spaces.hpp
-        mpi_type.hpp
+        ../../../include/pcms/utility/detail/mpi_type.hpp
         omega_h_array_utils.hpp
         ../../../include/pcms/utility/types.hpp
         array_mask.hpp

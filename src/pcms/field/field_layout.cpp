@@ -11,6 +11,13 @@ using field::BuildSortedGidPermutation;
 namespace pcms
 {
 
+bool FieldLayout::IsDistributed() const
+{
+  int size = 1;
+  MPI_Comm_size(GetCommunicator(), &size);
+  return size > 1;
+}
+
 const std::shared_ptr<const CoordinateSystem>&
 FieldLayout::GetCoordinateSystem() const
 {

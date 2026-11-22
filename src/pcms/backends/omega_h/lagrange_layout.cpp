@@ -207,9 +207,9 @@ void OmegaHLagrangeLayout::BuildOwnedViews()
   owned_indices_ = owned.owned_indices;
 }
 
-bool OmegaHLagrangeLayout::IsDistributed() const
+MPI_Comm OmegaHLagrangeLayout::GetCommunicator() const
 {
-  return true;
+  return mesh_.comm()->get_impl();
 }
 
 EntOffsetsArray OmegaHLagrangeLayout::GetEntOffsets() const

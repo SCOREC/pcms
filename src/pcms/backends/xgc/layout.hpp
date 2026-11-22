@@ -18,7 +18,7 @@ public:
   GO GetNumGlobalDofHolder() const override;
   Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override;
   GlobalIDView<HostMemorySpace> GetGidsHost() const override;
-  bool IsDistributed() const override;
+  MPI_Comm GetCommunicator() const override;
   EntOffsetsArray GetEntOffsets() const override;
   CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const override;
   int GetDimension() const override;

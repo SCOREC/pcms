@@ -38,7 +38,7 @@ public:
     return static_cast<LO>(gids_.extent(0));
   }
   GO GetNumGlobalDofHolder() const override { return num_global_; }
-  bool IsDistributed() const override { return false; }
+  MPI_Comm GetCommunicator() const override { return MPI_COMM_SELF; }
   Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override
   {
     return MakeRank1View(owned_);

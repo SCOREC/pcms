@@ -2,7 +2,7 @@
 #define PCMS_TRANSFER_DETAIL_COPY_HPP
 
 #include "pcms/field/field.hpp"
-#include "pcms/field/field_data.hpp"
+#include "pcms/field/field_ops.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/transfer/transfer_operator.hpp"
 #include "pcms/utility/assert.hpp"
@@ -12,20 +12,6 @@
 
 namespace pcms::detail
 {
-
-template <typename T>
-void CheckCopyCompatible(const Field<T>& source, const Field<T>& target)
-{
-  if (&source.GetLayout() != &target.GetLayout()) {
-    throw pcms_error("Copy: source and target layouts differ");
-  }
-  const auto& sd = source.GetData();
-  const auto& td = target.GetData();
-  if (sd.GetValueType() != td.GetValueType() ||
-      !detail::SameValueBasis(sd.GetValueBasis(), td.GetValueBasis())) {
-    throw pcms_error("Copy: source and target value type/basis differ");
-  }
-}
 
 // Copies DOF values between fields of spaces with the same layout. Create it
 // with CreateCopy (pcms/transfer/copy.hpp).
@@ -53,9 +39,7 @@ private:
   void ApplyImpl(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
-    detail::CheckCopyCompatible(source, target);
-    target.SetDOFHolderData(source.GetDOFHolderData());
-    target.Synchronize();
+    pcms::Copy(source, target);
   }
 
   std::shared_ptr<const FunctionSpace> source_space_;

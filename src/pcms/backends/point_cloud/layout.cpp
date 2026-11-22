@@ -92,9 +92,9 @@ CoordinateView<DeviceMemorySpace> PointCloudLayout::GetDOFHolderCoordinates()
   return CoordinateView<DeviceMemorySpace>{GetCoordinateSystem(), coords_view};
 }
 
-bool PointCloudLayout::IsDistributed() const
+MPI_Comm PointCloudLayout::GetCommunicator() const
 {
-  return false;
+  return MPI_COMM_SELF;
 }
 
 size_t PointCloudLayout::GetNumEnts() const

@@ -81,8 +81,7 @@ enum class RadialBasisFunction
 
 /// Configuration of the Moving Least Squares reconstruction. The supports it
 /// is computed on come from the geometry's search (NeighbourhoodOptions).
-/// Passed to CreatePolynomialReconstructionSpace and
-/// PointCloudEvaluatorFactory.
+/// Passed to CreatePolynomialReconstructionSpace.
 struct MLSOptions
 {
   unsigned degree = 3;

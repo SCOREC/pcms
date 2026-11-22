@@ -31,6 +31,8 @@ struct PointMatrix
   Kokkos::View<const LO*, DeviceMemorySpace> row_offsets; // [points + 1]
   Kokkos::View<const GO*, DeviceMemorySpace> columns;     // [entries]
   Kokkos::View<const T*, DeviceMemorySpace> values;       // [entries]
+  /// local DOF holders of the columns
+  Kokkos::View<const LO*, DeviceMemorySpace> holders; // [entries]
 };
 
 /// @brief Evaluates fields at the points of a BoundPoints.

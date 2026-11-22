@@ -1,8 +1,8 @@
 // The 1D spaces on a periodic geometry: Lagrange order 1, periodic cubic
 // spline of grid values, Hermite cubic (values and derivatives) and real
 // Fourier. Each is a kernel that gives the weight of DOF k in the value (or
-// derivative) at a point; the evaluation matrix is built when points are
-// bound (sparse_rows.hpp).
+// derivative) at a point; the evaluation rows are built when points are
+// bound (point_rows.hpp).
 
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/geometry/periodic_geometry.hpp"
@@ -10,7 +10,8 @@
 #include "pcms/utility/detail/arrays.hpp"
 #include "pcms/utility/detail/memory_spaces.hpp"
 #include "../../geometry/periodic_binding.hpp"
-#include "sparse_rows.hpp"
+#include "pcms/field/point_rows.hpp"
+#include "quadrature_space.hpp"
 #include <cmath>
 #include <numbers>
 #include <set>
@@ -88,42 +89,23 @@ private:
   Kokkos::View<Real**, DeviceMemorySpace> coords_;
 };
 
-/// The rows of a kernel: entry k of row p is kernel(p, k, derivative, gid,
+using pcms::detail::PeriodicBinding;
+using RowsFactory = pcms::detail::RowsEvaluatorFactory<PeriodicBinding>;
+
+/// The rows of a kernel: entry k of row p is kernel(p, k, derivative, holder,
 /// weight); every row has `entries` entries.
 template <typename Kernel>
-detail::SparseRows BuildRows(const Kernel& kernel, LO num_points, int entries,
-                             bool derivative)
+pcms::detail::PointRows BuildRows(const Kernel& kernel, LO num_points,
+                                  int entries, bool derivative)
 {
-  detail::SparseRows rows;
-  rows.offsets =
-    Kokkos::View<LO*, DeviceMemorySpace>("rows_offsets", num_points + 1);
   const auto n = static_cast<std::size_t>(num_points) * entries;
-  rows.columns = Kokkos::View<GO*, DeviceMemorySpace>("rows_columns", n);
-  rows.holders = Kokkos::View<LO*, DeviceMemorySpace>("rows_holders", n);
-  rows.values = Kokkos::View<Real*, DeviceMemorySpace>("rows_values", n);
-  const auto offsets = rows.offsets;
-  const auto columns = rows.columns;
-  const auto holders = rows.holders;
-  const auto values = rows.values;
-  pcms::detail::ForEach(
-    "BuildRows", num_points + 1,
-    KOKKOS_LAMBDA(const LO p) { offsets(p) = p * entries; });
+  Kokkos::View<LO*, DeviceMemorySpace> holders("rows_holders", n);
+  Kokkos::View<Real*, DeviceMemorySpace> values("rows_values", n);
   pcms::detail::ForEach(
     "BuildRows", static_cast<LO>(n), KOKKOS_LAMBDA(const LO i) {
-      GO gid = 0;
-      Real weight = 0;
-      kernel(i / entries, i % entries, derivative, gid, weight);
-      columns(i) = gid;
-      holders(i) = static_cast<LO>(gid);
-      values(i) = weight;
+      kernel(i / entries, i % entries, derivative, holders(i), values(i));
     });
-  return rows;
-}
-
-/// The periodic binding of a bound set of points of a periodic geometry.
-const pcms::detail::PeriodicBinding& AsPeriodic(const BoundPoints& bound)
-{
-  return dynamic_cast<const pcms::detail::PeriodicBinding&>(bound);
+  return {pcms::detail::StrideOffsets(num_points, entries), holders, values};
 }
 
 // Lagrange order 1: DOFs at the nodes, hat functions.
@@ -133,11 +115,11 @@ struct LagrangeKernel
   Kokkos::View<const Real*, DeviceMemorySpace> xi;
   LO num_cells;
   Real h;
-  KOKKOS_INLINE_FUNCTION void operator()(LO p, int k, bool derivative, GO& gid,
-                                         Real& weight) const
+  KOKKOS_INLINE_FUNCTION void operator()(LO p, int k, bool derivative,
+                                         LO& holder, Real& weight) const
   {
     const LO c = cells(p);
-    gid = k == 0 ? c : (c + 1) % num_cells;
+    holder = k == 0 ? c : (c + 1) % num_cells;
     const Real t = xi(p);
     weight = derivative ? (k == 0 ? -1 / h : 1 / h) : (k == 0 ? 1 - t : t);
   }
@@ -150,13 +132,13 @@ struct HermiteKernel
   Kokkos::View<const Real*, DeviceMemorySpace> xi;
   LO num_cells;
   Real h;
-  KOKKOS_INLINE_FUNCTION void operator()(LO p, int k, bool derivative, GO& gid,
-                                         Real& weight) const
+  KOKKOS_INLINE_FUNCTION void operator()(LO p, int k, bool derivative,
+                                         LO& holder, Real& weight) const
   {
     const LO c = cells(p);
     const Real t = xi(p);
     const LO node = k < 2 ? c : (c + 1) % num_cells;
-    gid = 2 * node + k % 2;
+    holder = 2 * node + k % 2;
     if (!derivative) {
       const Real w[4] = {2 * t * t * t - 3 * t * t + 1,
                          h * (t * t * t - 2 * t * t + t),
@@ -184,14 +166,14 @@ struct SplineKernel
   {
     return circulant((i - j + num_cells) % num_cells);
   }
-  KOKKOS_INLINE_FUNCTION void operator()(LO p, int k, bool derivative, GO& gid,
-                                         Real& weight) const
+  KOKKOS_INLINE_FUNCTION void operator()(LO p, int k, bool derivative,
+                                         LO& holder, Real& weight) const
   {
     const LO c = cells(p);
     const LO c1 = (c + 1) % num_cells;
     const Real t = xi(p);
     const Real s = 1 - t;
-    gid = k;
+    holder = k;
     const Real left = k == c ? 1 : 0;
     const Real right = k == c1 ? 1 : 0;
     if (!derivative) {
@@ -214,10 +196,10 @@ struct FourierKernel
   Kokkos::View<const Real*, DeviceMemorySpace> freq;
   Kokkos::View<const int*, DeviceMemorySpace> is_sin;
   Real omega; // 2 pi / period
-  KOKKOS_INLINE_FUNCTION void operator()(LO p, int k, bool derivative, GO& gid,
-                                         Real& weight) const
+  KOKKOS_INLINE_FUNCTION void operator()(LO p, int k, bool derivative,
+                                         LO& holder, Real& weight) const
   {
-    gid = k;
+    holder = k;
     const Real theta = freq(k) * TwoPi * phase(p);
     const Real c = Kokkos::cos(theta);
     const Real s = Kokkos::sin(theta);
@@ -253,14 +235,11 @@ std::vector<Real> NodePositions(const PeriodicGeometry& g, int per_node)
 /// The space of `layout` whose rows `kernel_rows` makes for a point set.
 std::shared_ptr<const FunctionSpace> MakeSpace(
   std::shared_ptr<const Geometry> geometry,
-  std::shared_ptr<const FieldLayout> layout,
-  detail::SparseRowEvaluatorFactory::MakeRows make_rows,
+  std::shared_ptr<const FieldLayout> layout, RowsFactory::MakeRows make_rows,
   std::function<Quadrature()> make_quadrature)
 {
-  auto evaluator = std::make_shared<detail::SparseRowEvaluatorFactory>(
-    geometry, layout,
-    std::set<DifferentialOperator>{DifferentialOperator::Value,
-                                   DifferentialOperator::Gradient},
+  auto evaluator = std::make_shared<RowsFactory>(
+    geometry, layout, std::set{DifferentialOperator::Gradient},
     std::move(make_rows));
   return std::make_shared<detail::QuadratureSpace>(
     std::move(layout), std::move(evaluator), std::move(geometry),
@@ -278,12 +257,10 @@ std::shared_ptr<const FunctionSpace> CreatePeriodicLagrangeSpace(
   const Real h = g.Period() / num_cells;
   return MakeSpace(
     geometry, layout,
-    [num_cells, h](const std::shared_ptr<const BoundPoints>& bound,
-                   DifferentialOperator op) {
-      const auto& binding = AsPeriodic(*bound);
+    [num_cells, h](const PeriodicBinding& binding, DifferentialOperator op) {
       return BuildRows(LagrangeKernel{binding.CellIndices(),
                                       binding.Parametric(), num_cells, h},
-                       bound->NumPoints(), 2,
+                       binding.NumPoints(), 2,
                        op == DifferentialOperator::Gradient);
     },
     [geometry] { return CreateGaussQuadrature(geometry, 2); });
@@ -298,12 +275,10 @@ std::shared_ptr<const FunctionSpace> CreatePeriodicHermiteSpace(
   const Real h = g.Period() / num_cells;
   return MakeSpace(
     geometry, layout,
-    [num_cells, h](const std::shared_ptr<const BoundPoints>& bound,
-                   DifferentialOperator op) {
-      const auto& binding = AsPeriodic(*bound);
+    [num_cells, h](const PeriodicBinding& binding, DifferentialOperator op) {
       return BuildRows(HermiteKernel{binding.CellIndices(),
                                      binding.Parametric(), num_cells, h},
-                       bound->NumPoints(), 4,
+                       binding.NumPoints(), 4,
                        op == DifferentialOperator::Gradient);
     },
     [geometry] { return CreateGaussQuadrature(geometry, 6); });
@@ -337,12 +312,10 @@ std::shared_ptr<const FunctionSpace> CreatePeriodicSplineSpace(
     Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, host);
   return MakeSpace(
     geometry, layout,
-    [n, h, circulant](const std::shared_ptr<const BoundPoints>& bound,
-                      DifferentialOperator op) {
-      const auto& binding = AsPeriodic(*bound);
+    [n, h, circulant](const PeriodicBinding& binding, DifferentialOperator op) {
       return BuildRows(SplineKernel{binding.CellIndices(), binding.Parametric(),
                                     circulant, n, h},
-                       bound->NumPoints(), n,
+                       binding.NumPoints(), n,
                        op == DifferentialOperator::Gradient);
     },
     [geometry] { return CreateGaussQuadrature(geometry, 6); });
@@ -388,13 +361,11 @@ std::shared_ptr<const FunctionSpace> CreateFourierSpace(
   const Real omega = TwoPi / g.Period();
   return MakeSpace(
     geometry, layout,
-    [entries, omega, device_freq,
-     device_sin](const std::shared_ptr<const BoundPoints>& bound,
-                 DifferentialOperator op) {
-      return BuildRows(FourierKernel{AsPeriodic(*bound).Phase(), device_freq,
-                                     device_sin, omega},
-                       bound->NumPoints(), entries,
-                       op == DifferentialOperator::Gradient);
+    [entries, omega, device_freq, device_sin](const PeriodicBinding& binding,
+                                              DifferentialOperator op) {
+      return BuildRows(
+        FourierKernel{binding.Phase(), device_freq, device_sin, omega},
+        binding.NumPoints(), entries, op == DifferentialOperator::Gradient);
     },
     // the product of two functions has frequencies up to 2 max_mode stride
     [geometry, n = 2 * max_mode * stride + 1] {

@@ -31,7 +31,6 @@ using omega_h::OmegaHGeometry;
 using omega_h::OmegaHLagrangeEvaluatorFactory;
 using omega_h::OmegaHLagrangeLayout;
 #endif
-using uniform_grid::UniformGridEvaluatorFactory;
 using uniform_grid::UniformGridFieldLayout;
 using uniform_grid::UniformGridGeometry;
 using uniform_grid::VisitUniformGrid;
@@ -229,7 +228,7 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
   }
   auto layout = std::make_shared<OmegaHLagrangeLayout>(
     geometry, order, num_components, options.layout_name);
-  auto eval_factory = std::make_shared<OmegaHLagrangeEvaluatorFactory<Real>>(
+  auto eval_factory = std::make_shared<OmegaHLagrangeEvaluatorFactory>(
     std::move(geometry), layout);
   return std::make_shared<NativeOmegaHLagrangeFunctionSpace>(
     layout, eval_factory, eval_factory->GetGeometry(), order);
@@ -249,7 +248,7 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridLagrangeSpace(
   }
   auto ug_layout = std::make_shared<UniformGridFieldLayout<Dim>>(
     geometry, num_components, order, options.layout_name);
-  auto eval_factory = std::make_shared<UniformGridEvaluatorFactory<Dim>>(
+  auto eval_factory = uniform_grid::CreateLagrangeEvaluatorFactory<Dim>(
     std::move(geometry), ug_layout);
   return std::make_shared<LagrangeFunctionSpace>(
     ug_layout, eval_factory, eval_factory->GetGeometry(), order);

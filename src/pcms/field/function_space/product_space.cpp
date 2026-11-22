@@ -1,15 +1,14 @@
 // The product of two function spaces: the basis phi_i(a) psi_k(b), DOF (i, k).
 // Its evaluation matrix is the Kronecker product of the factors' rows, built
-// when points are bound; the product evaluators are then the sparse-row
-// evaluators of the 1D spaces.
+// when points are bound (point_rows.hpp).
 
 #include "pcms/field/function_spaces.hpp"
-#include "pcms/field/holder_of_gid.hpp"
 #include "pcms/geometry/product_geometry.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/arrays.hpp"
 #include "product_binding.hpp"
-#include "sparse_rows.hpp"
+#include "pcms/field/point_rows.hpp"
+#include "quadrature_space.hpp"
 #include <set>
 
 namespace pcms
@@ -159,20 +158,15 @@ struct RowSelect
 /// matrix and a row of b's: the value rows for Value; for Gradient component c
 /// of a, its partial row with b's value row, and for b the other way round.
 /// (A free function: CUDA does not allow device lambdas in members.)
-detail::SparseRows KroneckerRows(
+detail::PointRows KroneckerRows(
   const FactorMatrices& m, Kokkos::View<const bool*, DeviceMemorySpace> found,
-  int da, int db, bool gradient, const detail::HolderOfGid& holder_a,
-  const detail::HolderOfGid& holder_b, LO holders_b, GO global_b)
+  int da, int db, bool gradient, LO holders_b)
 {
   const auto num_points = static_cast<LO>(found.extent(0));
   const int num_out = gradient ? da + db : 1;
   const LO num_rows = num_points * num_out;
   const RowSelect select{num_out, da, db, gradient};
-  detail::SparseRows rows;
-  rows.num_out = num_out;
-  rows.offsets =
-    Kokkos::View<LO*, DeviceMemorySpace>("product_offsets", num_rows + 1);
-  const auto offsets = rows.offsets;
+  Kokkos::View<LO*, DeviceMemorySpace> offsets("product_offsets", num_rows + 1);
   Kokkos::parallel_scan(
     "ProductRowOffsets",
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_rows + 1),
@@ -194,12 +188,8 @@ detail::SparseRows KroneckerRows(
     });
   LO nnz = 0;
   Kokkos::deep_copy(nnz, Kokkos::subview(offsets, num_rows));
-  rows.columns = Kokkos::View<GO*, DeviceMemorySpace>("product_columns", nnz);
-  rows.holders = Kokkos::View<LO*, DeviceMemorySpace>("product_holders", nnz);
-  rows.values = Kokkos::View<Real*, DeviceMemorySpace>("product_values", nnz);
-  const auto columns = rows.columns;
-  const auto holders = rows.holders;
-  const auto values = rows.values;
+  Kokkos::View<LO*, DeviceMemorySpace> holders("product_holders", nnz);
+  Kokkos::View<Real*, DeviceMemorySpace> values("product_values", nnz);
   Kokkos::parallel_for(
     "ProductRows", Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_rows),
     KOKKOS_LAMBDA(const LO r) {
@@ -214,14 +204,12 @@ detail::SparseRows KroneckerRows(
       LO k = offsets(r);
       for (LO i = a.row_offsets(ra); i < a.row_offsets(ra + 1); ++i) {
         for (LO j = b.row_offsets(rb); j < b.row_offsets(rb + 1); ++j, ++k) {
-          columns(k) = a.columns(i) * global_b + b.columns(j);
-          holders(k) =
-            holder_a(a.columns(i)) * holders_b + holder_b(b.columns(j));
+          holders(k) = a.holders(i) * holders_b + b.holders(j);
           values(k) = a.values(i) * b.values(j);
         }
       }
     });
-  return rows;
+  return {offsets, holders, values, num_out};
 }
 
 /// 1 for the points the bound points evaluate, 0 for the missing ones
@@ -276,34 +264,32 @@ std::shared_ptr<const FunctionSpace> CreateProductSpace(
   }
   auto layout =
     std::make_shared<ProductLayout>(geometry, *a->GetLayout(), *b->GetLayout());
-  const auto holder_a = pcms::detail::MakeHolderOfGid(*a->GetLayout());
-  const auto holder_b = pcms::detail::MakeHolderOfGid(*b->GetLayout());
   const LO holders_b = b->GetLayout()->GetNumDofHolder();
-  const GO global_b = b->GetLayout()->GetNumGlobalDofHolder();
   const int da = a->GetGeometry()->GetCoordinateSystem()->Dimension();
   const int db = b->GetGeometry()->GetCoordinateSystem()->Dimension();
-  std::set<DifferentialOperator> supported = {DifferentialOperator::Value};
+  std::set<DifferentialOperator> supported;
   if (a->Supports(DifferentialOperator::Gradient) &&
       b->Supports(DifferentialOperator::Gradient)) {
     supported.insert(DifferentialOperator::Gradient);
   }
-  auto evaluator = std::make_shared<detail::SparseRowEvaluatorFactory>(
-    geometry, layout, std::move(supported),
-    [a, b, da, db, holder_a, holder_b, holders_b,
-     global_b](const std::shared_ptr<const BoundPoints>& bound,
-               DifferentialOperator op) {
-      const auto& binding = static_cast<const ProductBinding&>(*bound);
-      const bool gradient = op == DifferentialOperator::Gradient;
-      FactorMatrices m;
-      m.va = MatrixOf(*a, binding.FactorA(), DifferentialOperator::Value);
-      m.vb = MatrixOf(*b, binding.FactorB(), DifferentialOperator::Value);
-      if (gradient) {
-        m.ga = MatrixOf(*a, binding.FactorA(), DifferentialOperator::Gradient);
-        m.gb = MatrixOf(*b, binding.FactorB(), DifferentialOperator::Gradient);
-      }
-      return KroneckerRows(m, FoundMask(*bound), da, db, gradient, holder_a,
-                           holder_b, holders_b, global_b);
-    });
+  auto evaluator =
+    std::make_shared<detail::RowsEvaluatorFactory<ProductBinding>>(
+      geometry, layout, std::move(supported),
+      [a, b, da, db, holders_b](const ProductBinding& binding,
+                                DifferentialOperator op) {
+        const bool gradient = op == DifferentialOperator::Gradient;
+        FactorMatrices m;
+        m.va = MatrixOf(*a, binding.FactorA(), DifferentialOperator::Value);
+        m.vb = MatrixOf(*b, binding.FactorB(), DifferentialOperator::Value);
+        if (gradient) {
+          m.ga =
+            MatrixOf(*a, binding.FactorA(), DifferentialOperator::Gradient);
+          m.gb =
+            MatrixOf(*b, binding.FactorB(), DifferentialOperator::Gradient);
+        }
+        return KroneckerRows(m, FoundMask(binding), da, db, gradient,
+                             holders_b);
+      });
   return std::make_shared<detail::QuadratureSpace>(
     layout, std::move(evaluator), geometry, [a, b, product] {
       return product->TensorQuadrature(a->CreateQuadrature(),

@@ -1,5 +1,4 @@
 #include "pcms/transfer/forms.hpp"
-#include "pcms/field/holder_of_gid.hpp"
 #include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
@@ -10,8 +9,6 @@
 
 namespace pcms::transfer::detail
 {
-
-using pcms::detail::MakeHolderOfGid;
 
 namespace
 {
@@ -128,7 +125,6 @@ void BilinearForm::AssembleDiagonal(Field<Real>& diagonal) const
                      "matrix and a layout on one rank");
   }
   const auto matrix = form_.Evaluator().GetMatrix();
-  const auto holder_of = MakeHolderOfGid(layout);
   const auto weights = form_.GetQuadrature().weights;
   const auto num_points = static_cast<LO>(weights.extent(0));
   const int num_components = layout.GetNumComponents();
@@ -139,7 +135,7 @@ void BilinearForm::AssembleDiagonal(Field<Real>& diagonal) const
     Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_points),
     KOKKOS_LAMBDA(const LO p) {
       for (LO j = matrix.row_offsets(p); j < matrix.row_offsets(p + 1); ++j) {
-        const LO holder = holder_of(matrix.columns(j));
+        const LO holder = matrix.holders(j);
         for (int c = 0; c < num_components; ++c) {
           Kokkos::atomic_add(&diag(holder, c),
                              weights(p) * matrix.values(j) * matrix.values(j));

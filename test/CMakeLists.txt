@@ -441,6 +441,7 @@ if(Catch2_FOUND)
       test_periodic_geometry.cpp
       test_periodic_spaces.cpp
       test_uniform_grid_adjoint.cpp
+      test_point_rows.cpp
       test_field_metadata.cpp
       test_units.cpp)
   if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
+#include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include "embedding_test_utils.hpp"
 #include <numbers>
@@ -735,6 +736,53 @@ TEST_CASE("An embedded geometry uses a given metric",
       pcms::CreateEmbeddedGeometry(grid, position, {.metric = other}),
       ContainsSubstring("rank 2 in the parameter system"));
   }
+}
+
+TEST_CASE("An embedded geometry uses a given volume factor",
+          "[embedding][embedded_geometry][metric]")
+{
+  const auto grid = pcms::test::MakeUnitSquareGrid(4);
+  const auto position = pcms::test::MakeSplinePosition(
+    grid, Affine, pcms::csys::CreateCartesian(2));
+  const auto scalars = pcms::CreateLagrangeSpace(grid, 1, 1);
+  // the integral of 1 on the embedded geometry with `options`
+  const auto area = [&](pcms::EmbeddingOptions options) {
+    const auto space = pcms::CreateEmbeddedSpace(
+      pcms::CreateEmbeddedGeometry(grid, position, std::move(options)),
+      scalars);
+    auto one = space->CreateFunction<Real>("one");
+    pcms::test::SetFieldComponents(one,
+                                   [](Real, Real, Real* out) { out[0] = 1; });
+    return pcms::L2Integral(space).Apply(one);
+  };
+  auto volume = std::make_shared<pcms::Function<Real>>(
+    scalars->CreateFunction<Real>("volume"));
+  pcms::test::SetFieldComponents(*volume,
+                                 [](Real, Real, Real* out) { out[0] = 3.5; });
+  for (const auto& metric : {std::shared_ptr<const pcms::Function<Real>>{},
+                             ConstantMetric(grid, InducedMetric(4.0), true)}) {
+    CAPTURE(metric != nullptr);
+    CHECK(pcms::CreateEmbeddedGeometry(grid, position,
+                                       {.metric = metric, .volume = volume})
+            ->GetVolume() == volume);
+    // 3.5 times the unit parameter area
+    CHECK_THAT(area({.metric = metric, .volume = volume}),
+               WithinAbs(3.5, 1e-12));
+  }
+  // a volume per cell: the mean of 1 + x + 2 y at the 16 cell centers
+  auto cells = std::make_shared<pcms::Function<Real>>(
+    pcms::CreateLagrangeSpace(grid, 0, 1)->CreateFunction<Real>("volume"));
+  pcms::test::SetFieldComponents(
+    *cells, [](Real x, Real y, Real* out) { out[0] = 1 + x + 2 * y; });
+  CHECK_THAT(area({.volume = cells}), WithinAbs(2.5, 1e-12));
+  const auto vectors = pcms::CreateLagrangeSpace(grid, 1, 2);
+  const auto vector =
+    std::make_shared<pcms::Function<Real>>(vectors->CreateFunction<Real>(
+      "volume", {.scaling = pcms::ComponentScaling::Natural,
+                 .variance = pcms::values::Vector}));
+  CHECK_THROWS_WITH(
+    pcms::CreateEmbeddedGeometry(grid, position, {.volume = vector}),
+    ContainsSubstring("the volume factor must be a scalar Function"));
 }
 
 TEST_CASE("Physical components on a sheared parameter system scale by the "

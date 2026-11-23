@@ -50,7 +50,7 @@ void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
 {
   std::visit(
     [&](const auto& s) {
-      constexpr int Dim = std::decay_t<decltype(s)>::DIM;
+      constexpr int Dim = std::decay_t<decltype(s)>::Dimension;
       using Results = Kokkos::View<typename std::decay_t<decltype(s)>::Result*,
                                    DeviceMemorySpace>;
       const LO n = NumPoints();
@@ -77,7 +77,7 @@ void OmegaHMeshBinding::Locate(Kokkos::View<const LO*, DeviceMemorySpace> hints)
                                                 num_records_, point_guesses);
         guesses = point_guesses;
       }
-      s(LocatedPointValues(), guesses, point_results);
+      s.Locate(LocatedPointValues(), guesses, point_results);
       const auto found = Kokkos::subview(point_found_, first);
       omega_h::detail::FoundFlags<Dim>(point_results, found);
       num_records_ = n;
@@ -129,13 +129,13 @@ GridPointSearchVariant MakeGridSearch(Omega_h::Mesh& mesh,
     const LO n = options.divisions > 0
                    ? options.divisions
                    : pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
-    return MakeGridPointSearch2D(mesh, n, n, options.tolerance);
+    return CreateGridPointSearch(mesh, {n, n}, options.tolerance);
   }
   if (mesh.dim() == 3) {
     const LO n = options.divisions > 0
                    ? options.divisions
                    : pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-    return MakeGridPointSearch3D(mesh, n, n, n, options.tolerance);
+    return CreateGridPointSearch(mesh, {n, n, n}, options.tolerance);
   }
   throw std::invalid_argument(
     "MakeGridSearch: only 2D and 3D meshes are supported");
@@ -208,13 +208,13 @@ Kokkos::View<const LO*, DeviceMemorySpace> OmegaHGeometry::FindElementSeeds(
   }
   return std::visit(
     [&](const auto& s) -> Kokkos::View<const LO*, DeviceMemorySpace> {
-      constexpr int Dim = std::decay_t<decltype(s)>::DIM;
+      constexpr int Dim = std::decay_t<decltype(s)>::Dimension;
       Kokkos::View<typename std::decay_t<decltype(s)>::Result*,
                    DeviceMemorySpace>
         results(Kokkos::view_alloc(Kokkos::WithoutInitializing,
                                    "point search result"),
                 points.extent(0));
-      s(points, guesses, results);
+      s.Locate(points, guesses, results);
       return detail::LiftElements<Dim>(
         mesh_, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
                             DeviceMemorySpace>(results));

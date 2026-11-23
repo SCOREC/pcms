@@ -428,6 +428,7 @@ if(Catch2_FOUND)
       unit_test_main.cpp
       test_bounding_box.cpp
       test_shapes.cpp
+      test_candidate_map.cpp
       test_error_handling.cpp
       test_spline_interpolator.cpp
       test_derivatives.cpp)

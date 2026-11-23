@@ -7,10 +7,9 @@
 #include "pcms/backends/omega_h/omega_h.hpp"
 
 using pcms::AABBox;
-using pcms::candidate_cells;
 using pcms::CellRange;
 using pcms::LO;
-using pcms::overlapping_cells;
+using pcms::OverlappingCells;
 using pcms::Real;
 using pcms::UniformGrid;
 using pcms::UniformGrid2D;
@@ -271,7 +270,7 @@ TEST_CASE("cell index round trip on a grid with unequal divisions")
   }
 }
 
-// Which grid cells a box covers (`overlapping_cells`, `candidate_cells`),
+// Which grid cells a box covers (`OverlappingCells`),
 // as used to build the point search's candidate map, and the invariants of
 // `CellRange`.
 
@@ -283,7 +282,7 @@ TEST_CASE("bbox vs grid cell range")
   SECTION("box inside one cell still covers padded neighbors")
   {
     AABBox<2> box{.center = {0.5, 0.5}, .half_width = {0.1, 0.1}};
-    const auto range = overlapping_cells<2>(box, grid);
+    const auto range = OverlappingCells<2>(box, grid);
     // default pad = 1 clamps at the grid border
     REQUIRE(range.lo[0] == 0);
     REQUIRE(range.lo[1] == 0);
@@ -294,7 +293,7 @@ TEST_CASE("bbox vs grid cell range")
   SECTION("no padding gives the exact span")
   {
     AABBox<2> box{.center = {2.5, 2.5}, .half_width = {0.4, 0.4}};
-    const auto range = overlapping_cells<2>(box, grid, 0);
+    const auto range = OverlappingCells<2>(box, grid, 0);
     REQUIRE(range.lo[0] == 2);
     REQUIRE(range.lo[1] == 2);
     REQUIRE(range.hi[0] == 2);
@@ -304,7 +303,7 @@ TEST_CASE("bbox vs grid cell range")
   SECTION("box spanning several cells")
   {
     AABBox<2> box{.center = {2.5, 2.5}, .half_width = {1.0, 1.0}};
-    const auto range = overlapping_cells<2>(box, grid, 0);
+    const auto range = OverlappingCells<2>(box, grid, 0);
     REQUIRE(range.lo[0] == 1);
     REQUIRE(range.lo[1] == 1);
     REQUIRE(range.hi[0] == 3);
@@ -317,9 +316,9 @@ namespace
 /// True when grid cell `(cx, cy)` and `box` meet, each treated as closed.
 ///
 /// A shared boundary counts, which is the semantics the overlap predicate
-/// has and therefore the set `candidate_cells` has to cover.
-[[nodiscard]] bool cell_touches_box(const UniformGrid2D& grid, LO cx, LO cy,
-                                    const AABBox<2>& box)
+/// has and therefore the set `OverlappingCells` has to cover.
+[[nodiscard]] bool CellTouchesBox(const UniformGrid2D& grid, LO cx, LO cy,
+                                  const AABBox<2>& box)
 {
   const Kokkos::Array<LO, 2> cell{cx, cy};
   for (int d = 0; d < 2; ++d) {
@@ -336,14 +335,14 @@ namespace
 }
 } // namespace
 
-/// The property `candidate_cells` exists to guarantee: its range contains
+/// The property `OverlappingCells` exists to guarantee: its range contains
 /// every cell a closed-boundary predicate can accept. A range that is too
 /// narrow drops candidates silently -- the element is never offered to the
 /// query and nothing downstream can tell -- so this is checked as a
 /// coverage property rather than against the exact bounds, which are
 /// allowed to over-include.
 TEST_CASE(
-  "candidate_cells covers every cell a closed-boundary predicate accepts")
+  "OverlappingCells covers every cell a closed-boundary predicate accepts")
 {
   const UniformGrid2D grid{
     .edge_length = {10, 10}, .bot_left = {0, 0}, .divisions = {10, 10}};
@@ -355,10 +354,10 @@ TEST_CASE(
     for (const Real half : {0.0, 0.25, 0.5, 1.0, 3.0}) {
       const AABBox<2> box{.center = {center, center},
                           .half_width = {half, half}};
-      const auto range = candidate_cells<2>(box, grid);
+      const auto range = OverlappingCells<2>(box, grid);
       for (LO cx = 0; cx < grid.divisions[0]; ++cx) {
         for (LO cy = 0; cy < grid.divisions[1]; ++cy) {
-          if (cell_touches_box(grid, cx, cy, box)) {
+          if (CellTouchesBox(grid, cx, cy, box)) {
             REQUIRE(range.Contains(Kokkos::Array<LO, 2>{cx, cy}));
           }
         }
@@ -367,7 +366,7 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("candidate_cells bins a supplied bound")
+TEST_CASE("OverlappingCells bins a supplied bound")
 {
   const UniformGrid2D grid{
     .edge_length = {10, 10}, .bot_left = {0, 0}, .divisions = {10, 10}};
@@ -379,10 +378,10 @@ TEST_CASE("candidate_cells bins a supplied bound")
   for (int k = 0; k < 3; ++k) {
     degenerate[k] = {3.0, 3.0};
   }
-  // `candidate_cells` bins a bound it is given; the element side supplies
+  // `OverlappingCells` bins a bound it is given; the element side supplies
   // it.
   const auto range =
-    candidate_cells<2>(pcms::detail::simplex_bbox<2>(degenerate), grid);
+    OverlappingCells<2>(pcms::detail::SimplexBBox<2>(degenerate), grid);
   REQUIRE(range.Contains(Kokkos::Array<LO, 2>{3, 3}));
   REQUIRE(range.Contains(Kokkos::Array<LO, 2>{2, 2}));
 }
@@ -486,7 +485,7 @@ TEST_CASE("uniform grid above 3D", "[nd]")
     // Inside cell (0, 1, 2, 3); padded by one cell, clamped to the grid.
     const AABBox<4> box{.center = {0.5, 1.5, 2.5, 3.5},
                         .half_width = {0.25, 0.25, 0.25, 0.25}};
-    const auto range = pcms::candidate_cells<4>(box, grid);
+    const auto range = pcms::OverlappingCells<4>(box, grid);
     const Kokkos::Array<LO, 4> lo{0, 0, 1, 2};
     const Kokkos::Array<LO, 4> hi{1, 2, 3, 4};
     for (int d = 0; d < 4; ++d) {
@@ -504,7 +503,7 @@ TEST_CASE("uniform grid above 3D", "[nd]")
       .edge_length = {4.0}, .bot_left = {0.0}, .divisions = {4}};
     const AABBox<1> box{.center = {1.5}, .half_width = {0.25}};
     // Cell 1, padded by 1, clamped at the low edge.
-    const auto range = candidate_cells<1>(box, grid);
+    const auto range = OverlappingCells<1>(box, grid);
     REQUIRE(range.lo[0] == 0);
     REQUIRE(range.hi[0] == 2);
     REQUIRE(range.Contains(Kokkos::Array<LO, 1>{1}));

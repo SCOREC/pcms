@@ -1,4 +1,5 @@
 #include "pcms/localization/point_search.hpp"
+#include "pcms/localization/candidate_map.hpp"
 #include "pcms/localization/overlap.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include <bitset>
@@ -33,21 +34,21 @@ struct BarycentricWithScales
 };
 
 template <int Dim>
-KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
+KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> ComputeBarycentricWithScales(
   const pcms::detail::SimplexVertices<Dim>& vertex_coords,
   const Kokkos::Array<pcms::Real, Dim>& point)
 {
   // rows of the inverse basis are the gradients of lambda_1..lambda_Dim; the
   // matrices are stored by column, so row j is inv[k][j] over k
   const auto inv =
-    pcms::detail::invert(pcms::detail::simplex_basis<Dim>(vertex_coords));
+    pcms::detail::Invert(pcms::detail::SimplexBasis<Dim>(vertex_coords));
   Kokkos::Array<pcms::Real, Dim> r;
   for (int d = 0; d < Dim; ++d) {
     r[d] = point[d] - vertex_coords[0][d];
   }
   BarycentricWithScales<Dim> result;
   result.lambda =
-    pcms::detail::form_barycentric<Dim>(pcms::detail::multiply<Dim>(inv, r));
+    pcms::detail::FormBarycentric<Dim>(pcms::detail::Multiply<Dim>(inv, r));
   Kokkos::Array<pcms::Real, Dim> grad0{};
   for (int j = 0; j < Dim; ++j) {
     pcms::Real norm2 = 0;
@@ -68,257 +69,6 @@ KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> barycentric_with_scales(
 namespace pcms::localization
 {
 
-namespace detail
-{
-
-/**
- * Functor for the shape -> grid cell map, the transpose of what the search
- * needs. Row `i` lists the cells shape `i` overlaps.
- *
- * Any shape works that has a `bounding_box` and an `overlaps` against a box.
- */
-template <typename Shape>
-struct ShapeCellOverlapFunctor
-{
-  static constexpr int Dim = dimension_v<Shape>;
-
-  ShapeCellOverlapFunctor(Kokkos::View<const Shape*> shapes,
-                          Kokkos::View<UniformGrid<Dim>[1]> grid,
-                          Real inflation)
-    : shapes_(shapes), grid_(grid), inflation_(inflation)
-  {
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  LO operator()(LO i, LO* fill) const
-  {
-    const auto& grid = grid_(0);
-    const auto& shape = shapes_(i);
-
-    // The shape's bounding box and every cell are widened by the inflation,
-    // so a shape within that distance of a cell is a candidate of it.
-    auto bound = bounding_box(shape);
-    for (int d = 0; d < Dim; ++d) {
-      bound.half_width[d] += inflation_;
-    }
-    const auto range = candidate_cells<Dim>(bound, grid);
-
-    Kokkos::Array<LO, Dim> idx = range.lo;
-    LO num_overlaps = 0;
-    while (true) {
-      const LO cell = grid.CellIndexFromAxisIndices(idx);
-      auto cell_bbox = grid.GetCellBBOX(cell);
-      for (int d = 0; d < Dim; ++d) {
-        cell_bbox.half_width[d] += inflation_;
-      }
-      if (overlaps(shape, cell_bbox)) {
-        if (fill) {
-          fill[num_overlaps] = cell;
-        }
-        ++num_overlaps;
-      }
-      // odometer over the inclusive range [lo, hi]
-      int d = 0;
-      for (; d < Dim; ++d) {
-        if (++idx[d] <= range.hi[d]) {
-          break;
-        }
-        idx[d] = range.lo[d];
-      }
-      if (d == Dim) {
-        break;
-      }
-    }
-    return num_overlaps;
-  }
-
-private:
-  Kokkos::View<const Shape*> shapes_;
-  Kokkos::View<UniformGrid<Dim>[1]> grid_;
-  Real inflation_;
-};
-
-// helper to get the elements of a mesh as simplices.
-template <int Dim>
-Kokkos::View<const Simplex<Dim>*> ElementSimplices(
-  Kokkos::View<const Real*> coords, Kokkos::View<const LO*> elems2verts)
-{
-  const auto nelems = static_cast<LO>(elems2verts.extent(0) / (Dim + 1));
-  Kokkos::View<Simplex<Dim>*> elements("element_simplices", nelems);
-  Kokkos::parallel_for(
-    "element_simplices", nelems, KOKKOS_LAMBDA(LO e) {
-      elements(e) = detail::GetElementSimplex<Dim>(coords, elems2verts, e);
-    });
-  return elements;
-}
-
-/**
- * Build the grid cell -> shape candidate map. Cells are inflated by
- * `inflation` (the search tolerance), so a shape within that distance of a
- * point is a candidate of the point's cell.
- *
- * Constructed as the transpose of the cheap shape -> cell map. Kokkos'
- * transpose_crs cannot be used here: it sizes the output row count from
- * in.numRows() (the shape count), which both over-allocates the row map and
- * writes out of bounds once num_grid_cells exceeds the shape count.
- */
-template <typename Shape>
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map(
-  Kokkos::View<const Shape*> shapes,
-  Kokkos::View<UniformGrid<dimension_v<Shape>>[1]> grid, int num_grid_cells,
-  Real inflation)
-{
-  using CrsT = Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>;
-  const auto num_shapes = static_cast<LO>(shapes.extent(0));
-
-  CrsT elem2cells{};
-  Kokkos::count_and_fill_crs(
-    elem2cells, num_shapes,
-    ShapeCellOverlapFunctor<Shape>{shapes, grid, inflation});
-
-  Kokkos::View<LO*> counts("candidate_counts", num_grid_cells);
-  Kokkos::parallel_for(
-    "count_cell_candidates", elem2cells.entries.size(), KOKKOS_LAMBDA(int i) {
-      Kokkos::atomic_inc(&counts(elem2cells.entries(i)));
-    });
-
-  CrsT cell2elems{};
-  Kokkos::get_crs_row_map_from_counts(cell2elems.row_map, counts,
-                                      "candidate_row_map");
-  cell2elems.entries =
-    CrsT::entries_type("candidate_entries", elem2cells.entries.size());
-
-  Kokkos::View<LO*> filled("candidate_fill_offsets", num_grid_cells);
-  Kokkos::parallel_for(
-    "fill_cell_candidates", num_shapes, KOKKOS_LAMBDA(LO elem) {
-      for (auto j = elem2cells.row_map(elem); j < elem2cells.row_map(elem + 1);
-           ++j) {
-        const LO cell = elem2cells.entries(j);
-        const auto slot = Kokkos::atomic_fetch_add(&filled(cell), 1);
-        cell2elems.entries(cell2elems.row_map(cell) + slot) = elem;
-      }
-    });
-
-  // The atomic scatter leaves each row in arbitrary order, where the old
-  // cell-major loop emitted ascending element IDs. Restore that ordering: the
-  // query takes the first candidate that contains the point, so ordering
-  // decides which element wins when a point sits on a shared face, and the
-  // out-of-bounds path reports the row's first candidate. Without this the
-  // search results would vary run to run. Rows are short, so insertion sort.
-  Kokkos::parallel_for(
-    "sort_cell_candidates", num_grid_cells, KOKKOS_LAMBDA(LO cell) {
-      const auto begin = cell2elems.row_map(cell);
-      const auto end = cell2elems.row_map(cell + 1);
-      for (auto i = begin + 1; i < end; ++i) {
-        const LO value = cell2elems.entries(i);
-        auto j = i;
-        for (; j > begin && cell2elems.entries(j - 1) > value; --j) {
-          cell2elems.entries(j) = cell2elems.entries(j - 1);
-        }
-        cell2elems.entries(j) = value;
-      }
-    });
-  Kokkos::fence();
-  return cell2elems;
-}
-
-/**
- * Cell-major brute-force build: for every grid cell, test every shape.
- *
- * This is the implementation `construct_intersection_map` replaced. It is
- * O(num_cells * nshapes) and must not be used in production, but it is the
- * ground truth for what the candidate map should contain, so it is kept and
- * exposed as an oracle for the equivalence test.
- */
-template <typename Shape>
-struct ReferenceCellMajorFunctor
-{
-  static constexpr int Dim = dimension_v<Shape>;
-
-  ReferenceCellMajorFunctor(Kokkos::View<const Shape*> shapes,
-                            Kokkos::View<UniformGrid<Dim>[1]> grid)
-    : shapes_(shapes), grid_(grid)
-  {
-  }
-
-  KOKKOS_INLINE_FUNCTION
-  LO operator()(LO row, LO* fill) const
-  {
-    const auto cell_bbox = grid_(0).GetCellBBOX(row);
-    LO num_intersections = 0;
-    for (LO i = 0; i < static_cast<LO>(shapes_.extent(0)); ++i) {
-      if (overlaps(shapes_(i), cell_bbox)) {
-        if (fill) {
-          fill[num_intersections] = i;
-        }
-        ++num_intersections;
-      }
-    }
-    return num_intersections;
-  }
-
-private:
-  Kokkos::View<const Shape*> shapes_;
-  Kokkos::View<UniformGrid<Dim>[1]> grid_;
-};
-
-template <typename Shape>
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_reference(
-  Kokkos::View<const Shape*> shapes,
-  Kokkos::View<UniformGrid<dimension_v<Shape>>[1]> grid, int num_grid_cells)
-{
-  Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO> intersection_map{};
-  Kokkos::count_and_fill_crs(intersection_map, num_grid_cells,
-                             ReferenceCellMajorFunctor<Shape>{shapes, grid});
-  return intersection_map;
-}
-
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_reference_2d(Kokkos::View<const Real*> coords,
-                                        Kokkos::View<const LO*> elem_verts,
-                                        Kokkos::View<UniformGrid2D[1]> grid,
-                                        int num_grid_cells)
-{
-  return construct_intersection_map_reference<Simplex<2>>(
-    ElementSimplices<2>(coords, elem_verts), grid, num_grid_cells);
-}
-
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_reference_3d(Kokkos::View<const Real*> coords,
-                                        Kokkos::View<const LO*> elem_verts,
-                                        Kokkos::View<UniformGrid3D[1]> grid,
-                                        int num_grid_cells)
-{
-  return construct_intersection_map_reference<Simplex<3>>(
-    ElementSimplices<3>(coords, elem_verts), grid, num_grid_cells);
-}
-
-// num_grid_cells should be result of grid.GetNumCells(), take as argument to
-// avoid extra copy of grid from gpu to cpu
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_2d(Kokkos::View<const Real*> coords,
-                              Kokkos::View<const LO*> elem_verts,
-                              Kokkos::View<UniformGrid2D[1]> grid,
-                              int num_grid_cells, Real inflation)
-{
-  return construct_intersection_map<Simplex<2>>(
-    ElementSimplices<2>(coords, elem_verts), grid, num_grid_cells, inflation);
-}
-
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_3d(Kokkos::View<const Real*> coords,
-                              Kokkos::View<const LO*> elem_verts,
-                              Kokkos::View<UniformGrid3D[1]> grid,
-                              int num_grid_cells, Real inflation)
-{
-  return construct_intersection_map<Simplex<3>>(
-    ElementSimplices<3>(coords, elem_verts), grid, num_grid_cells, inflation);
-}
-
-} // namespace detail
-
 namespace
 {
 /**
@@ -335,7 +85,7 @@ namespace
  * local vertices spanning it.
  */
 template <int Dim>
-KOKKOS_INLINE_FUNCTION int entity_of_simplex(
+KOKKOS_INLINE_FUNCTION int EntityOfSimplex(
   const BarycentricWithScales<Dim>& b, Real tau, bool outside, LO elem,
   const Kokkos::Array<LO, Dim + 1>& verts,
   const Kokkos::Array<Kokkos::View<const LO*>, Dim>& down,
@@ -391,7 +141,7 @@ KOKKOS_INLINE_FUNCTION int entity_of_simplex(
  * entity's own vertex order.
  */
 template <int Dim>
-KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, Dim> reduced_coordinates(
+KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, Dim> ReducedCoordinates(
   const BarycentricWithScales<Dim>& b, unsigned mask, int dim, LO id,
   const Kokkos::Array<LO, Dim + 1>& verts,
   const Kokkos::Array<Kokkos::View<const LO*>, Dim>& down_verts)
@@ -427,10 +177,10 @@ KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, Dim> reduced_coordinates(
  * Returns false, leaving `result` as it was, for a point beyond the band.
  */
 template <int Dim, typename Result>
-KOKKOS_INLINE_FUNCTION bool classify_in_element(
+KOKKOS_INLINE_FUNCTION bool ClassifyInElement(
   const Kokkos::Array<Real, Dim>& point, LO elem,
   const Kokkos::View<const LO*>& elem_verts,
-  const Kokkos::View<const Real*>& coords,
+  const Kokkos::View<const Simplex<Dim>*>& simplices,
   const Kokkos::Array<Kokkos::View<const LO*>, Dim>& down,
   const Kokkos::Array<Kokkos::Array<unsigned, 6>, Dim>& masks,
   const Kokkos::Array<Kokkos::View<const LO*>, Dim>& down_verts, Real tau,
@@ -440,24 +190,24 @@ KOKKOS_INLINE_FUNCTION bool classify_in_element(
   for (int k = 0; k < Dim + 1; ++k) {
     verts[k] = elem_verts(elem * (Dim + 1) + k);
   }
-  const auto b = barycentric_with_scales<Dim>(
-    detail::GetElementSimplex<Dim>(coords, elem_verts, elem).vertices, point);
+  const auto b =
+    ComputeBarycentricWithScales<Dim>(simplices(elem).vertices, point);
   if (b.SignedPlaneDistance() < -tau) {
     return false;
   }
   unsigned mask;
   LO id;
   const int dim =
-    entity_of_simplex<Dim>(b, tau, false, elem, verts, down, masks, mask, id);
+    EntityOfSimplex<Dim>(b, tau, false, elem, verts, down, masks, mask, id);
   result = {static_cast<typename Result::Dimensionality>(dim), id,
-            reduced_coordinates<Dim>(b, mask, dim, id, verts, down_verts)};
+            ReducedCoordinates<Dim>(b, mask, dim, id, verts, down_verts)};
   return true;
 }
 
 /**
  * Locates points in a simplex mesh with a uniform grid of candidate simplices.
  * Each candidate of the point's grid cell is classified with
- * entity_of_simplex using the single tolerance `tau`; the entity of lowest
+ * EntityOfSimplex using the single tolerance `tau`; the entity of lowest
  * dimension wins, then the lowest id (and, for the same entity, the lowest
  * element, whose coordinates give the reduced ones), so the result does not
  * depend on the order of the candidates and neighbouring simplices agree on a
@@ -469,11 +219,11 @@ KOKKOS_INLINE_FUNCTION bool classify_in_element(
  * points 0..num_searched if `misses` is empty.
  */
 template <int Dim>
-void grid_search(
+void GridSearch(
   const Kokkos::View<UniformGrid<Dim>[1]>& grid,
   const Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>& candidate_map,
   const Kokkos::View<const LO*>& elem_verts,
-  const Kokkos::View<const Real*>& coords,
+  const Kokkos::View<const Simplex<Dim>*>& simplices,
   const Kokkos::Array<Kokkos::View<const LO*>, Dim>& down,
   const Kokkos::Array<Kokkos::Array<unsigned, 6>, Dim>& masks,
   const Kokkos::Array<Kokkos::View<const LO*>, Dim>& down_verts, Real tau,
@@ -509,9 +259,8 @@ void grid_search(
         for (int k = 0; k < Dim + 1; ++k) {
           verts[k] = elem_verts(elem * (Dim + 1) + k);
         }
-        const auto b = barycentric_with_scales<Dim>(
-          detail::GetElementSimplex<Dim>(coords, elem_verts, elem).vertices,
-          point);
+        const auto b =
+          ComputeBarycentricWithScales<Dim>(simplices(elem).vertices, point);
         const auto dist = b.SignedPlaneDistance();
         if (dist < -tau) {
           if (nearest_elem < 0 || dist > nearest_dist ||
@@ -523,8 +272,8 @@ void grid_search(
         }
         unsigned mask;
         LO id;
-        const int dim = entity_of_simplex<Dim>(b, tau, false, elem, verts, down,
-                                               masks, mask, id);
+        const int dim = EntityOfSimplex<Dim>(b, tau, false, elem, verts, down,
+                                             masks, mask, id);
         if (best_id < 0 || dim < best_dim ||
             (dim == best_dim &&
              (id < best_id || (id == best_id && elem < best_elem)))) {
@@ -532,7 +281,7 @@ void grid_search(
           best_id = id;
           best_elem = elem;
           best_xi =
-            reduced_coordinates<Dim>(b, mask, dim, id, verts, down_verts);
+            ReducedCoordinates<Dim>(b, mask, dim, id, verts, down_verts);
         }
       }
 
@@ -543,17 +292,15 @@ void grid_search(
         for (int k = 0; k < Dim + 1; ++k) {
           verts[k] = elem_verts(nearest_elem * (Dim + 1) + k);
         }
-        const auto b = barycentric_with_scales<Dim>(
-          detail::GetElementSimplex<Dim>(coords, elem_verts, nearest_elem)
-            .vertices,
-          point);
+        const auto b = ComputeBarycentricWithScales<Dim>(
+          simplices(nearest_elem).vertices, point);
         unsigned mask;
         LO id;
-        const int dim = entity_of_simplex<Dim>(b, tau, true, nearest_elem,
-                                               verts, down, masks, mask, id);
+        const int dim = EntityOfSimplex<Dim>(b, tau, true, nearest_elem, verts,
+                                             down, masks, mask, id);
         results(p) = {
           static_cast<Dimensionality>(dim), Search::Result::OutsideId(id),
-          reduced_coordinates<Dim>(b, mask, dim, id, verts, down_verts)};
+          ReducedCoordinates<Dim>(b, mask, dim, id, verts, down_verts)};
       } else {
         results(p) = {Dimensionality::NO_INTERSECT, -1,
                       Kokkos::Array<Real, Dim>{}};
@@ -567,15 +314,15 @@ void grid_search(
  * element across one of its facets (the dual graph), takes the result of that
  * element's classification; the others (no guess, or a wrong one, including
  * points outside the mesh) are collected, counted first and listed only when
- * there are some, and searched for with grid_search. Without guesses every
+ * there are some, and searched for with GridSearch. Without guesses every
  * point is searched on the grid.
  */
 template <int Dim>
-void guessed_search(
+void GuessedSearch(
   const Kokkos::View<UniformGrid<Dim>[1]>& grid,
   const Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>& candidate_map,
   const Kokkos::View<const LO*>& elem_verts,
-  const Kokkos::View<const Real*>& coords,
+  const Kokkos::View<const Simplex<Dim>*>& simplices,
   const Kokkos::Array<Kokkos::View<const LO*>, Dim>& down,
   const Kokkos::Array<Kokkos::Array<unsigned, 6>, Dim>& masks,
   const Kokkos::Array<Kokkos::View<const LO*>, Dim>& down_verts,
@@ -588,8 +335,8 @@ void guessed_search(
   constexpr auto Miss = Result::Dimensionality::NO_INTERSECT;
   const auto n = static_cast<LO>(points.extent(0));
   if (guesses.extent(0) == 0) {
-    grid_search<Dim>(grid, candidate_map, elem_verts, coords, down, masks,
-                     down_verts, tau, points, {}, n, results);
+    GridSearch<Dim>(grid, candidate_map, elem_verts, simplices, down, masks,
+                    down_verts, tau, points, {}, n, results);
     return;
   }
   const auto offsets = dual_offsets;
@@ -603,11 +350,12 @@ void guessed_search(
       Result result{Miss, -1, Kokkos::Array<Real, Dim>{}};
       const LO guess = guesses(i);
       if (guess >= 0 &&
-          !classify_in_element<Dim>(point, guess, elem_verts, coords, down,
-                                    masks, down_verts, tau, result)) {
+          !ClassifyInElement<Dim>(point, guess, elem_verts, simplices, down,
+                                  masks, down_verts, tau, result)) {
         for (LO a = offsets(guess); a < offsets(guess + 1); ++a) {
-          if (classify_in_element<Dim>(point, neighbours(a), elem_verts, coords,
-                                       down, masks, down_verts, tau, result)) {
+          if (ClassifyInElement<Dim>(point, neighbours(a), elem_verts,
+                                     simplices, down, masks, down_verts, tau,
+                                     result)) {
             break;
           }
         }
@@ -630,8 +378,8 @@ void guessed_search(
         misses(k++) = i;
       }
     }
-    grid_search<Dim>(grid, candidate_map, elem_verts, coords, down, masks,
-                     down_verts, tau, points, misses, num_misses, results);
+    GridSearch<Dim>(grid, candidate_map, elem_verts, simplices, down, masks,
+                    down_verts, tau, points, misses, num_misses, results);
     return;
   }
   LO num_misses = 0;
@@ -657,92 +405,56 @@ void guessed_search(
         ++before;
       }
     });
-  grid_search<Dim>(grid, candidate_map, elem_verts, coords, down, masks,
-                   down_verts, tau, points, misses, num_misses, results);
+  GridSearch<Dim>(grid, candidate_map, elem_verts, simplices, down, masks,
+                  down_verts, tau, points, misses, num_misses, results);
 }
 } // namespace
 
-Kokkos::View<GridPointSearch2D::Result*> GridPointSearch2D::operator()(
-  Kokkos::View<const Real* [DIM]> points) const
+template <int Dim>
+Kokkos::View<typename GridPointSearch<Dim>::Result*>
+GridPointSearch<Dim>::Locate(Kokkos::View<const Real* [Dim]> points) const
 {
   Kokkos::View<Result*> results(
     Kokkos::view_alloc(Kokkos::WithoutInitializing, "point search result"),
     points.extent(0));
-  (*this)(points, {}, results);
+  Locate(points, {}, results);
   return results;
 }
 
-void GridPointSearch2D::operator()(Kokkos::View<const Real* [DIM]> points,
-                                   Kokkos::View<const LO*> guesses,
-                                   Kokkos::View<Result*> results) const
+template <int Dim>
+void GridPointSearch<Dim>::Locate(Kokkos::View<const Real* [Dim]> points,
+                                  Kokkos::View<const LO*> guesses,
+                                  Kokkos::View<Result*> results) const
 {
-  guessed_search<DIM>(grid_, candidate_map_, elem_verts_, coords_, down_,
-                      entity_vertex_masks_, down_verts_, dual_offsets_,
-                      dual_neighbors_, tolerance_, points, guesses, results);
+  GuessedSearch<Dim>(grid_, candidate_map_.GetBins(), elem_verts_, simplices_,
+                     down_, entity_vertex_masks_, down_verts_, dual_offsets_,
+                     dual_neighbors_, this->tolerance_, points, guesses,
+                     results);
 }
 
-GridPointSearch2D::GridPointSearch2D(
+template <int Dim>
+GridPointSearch<Dim>::GridPointSearch(
   Kokkos::View<const Real*> coords, Kokkos::View<const LO*> elem_verts,
-  Kokkos::Array<Kokkos::View<const LO*>, DIM> down,
-  Kokkos::Array<Kokkos::View<const LO*>, DIM> down_verts,
-  Kokkos::Array<Kokkos::Array<unsigned, 6>, DIM> entity_vertex_masks,
+  Kokkos::Array<Kokkos::View<const LO*>, Dim> down,
+  Kokkos::Array<Kokkos::View<const LO*>, Dim> down_verts,
+  Kokkos::Array<Kokkos::Array<unsigned, 6>, Dim> entity_vertex_masks,
   Kokkos::View<const LO*> dual_offsets, Kokkos::View<const LO*> dual_neighbors,
-  const UniformGrid2D& grid, Real tolerance)
-  : PointLocalizationSearch(tolerance),
+  const UniformGrid<Dim>& grid, Real tolerance)
+  : PointLocalizationSearch<Dim>(tolerance),
     down_(down),
     down_verts_(down_verts),
     entity_vertex_masks_(entity_vertex_masks),
     elem_verts_(elem_verts),
-    coords_(coords),
+    simplices_(MeshSimplices<Dim>(coords, elem_verts)),
     dual_offsets_(dual_offsets),
     dual_neighbors_(dual_neighbors)
 {
   auto grid_h = Kokkos::create_mirror_view(grid_);
   grid_h(0) = grid;
   Kokkos::deep_copy(grid_, grid_h);
-  candidate_map_ = detail::construct_intersection_map_2d(
-    coords, elem_verts, grid_, grid.GetNumCells(), tolerance);
+  candidate_map_ = CreateCandidateMap(simplices_, grid, tolerance);
 }
 
-Kokkos::View<GridPointSearch3D::Result*> GridPointSearch3D::operator()(
-  Kokkos::View<const Real* [DIM]> points) const
-{
-  Kokkos::View<Result*> results(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "point search result"),
-    points.extent(0));
-  (*this)(points, {}, results);
-  return results;
-}
-
-void GridPointSearch3D::operator()(Kokkos::View<const Real* [DIM]> points,
-                                   Kokkos::View<const LO*> guesses,
-                                   Kokkos::View<Result*> results) const
-{
-  guessed_search<DIM>(grid_, candidate_map_, elem_verts_, coords_, down_,
-                      entity_vertex_masks_, down_verts_, dual_offsets_,
-                      dual_neighbors_, tolerance_, points, guesses, results);
-}
-
-GridPointSearch3D::GridPointSearch3D(
-  Kokkos::View<const Real*> coords, Kokkos::View<const LO*> elem_verts,
-  Kokkos::Array<Kokkos::View<const LO*>, DIM> down,
-  Kokkos::Array<Kokkos::View<const LO*>, DIM> down_verts,
-  Kokkos::Array<Kokkos::Array<unsigned, 6>, DIM> entity_vertex_masks,
-  Kokkos::View<const LO*> dual_offsets, Kokkos::View<const LO*> dual_neighbors,
-  const UniformGrid3D& grid, Real tolerance)
-  : PointLocalizationSearch(tolerance),
-    down_(down),
-    down_verts_(down_verts),
-    entity_vertex_masks_(entity_vertex_masks),
-    elem_verts_(elem_verts),
-    coords_(coords),
-    dual_offsets_(dual_offsets),
-    dual_neighbors_(dual_neighbors)
-{
-  auto grid_h = Kokkos::create_mirror_view(grid_);
-  grid_h(0) = grid;
-  Kokkos::deep_copy(grid_, grid_h);
-  candidate_map_ = detail::construct_intersection_map_3d(
-    coords, elem_verts, grid_, grid.GetNumCells(), tolerance);
-}
+template class GridPointSearch<2>;
+template class GridPointSearch<3>;
 } // namespace pcms::localization

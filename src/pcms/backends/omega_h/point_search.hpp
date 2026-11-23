@@ -5,6 +5,7 @@
 
 #include <utility>
 #include <variant>
+#include <vector>
 
 #include <Kokkos_Core.hpp>
 #include <Omega_h_array.hpp>
@@ -23,35 +24,8 @@
 namespace pcms::omega_h
 {
 
-//
-// TODO take a bounding box as we may want a bbox that's bigger than the mesh!
-// this function is in the public header for testing, but should not be directly
-// used
 namespace detail
 {
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_2d(Omega_h::Mesh& mesh,
-                              Kokkos::View<UniformGrid2D[1]> grid,
-                              int num_grid_cells, Real inflation = 0);
-
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_3d(Omega_h::Mesh& mesh,
-                              Kokkos::View<UniformGrid3D[1]> grid,
-                              int num_grid_cells, Real inflation = 0);
-
-/// O(num_cells * nelems) brute-force candidate map. Test oracle for the
-/// element-major build above; never use in production.
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_reference_2d(Omega_h::Mesh& mesh,
-                                        Kokkos::View<UniformGrid2D[1]> grid,
-                                        int num_grid_cells);
-
-/// \see construct_intersection_map_reference_2d
-Kokkos::Crs<LO, Kokkos::DefaultExecutionSpace, void, LO>
-construct_intersection_map_reference_3d(Omega_h::Mesh& mesh,
-                                        Kokkos::View<UniformGrid3D[1]> grid,
-                                        int num_grid_cells);
-
 // A simplex from the coordinates of its vertices, one vector per vertex.
 template <int Dim>
 [[nodiscard]] KOKKOS_INLINE_FUNCTION Simplex<Dim> ToSimplex(
@@ -66,27 +40,19 @@ template <int Dim>
   return simplex;
 }
 
-using localization::detail::GetElementSimplex;
 } // namespace detail
 
-[[nodiscard]] KOKKOS_FUNCTION bool triangle_intersects_bbox(
+[[nodiscard]] KOKKOS_FUNCTION bool TriangleIntersectsBBox(
   const Omega_h::Matrix<2, 3>& coords, const AABBox<2>& bbox);
 
-template <int dim>
-using PointLocalizationSearch = localization::PointLocalizationSearch<dim>;
+template <int Dim>
+using PointLocalizationSearch = localization::PointLocalizationSearch<Dim>;
+template <int Dim>
+using GridPointSearch = localization::GridPointSearch<Dim>;
 using localization::GridPointSearch2D;
 using localization::GridPointSearch3D;
 using localization::PointLocalizationSearch2D;
 using localization::PointLocalizationSearch3D;
-
-/// The grid point search over the elements of `mesh`, with `Nx` x `Ny` grid
-/// cells over the bounding box of the whole mesh (so the call is collective).
-GridPointSearch2D MakeGridPointSearch2D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
-                                        Real tolerance = 1E-12);
-
-/// \see MakeGridPointSearch2D
-GridPointSearch3D MakeGridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
-                                        LO Nz, Real tolerance = 1E-12);
 
 /// A grid search of either spatial dimension, as owned by components that are
 /// dimension-agnostic at compile time (e.g. an evaluator factory over an
@@ -94,6 +60,13 @@ GridPointSearch3D MakeGridPointSearch3D(Omega_h::Mesh& mesh, LO Nx, LO Ny,
 /// mesh without building a second search.
 using GridPointSearchVariant =
   std::variant<GridPointSearch2D, GridPointSearch3D>;
+
+/// The grid point search over the elements of `mesh`, of the mesh's dimension,
+/// with `divisions` grid cells per axis over the bounding box of the whole mesh
+/// (so the call is collective).
+GridPointSearchVariant CreateGridPointSearch(Omega_h::Mesh& mesh,
+                                             const std::vector<LO>& divisions,
+                                             Real tolerance = 1E-12);
 
 } // namespace pcms::omega_h
 #endif // PCMS_BACKENDS_OMEGA_H_POINT_SEARCH_HPP

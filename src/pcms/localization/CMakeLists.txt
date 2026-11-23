@@ -1,10 +1,19 @@
-# no public headers: the MLS support search is private
+# public: the shapes, their overlap tests and the candidate map; the point
+# search and the MLS support search are private
+set(
+        PCMS_LOCALIZATION_PUBLIC_HEADERS
+        ../../../include/pcms/localization/shapes.hpp
+        ../../../include/pcms/localization/overlap.hpp
+        ../../../include/pcms/localization/candidate_map.hpp
+        ../../../include/pcms/localization/detail/shapes.hpp
+        ../../../include/pcms/localization/detail/overlap.hpp
+        ../../../include/pcms/localization/detail/candidate_map.hpp
+)
 set(
         PCMS_LOCALIZATION_HEADERS
         mls_support_helpers.hpp
         point_search.hpp
-        overlap.hpp
-        shapes.hpp
+        candidate_map_reference.hpp
 )
 
 set(
@@ -40,7 +49,11 @@ set_target_properties(
 )
 
 ## export the library
-target_sources(pcms_localization PRIVATE ${PCMS_LOCALIZATION_HEADERS})
+target_sources(pcms_localization
+  PUBLIC FILE_SET localization TYPE HEADERS
+         BASE_DIRS ${PROJECT_SOURCE_DIR}/include/pcms
+         FILES ${PCMS_LOCALIZATION_PUBLIC_HEADERS}
+  PRIVATE ${PCMS_LOCALIZATION_HEADERS})
 
 install(
         TARGETS pcms_localization
@@ -50,6 +63,7 @@ install(
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         INCLUDES
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILE_SET localization DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pcms
 )
 
 install(

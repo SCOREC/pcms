@@ -1,6 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
 #include <pcms/backends/omega_h/point_search.hpp>
+#include <pcms/localization/candidate_map.hpp>
+#include "pcms/localization/candidate_map_reference.hpp"
 #include <pcms/backends/uniform_grid/uniform_grid_search.hpp>
 #include <pcms/utility/mesh_geometry.hpp>
 #include <pcms/utility/uniform_grid.hpp>
@@ -22,7 +24,7 @@ namespace pcms
 using detail::UniformGridPointSearch;
 using omega_h::GridPointSearch2D;
 using omega_h::GridPointSearch3D;
-using omega_h::triangle_intersects_bbox;
+using omega_h::TriangleIntersectsBBox;
 using utility::get_entity_centroids;
 } // namespace pcms
 
@@ -164,70 +166,68 @@ TEST_CASE("global to local")
 }
 TEST_CASE("Triangle AABB intersection")
 {
-  using pcms::triangle_intersects_bbox;
+  using pcms::TriangleIntersectsBBox;
   AABBox<2> unit_square{.center = {0, 0}, .half_width = {0.5, 0.5}};
   SECTION("Triangle outside bbox")
   {
-    REQUIRE(triangle_intersects_bbox({{1, 1}, {2, 1}, {2, 2}}, unit_square) ==
+    REQUIRE(TriangleIntersectsBBox({{1, 1}, {2, 1}, {2, 2}}, unit_square) ==
             false);
   }
   SECTION("BBOX inside Triangle")
   {
-    REQUIRE(triangle_intersects_bbox({{-10, -10}, {10, -10}, {10, 10}},
-                                     unit_square) == true);
+    REQUIRE(TriangleIntersectsBBox({{-10, -10}, {10, -10}, {10, 10}},
+                                   unit_square) == true);
   }
   SECTION("All verts inside BBOX")
   {
-    REQUIRE(triangle_intersects_bbox({{-10, -10}, {10, -10}, {10, 10}},
-                                     unit_square) == true);
+    REQUIRE(TriangleIntersectsBBox({{-10, -10}, {10, -10}, {10, 10}},
+                                   unit_square) == true);
   }
   SECTION("Single vert inside bbox")
   {
-    REQUIRE(triangle_intersects_bbox({{0, 0}, {1, 0}, {1, 1}}, unit_square) ==
+    REQUIRE(TriangleIntersectsBBox({{0, 0}, {1, 0}, {1, 1}}, unit_square) ==
             true);
-    REQUIRE(triangle_intersects_bbox({{1, 1}, {0, 0}, {1, 0}}, unit_square) ==
+    REQUIRE(TriangleIntersectsBBox({{1, 1}, {0, 0}, {1, 0}}, unit_square) ==
             true);
-    REQUIRE(triangle_intersects_bbox({{1, 0}, {1, 1}, {0, 0}}, unit_square) ==
+    REQUIRE(TriangleIntersectsBBox({{1, 0}, {1, 1}, {0, 0}}, unit_square) ==
             true);
   }
   SECTION("edge crossed bbox")
   {
     // Triangle 1 with all vert permutations
-    REQUIRE(triangle_intersects_bbox({{-0.6, 0}, {0, 0.6}, {-1, 1}},
-                                     unit_square) == true);
-    REQUIRE(triangle_intersects_bbox({{-1, 1}, {-0.6, 0}, {0, 0.6}},
-                                     unit_square) == true);
-    REQUIRE(triangle_intersects_bbox({{0, 0.6}, {-1, 1}, {-0.6, 0}},
-                                     unit_square) == true);
+    REQUIRE(TriangleIntersectsBBox({{-0.6, 0}, {0, 0.6}, {-1, 1}},
+                                   unit_square) == true);
+    REQUIRE(TriangleIntersectsBBox({{-1, 1}, {-0.6, 0}, {0, 0.6}},
+                                   unit_square) == true);
+    REQUIRE(TriangleIntersectsBBox({{0, 0.6}, {-1, 1}, {-0.6, 0}},
+                                   unit_square) == true);
     // triangle 2 with all vert permutations
-    REQUIRE(triangle_intersects_bbox({{-0.6, 0}, {0.6, 0}, {0, -1}},
-                                     unit_square) == true);
-    REQUIRE(triangle_intersects_bbox({{0, -1}, {-0.6, 0}, {0.6, 0}},
-                                     unit_square) == true);
-    REQUIRE(triangle_intersects_bbox({{0.6, 0}, {0, -1}, {-0.6, 0}},
-                                     unit_square) == true);
+    REQUIRE(TriangleIntersectsBBox({{-0.6, 0}, {0.6, 0}, {0, -1}},
+                                   unit_square) == true);
+    REQUIRE(TriangleIntersectsBBox({{0, -1}, {-0.6, 0}, {0.6, 0}},
+                                   unit_square) == true);
+    REQUIRE(TriangleIntersectsBBox({{0.6, 0}, {0, -1}, {-0.6, 0}},
+                                   unit_square) == true);
   }
 }
 TEST_CASE("Triangle BBox Intersection Regression")
 {
-  using pcms::triangle_intersects_bbox;
+  using pcms::TriangleIntersectsBBox;
   AABBox<2> bbox{.center = {0.10833333, 0.10833333},
                  .half_width = {0.00833333, 0.00833333}};
-  REQUIRE(triangle_intersects_bbox({{0, 0}, {0.1, 0}, {0.1, 0.1}}, bbox) ==
-          true);
-  REQUIRE(triangle_intersects_bbox({{0.1, 0}, {0.2, 0}, {0.2, 0.1}}, bbox) ==
+  REQUIRE(TriangleIntersectsBBox({{0, 0}, {0.1, 0}, {0.1, 0.1}}, bbox) == true);
+  REQUIRE(TriangleIntersectsBBox({{0.1, 0}, {0.2, 0}, {0.2, 0.1}}, bbox) ==
           false);
-  REQUIRE(triangle_intersects_bbox({{0.1, 0.1}, {0, 0.1}, {0, 0}}, bbox) ==
+  REQUIRE(TriangleIntersectsBBox({{0.1, 0.1}, {0, 0.1}, {0, 0}}, bbox) == true);
+  REQUIRE(TriangleIntersectsBBox({{0.1, 0.1}, {0.2, 0.1}, {0.2, 0.2}}, bbox) ==
           true);
-  REQUIRE(triangle_intersects_bbox({{0.1, 0.1}, {0.2, 0.1}, {0.2, 0.2}},
-                                   bbox) == true);
-  REQUIRE(triangle_intersects_bbox({{0, 0.1}, {0.1, 0.1}, {0.1, 0.2}}, bbox) ==
+  REQUIRE(TriangleIntersectsBBox({{0, 0.1}, {0.1, 0.1}, {0.1, 0.2}}, bbox) ==
           true);
-  REQUIRE(triangle_intersects_bbox({{0.1, 0.2}, {0, 0.2}, {0, 0.1}}, bbox) ==
+  REQUIRE(TriangleIntersectsBBox({{0.1, 0.2}, {0, 0.2}, {0, 0.1}}, bbox) ==
           false);
-  REQUIRE(triangle_intersects_bbox({{0.2, 0.2}, {0.1, 0.2}, {0.1, 0.1}},
-                                   bbox) == true);
-  REQUIRE(triangle_intersects_bbox({{0.2, 0.1}, {0.1, 0.1}, {0.1, 0}}, bbox) ==
+  REQUIRE(TriangleIntersectsBBox({{0.2, 0.2}, {0.1, 0.2}, {0.1, 0.1}}, bbox) ==
+          true);
+  REQUIRE(TriangleIntersectsBBox({{0.2, 0.1}, {0.1, 0.1}, {0.1, 0}}, bbox) ==
           true);
 }
 
@@ -257,7 +257,27 @@ bool num_candidates_within_range(const T& intersection_map, pcms::LO min,
 }
 // extern Omega_h::Library omega_h_library;
 
-TEST_CASE("construct intersection map")
+namespace
+{
+// The grid searches of `mesh`, as CreateGridPointSearch builds them.
+pcms::GridPointSearch2D CreateSearch2D(Omega_h::Mesh& mesh, pcms::LO nx,
+                                       pcms::LO ny,
+                                       pcms::Real tolerance = 1E-12)
+{
+  return std::get<pcms::GridPointSearch2D>(
+    pcms::omega_h::CreateGridPointSearch(mesh, {nx, ny}, tolerance));
+}
+
+pcms::GridPointSearch3D CreateSearch3D(Omega_h::Mesh& mesh, pcms::LO nx,
+                                       pcms::LO ny, pcms::LO nz,
+                                       pcms::Real tolerance = 1E-12)
+{
+  return std::get<pcms::GridPointSearch3D>(
+    pcms::omega_h::CreateGridPointSearch(mesh, {nx, ny, nz}, tolerance));
+}
+} // namespace
+
+TEST_CASE("CreateCandidateMap bins a mesh")
 {
   // auto world = omega_h_library.world();
   auto lib = Omega_h::Library{};
@@ -267,29 +287,29 @@ TEST_CASE("construct intersection map")
   REQUIRE(mesh.dim() == 2);
   SECTION("grid bbox overlap")
   {
-    Kokkos::View<UniformGrid2D[1]> grid_d("uniform grid");
-    auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = UniformGrid2D{
+    const UniformGrid2D grid{
       .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {10, 10}};
-    Kokkos::deep_copy(grid_d, grid_h);
-    auto intersection_map =
-      pcms::omega_h::detail::construct_intersection_map_2d(
-        mesh, grid_d, grid_h(0).GetNumCells());
+    const auto intersection_map =
+      pcms::CreateCandidateMap(
+        pcms::MeshSimplices<2>(mesh.coords().view(),
+                               mesh.ask_elem_verts().view()),
+        grid)
+        .GetBins();
     // assert(cudaSuccess == cudaDeviceSynchronize());
     REQUIRE(intersection_map.numRows() == 100);
     REQUIRE(num_candidates_within_range(intersection_map, 2, 16));
   }
   SECTION("fine grid")
   {
-    Kokkos::View<UniformGrid2D[1]> grid_d("uniform grid");
-    auto grid_h = Kokkos::create_mirror_view(grid_d);
-    grid_h(0) = UniformGrid2D{
+    const UniformGrid2D grid{
       .edge_length{1, 1}, .bot_left = {0, 0}, .divisions = {60, 60}};
-    Kokkos::deep_copy(grid_d, grid_h);
     // require number of candidates is >=1 and <=6
-    auto intersection_map =
-      pcms::omega_h::detail::construct_intersection_map_2d(
-        mesh, grid_d, grid_h(0).GetNumCells());
+    const auto intersection_map =
+      pcms::CreateCandidateMap(
+        pcms::MeshSimplices<2>(mesh.coords().view(),
+                               mesh.ask_elem_verts().view()),
+        grid)
+        .GetBins();
 
     REQUIRE(intersection_map.numRows() == 3600);
     REQUIRE(num_candidates_within_range(intersection_map, 1, 6));
@@ -339,18 +359,14 @@ TEST_CASE("candidate map matches brute-force reference")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 0, 10, 10, 0, false);
     REQUIRE(mesh.dim() == 2);
     for (pcms::LO divisions : {3, 10, 37}) {
-      Kokkos::View<UniformGrid2D[1]> grid_d("uniform grid");
-      auto grid_h = Kokkos::create_mirror_view(grid_d);
-      grid_h(0) = UniformGrid2D{.edge_length{1, 1},
-                                .bot_left = {0, 0},
-                                .divisions = {divisions, divisions}};
-      Kokkos::deep_copy(grid_d, grid_h);
-      const auto ncells = grid_h(0).GetNumCells();
+      const UniformGrid2D grid{.edge_length{1, 1},
+                               .bot_left = {0, 0},
+                               .divisions = {divisions, divisions}};
+      const auto simplices = pcms::MeshSimplices<2>(
+        mesh.coords().view(), mesh.ask_elem_verts().view());
       require_maps_identical(
-        pcms::omega_h::detail::construct_intersection_map_2d(mesh, grid_d,
-                                                             ncells),
-        pcms::omega_h::detail::construct_intersection_map_reference_2d(
-          mesh, grid_d, ncells));
+        pcms::CreateCandidateMap(simplices, grid).GetBins(),
+        pcms::detail::CreateCandidateMapReference(simplices, grid).GetBins());
     }
   }
   SECTION("3D")
@@ -359,19 +375,15 @@ TEST_CASE("candidate map matches brute-force reference")
       Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 5, 5, 5, false);
     REQUIRE(mesh.dim() == 3);
     for (pcms::LO divisions : {2, 5, 11}) {
-      Kokkos::View<pcms::UniformGrid3D[1]> grid_d("uniform grid");
-      auto grid_h = Kokkos::create_mirror_view(grid_d);
-      grid_h(0) =
-        pcms::UniformGrid3D{.edge_length{1, 1, 1},
-                            .bot_left = {0, 0, 0},
-                            .divisions = {divisions, divisions, divisions}};
-      Kokkos::deep_copy(grid_d, grid_h);
-      const auto ncells = grid_h(0).GetNumCells();
+      const pcms::UniformGrid3D grid{
+        .edge_length{1, 1, 1},
+        .bot_left = {0, 0, 0},
+        .divisions = {divisions, divisions, divisions}};
+      const auto simplices = pcms::MeshSimplices<3>(
+        mesh.coords().view(), mesh.ask_elem_verts().view());
       require_maps_identical(
-        pcms::omega_h::detail::construct_intersection_map_3d(mesh, grid_d,
-                                                             ncells),
-        pcms::omega_h::detail::construct_intersection_map_reference_3d(
-          mesh, grid_d, ncells));
+        pcms::CreateCandidateMap(simplices, grid).GetBins(),
+        pcms::detail::CreateCandidateMapReference(simplices, grid).GetBins());
     }
   }
 }
@@ -383,7 +395,7 @@ TEST_CASE("uniform grid search")
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 10, 10, 0, false);
-  auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 10, 10, 0.01);
+  auto search = CreateSearch2D(mesh, 10, 10, 0.01);
 
   Kokkos::View<pcms::Real* [2]> points("test_points", 8);
   // Kokkos::View<pcms::Real*[2]> points("test_points", 1);
@@ -405,7 +417,7 @@ TEST_CASE("uniform grid search")
   points_h(7, 0) = 0.05;
   points_h(7, 1) = 0.02;
   Kokkos::deep_copy(points, points_h);
-  auto results = search(points);
+  auto results = search.Locate(points);
   auto results_h = Kokkos::create_mirror_view(results);
   Kokkos::deep_copy(results_h, results);
   auto [elems_h, bary_h] = LiftOnHost<2>(mesh, results);
@@ -526,7 +538,7 @@ TEST_CASE("uniform grid search")
     ext_h(0, 0) = 1.5;
     ext_h(0, 1) = 0.0;
     Kokkos::deep_copy(ext_points, ext_h);
-    auto ext_results = search(ext_points);
+    auto ext_results = search.Locate(ext_points);
     auto ext_results_h = Kokkos::create_mirror_view(ext_results);
     Kokkos::deep_copy(ext_results_h, ext_results);
     auto [ext_elems_h, ext_bary_h] = LiftOnHost<2>(mesh, ext_results);
@@ -563,7 +575,7 @@ TEST_CASE("point search locates points on shared faces",
 
   // Same grid resolution the intersection search uses for this mesh.
   const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-  auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, n, n, n);
+  auto search = CreateSearch3D(mesh, n, n, n);
 
   const auto centroids_h =
     Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(query_mesh, 3));
@@ -578,7 +590,7 @@ TEST_CASE("point search locates points on shared faces",
   }
   Kokkos::deep_copy(points, points_h);
 
-  auto results = search(points);
+  auto results = search.Locate(points);
   auto results_h = Kokkos::create_mirror_view(results);
   Kokkos::deep_copy(results_h, results);
 
@@ -603,7 +615,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     using Dimensionality = GridPointSearch3D::Result::Dimensionality;
     auto mesh = pcms::test::BuildReferenceTet(lib);
     const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-    auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, n, n, n);
+    auto search = CreateSearch3D(mesh, n, n, n);
 
     Kokkos::View<pcms::Real* [3]> points("points", 2);
     auto points_h = Kokkos::create_mirror_view(points);
@@ -617,7 +629,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     points_h(1, 2) = 0.5;
     Kokkos::deep_copy(points, points_h);
 
-    auto results = search(points);
+    auto results = search.Locate(points);
     auto results_h =
       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results);
     const auto owners_h = LiftOnHost<3>(mesh, results).first;
@@ -657,7 +669,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     // candidates.
     auto mesh = pcms::test::BuildUnitSquare(lib, Omega_h::LOs({0, 1, 3}));
     const auto n = pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
-    auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, n, n);
+    auto search = CreateSearch2D(mesh, n, n);
 
     Kokkos::View<pcms::Real* [2]> points("points", 3);
     auto points_h = Kokkos::create_mirror_view(points);
@@ -672,7 +684,7 @@ TEST_CASE("point search encodes outside points unambiguously",
     points_h(2, 1) = 0.2;
     Kokkos::deep_copy(points, points_h);
 
-    auto results = search(points);
+    auto results = search.Locate(points);
     auto results_h =
       Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results);
     const auto owners_h = LiftOnHost<2>(mesh, results).first;
@@ -772,7 +784,7 @@ Kokkos::View<GridPointSearch3D::Result*, Kokkos::HostSpace> Search3D(
   }
   Kokkos::deep_copy(points, points_h);
   return Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{},
-                                             search(points));
+                                             search.Locate(points));
 }
 } // namespace
 
@@ -790,7 +802,7 @@ TEST_CASE("3D point search classifies points by entity",
   REQUIRE(face123 >= 0);
 
   const double tolerances = 1e-3;
-  auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 4, 4, 4, tolerances);
+  auto search = CreateSearch3D(mesh, 4, 4, 4, tolerances);
 
   const std::vector<std::pair<Omega_h::LO, double>> edge_w{{v1, 0.7},
                                                            {v2, 0.3}};
@@ -884,7 +896,7 @@ TEST_CASE("3D point search classifies points by entity",
 
   SECTION("outside the mesh: nearest entity")
   {
-    auto tight = pcms::omega_h::MakeGridPointSearch3D(mesh, 4, 4, 4);
+    auto tight = CreateSearch3D(mesh, 4, 4, 4);
     const auto r =
       Search3D(tight, {{-0.1, -0.1, -0.1}, {0.6, 0.6, -0.1}, {0.5, 0.5, 0.5}});
     REQUIRE(r(0).dimensionality == Dim3::VERTEX);
@@ -915,8 +927,7 @@ TEST_CASE("3D point search classifies points by entity",
       &two, OMEGA_H_SIMPLEX, 3, Omega_h::LOs({0, 1, 2, 3, 4, 5, 6, 7}),
       Omega_h::Reals({0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1,
                       3, 3, 3, 4, 3, 3, 3, 4, 3, 3, 3, 4}));
-    auto sparse =
-      pcms::omega_h::MakeGridPointSearch3D(two, 8, 8, 8, tolerances);
+    auto sparse = CreateSearch3D(two, 8, 8, 8, tolerances);
     const auto r = Search3D(sparse, {{2.0, 2.0, 2.0}});
     REQUIRE(r(0).dimensionality == Dim3::NO_INTERSECT);
     REQUIRE(r(0).entity == -1);
@@ -934,7 +945,7 @@ TEST_CASE("3D point search matches brute force on interior points",
   auto mesh =
     Omega_h::build_box(lib.world(), OMEGA_H_SIMPLEX, 1, 1, 1, 6, 6, 6, false);
   const auto n = pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-  auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, n, n, n);
+  auto search = CreateSearch3D(mesh, n, n, n);
 
   std::mt19937 gen(12345);
   std::uniform_real_distribution<double> uni(0.001, 0.999);
@@ -1231,7 +1242,7 @@ auto SearchAll(const Search& search,
   }
   Kokkos::deep_copy(points, points_h);
   return Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{},
-                                             search(points));
+                                             search.Locate(points));
 }
 
 template <int Dim, typename Search>
@@ -1350,13 +1361,13 @@ TEST_CASE("point search matches the facet-band rule on a non-uniform mesh",
   SECTION("2D")
   {
     auto mesh = BuildShakenBox<2>(lib, 7, 0.3);
-    auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 8, 8, tau);
+    auto search = CreateSearch2D(mesh, 8, 8, tau);
     CheckAgainstBandReference<2>(mesh, search, tau);
   }
   SECTION("3D")
   {
     auto mesh = BuildShakenBox<3>(lib, 4, 0.2);
-    auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 6, 6, 6, tau);
+    auto search = CreateSearch3D(mesh, 6, 6, 6, tau);
     CheckAgainstBandReference<3>(mesh, search, tau);
   }
 }
@@ -1386,7 +1397,7 @@ auto SearchGuessed(const Search& search,
   Kokkos::deep_copy(points, points_h);
   Kokkos::deep_copy(guesses, guesses_h);
   Kokkos::View<typename Search::Result*> results("results", n);
-  search(points, guesses, results);
+  search.Locate(points, guesses, results);
   return Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results);
 }
 
@@ -1435,7 +1446,7 @@ void CheckGuessedSearchMatchesCold(Omega_h::Mesh& mesh, const Search& search)
     }
   }
   Kokkos::deep_copy(points, points_h);
-  const auto cold_device = search(points);
+  const auto cold_device = search.Locate(points);
   const auto cold =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, cold_device);
   // the elements the cold results lift to: -1 where the grid cell has none
@@ -1484,13 +1495,13 @@ TEST_CASE("point search from guessed elements gives the search's results",
   SECTION("2D")
   {
     auto mesh = BuildShakenBox<2>(lib, 7, 0.3);
-    auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 8, 8, tau);
+    auto search = CreateSearch2D(mesh, 8, 8, tau);
     CheckGuessedSearchMatchesCold<2>(mesh, search);
   }
   SECTION("3D")
   {
     auto mesh = BuildShakenBox<3>(lib, 4, 0.2);
-    auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 6, 6, 6, tau);
+    auto search = CreateSearch3D(mesh, 6, 6, 6, tau);
     CheckGuessedSearchMatchesCold<3>(mesh, search);
   }
 }
@@ -1501,7 +1512,7 @@ TEST_CASE("point search band reaches tau / sin(angle / 2) at an acute corner",
   auto lib = Omega_h::Library{};
   const double tau = 1e-3;
   auto mesh = BuildShakenBox<2>(lib, 7, 0.3);
-  auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 8, 8, tau);
+  auto search = CreateSearch2D(mesh, 8, 8, tau);
   const BandReference<2> ref(mesh, tau);
   // the sharpest corner of the mesh
   double smallest = 10;
@@ -1628,13 +1639,13 @@ TEST_CASE("point search gives the same entity from either adjacent element",
   SECTION("2D edges")
   {
     auto mesh = BuildShakenBox<2>(lib, 7, 0.3);
-    auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, 8, 8, tau);
+    auto search = CreateSearch2D(mesh, 8, 8, tau);
     check(std::integral_constant<int, 2>{}, 1, mesh, search);
   }
   SECTION("3D edges and faces")
   {
     auto mesh = BuildShakenBox<3>(lib, 4, 0.2);
-    auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 6, 6, 6, tau);
+    auto search = CreateSearch3D(mesh, 6, 6, 6, tau);
     check(std::integral_constant<int, 3>{}, 1, mesh, search);
     check(std::integral_constant<int, 3>{}, 2, mesh, search);
   }
@@ -1708,7 +1719,7 @@ TEST_CASE("ghost-free search localizes every element centroid")
   }
 
   const auto n = pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
-  auto search = pcms::omega_h::MakeGridPointSearch2D(mesh, n, n);
+  auto search = CreateSearch2D(mesh, n, n);
   const auto centroids =
     Omega_h::HostRead<Omega_h::Real>(pcms::get_entity_centroids(mesh, 2));
   Kokkos::View<pcms::Real* [2]> points("query points", n_elems);
@@ -1720,7 +1731,7 @@ TEST_CASE("ghost-free search localizes every element centroid")
   Kokkos::deep_copy(points, points_h);
 
   // The search reports the entity a point lies on; lift it to an element.
-  const auto owners_h = LiftOnHost<2>(mesh, search(points)).first;
+  const auto owners_h = LiftOnHost<2>(mesh, search.Locate(points)).first;
   for (Omega_h::LO i = 0; i < n_elems; ++i) {
     REQUIRE(owners_h(i) == i);
   }
@@ -1737,7 +1748,7 @@ TEST_CASE("3D point search with unequal divisions per axis",
   auto world = lib.world();
   auto mesh =
     Omega_h::build_box(world, OMEGA_H_SIMPLEX, 1, 1, 1, 4, 4, 4, false);
-  auto search = pcms::omega_h::MakeGridPointSearch3D(mesh, 3, 5, 7);
+  auto search = CreateSearch3D(mesh, 3, 5, 7);
 
   const auto n_elems = mesh.nelems();
   const auto centroids =
@@ -1752,7 +1763,7 @@ TEST_CASE("3D point search with unequal divisions per axis",
   Kokkos::deep_copy(points, points_h);
 
   // The search reports the entity a point lies on; lift it to an element.
-  const auto owners_h = LiftOnHost<3>(mesh, search(points)).first;
+  const auto owners_h = LiftOnHost<3>(mesh, search.Locate(points)).first;
   Omega_h::LO n_wrong = 0;
   for (Omega_h::LO i = 0; i < n_elems; ++i) {
     n_wrong += owners_h(i) != i;
@@ -1770,14 +1781,13 @@ TEST_CASE("mesh simplices are the mesh's elements")
   const auto elems2verts = mesh.ask_elem_verts().view();
   const auto nelems = mesh.nelems();
 
-  // Built inside a kernel, as the candidate map does. Both triangles of the
-  // unit square span the whole square.
+  // Both triangles of the unit square span the whole square.
+  const auto simplices = pcms::MeshSimplices<2>(coords, elems2verts);
+  REQUIRE(static_cast<pcms::LO>(simplices.extent(0)) == nelems);
   Kokkos::View<pcms::Real* [4]> boxes("element boxes", nelems);
   Kokkos::parallel_for(
     nelems, KOKKOS_LAMBDA(int e) {
-      const auto bbox = pcms::detail::simplex_bbox<2>(
-        pcms::omega_h::detail::GetElementSimplex<2>(coords, elems2verts, e)
-          .vertices);
+      const auto bbox = pcms::detail::SimplexBBox<2>(simplices(e).vertices);
       boxes(e, 0) = bbox.center[0];
       boxes(e, 1) = bbox.center[1];
       boxes(e, 2) = bbox.half_width[0];
@@ -1815,7 +1825,7 @@ void CheckBarycentricMatchesOmegaH()
     for (int d = 0; d < Dim; ++d) {
       point[d] = x[d];
     }
-    const auto xi = pcms::detail::barycentric_from_global<Dim>(
+    const auto xi = pcms::detail::BarycentricFromGlobal<Dim>(
       point, pcms::omega_h::detail::ToSimplex<Dim>(verts).vertices);
     bool near_boundary = false;
     for (int k = 0; k < Dim + 1; ++k) {
@@ -1824,7 +1834,7 @@ void CheckBarycentricMatchesOmegaH()
                       std::abs(expected[k] - 1.0) < 1e-10;
     }
     if (!near_boundary) {
-      REQUIRE(pcms::detail::is_barycentric_inside(xi) ==
+      REQUIRE(pcms::detail::IsBarycentricInside(xi) ==
               Omega_h::is_barycentric_inside(expected));
     }
   }

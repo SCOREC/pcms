@@ -1,61 +1,15 @@
-#ifndef PCMS_LOCALIZATION_OVERLAP_HPP
-#define PCMS_LOCALIZATION_OVERLAP_HPP
+#ifndef PCMS_LOCALIZATION_DETAIL_OVERLAP_HPP
+#define PCMS_LOCALIZATION_DETAIL_OVERLAP_HPP
 #include <Kokkos_Core.hpp>
 
 #include <cmath>
 #include <cstddef>
 
 #include "pcms/localization/shapes.hpp"
+#include "pcms/utility/bounding_box.hpp"
 #include "pcms/utility/types.hpp"
-#include "pcms/utility/uniform_grid.hpp"
 
-namespace pcms
-{
-
-/// Inclusive per-axis range of grid cells overlapped by a bounding box.
-template <int Dim>
-struct CellRange
-{
-  Kokkos::Array<LO, Dim> lo;
-  Kokkos::Array<LO, Dim> hi;
-
-  /// The range no cell belongs to, as published by a rank with no geometry.
-  [[nodiscard]] static CellRange Empty() noexcept
-  {
-    CellRange range{};
-    for (int d = 0; d < Dim; ++d) {
-      range.lo[d] = 0;
-      range.hi[d] = -1;
-    }
-    return range;
-  }
-
-  /// True when no cell is in the range, so no query can match it.
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION bool IsEmpty() const noexcept
-  {
-    for (int d = 0; d < Dim; ++d) {
-      if (hi[d] < lo[d]) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /// True when the cell at per-axis indices `axis_indices` falls in the range.
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION bool Contains(
-    const Kokkos::Array<LO, Dim>& axis_indices) const noexcept
-  {
-    // An empty range has hi < lo on every axis, so this is false for it too.
-    for (int d = 0; d < Dim; ++d) {
-      if (axis_indices[d] < lo[d] || axis_indices[d] > hi[d]) {
-        return false;
-      }
-    }
-    return true;
-  }
-};
-
-namespace detail
+namespace pcms::detail
 {
 
 // The vertices of a simplex, vertices[k][d] the coordinate d of vertex k.
@@ -67,7 +21,7 @@ using SimplexVertices = Kokkos::Array<Kokkos::Array<Real, Dim>, Dim + 1>;
 template <int Dim>
 using SquareMatrix = Kokkos::Array<Kokkos::Array<Real, Dim>, Dim>;
 
-[[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> cross(
+[[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> Cross(
   const Kokkos::Array<Real, 3>& u, const Kokkos::Array<Real, 3>& v)
 {
   return {u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2],
@@ -76,7 +30,7 @@ using SquareMatrix = Kokkos::Array<Kokkos::Array<Real, Dim>, Dim>;
 
 // The edge vectors p[k + 1] - p[0] of a simplex, as the columns of a matrix.
 template <int Dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<Dim> simplex_basis(
+[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<Dim> SimplexBasis(
   const SimplexVertices<Dim>& p)
 {
   SquareMatrix<Dim> b;
@@ -88,7 +42,7 @@ template <int Dim>
   return b;
 }
 
-[[nodiscard]] KOKKOS_INLINE_FUNCTION Real determinant(const SquareMatrix<2>& m)
+[[nodiscard]] KOKKOS_INLINE_FUNCTION Real Determinant(const SquareMatrix<2>& m)
 {
   const Real a = m[0][0];
   const Real b = m[1][0];
@@ -97,7 +51,7 @@ template <int Dim>
   return a * d - b * c;
 }
 
-[[nodiscard]] KOKKOS_INLINE_FUNCTION Real determinant(const SquareMatrix<3>& m)
+[[nodiscard]] KOKKOS_INLINE_FUNCTION Real Determinant(const SquareMatrix<3>& m)
 {
   const Real a = m[0][0];
   const Real b = m[1][0];
@@ -113,32 +67,32 @@ template <int Dim>
 }
 
 // The inverses of 1x1 to 3x3 matrices, as Omega_h::invert.
-[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<1> invert(
+[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<1> Invert(
   const SquareMatrix<1>& m)
 {
   return {{{1.0 / m[0][0]}}};
 }
 
-[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<2> invert(
+[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<2> Invert(
   const SquareMatrix<2>& m)
 {
   const Real a = m[0][0];
   const Real b = m[1][0];
   const Real c = m[0][1];
   const Real d = m[1][1];
-  const Real det = determinant(m);
+  const Real det = Determinant(m);
   // columns of [[d, -b], [-c, a]] / det
   return {{{d / det, -c / det}, {-b / det, a / det}}};
 }
 
-[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<3> invert(
+[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<3> Invert(
   const SquareMatrix<3>& m)
 {
   // row k of the inverse is the cross product of the other two columns, over
   // the determinant
-  const SquareMatrix<3> rows{cross(m[1], m[2]), cross(m[2], m[0]),
-                             cross(m[0], m[1])};
-  const Real det = determinant(m);
+  const SquareMatrix<3> rows{Cross(m[1], m[2]), Cross(m[2], m[0]),
+                             Cross(m[0], m[1])};
+  const Real det = Determinant(m);
   SquareMatrix<3> inverse;
   for (int i = 0; i < 3; ++i) {
     for (int j = 0; j < 3; ++j) {
@@ -150,7 +104,7 @@ template <int Dim>
 
 // m * v, accumulated column by column.
 template <int Dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, Dim> multiply(
+[[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, Dim> Multiply(
   const SquareMatrix<Dim>& m, const Kokkos::Array<Real, Dim>& v)
 {
   Kokkos::Array<Real, Dim> out;
@@ -169,7 +123,7 @@ template <int Dim>
 // their sum.
 template <int Dim>
 [[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, Dim + 1>
-form_barycentric(const Kokkos::Array<Real, Dim>& c)
+FormBarycentric(const Kokkos::Array<Real, Dim>& c)
 {
   Kokkos::Array<Real, Dim + 1> xi;
   xi[0] = 1.0;
@@ -183,23 +137,23 @@ form_barycentric(const Kokkos::Array<Real, Dim>& c)
 // The barycentric coordinates of `x` in the simplex `p`.
 template <int Dim>
 [[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, Dim + 1>
-barycentric_from_global(const Kokkos::Array<Real, Dim>& x,
-                        const SimplexVertices<Dim>& p)
+BarycentricFromGlobal(const Kokkos::Array<Real, Dim>& x,
+                      const SimplexVertices<Dim>& p)
 {
   static_assert(Dim >= 1 && Dim <= 3,
-                "barycentric_from_global: only 1 to 3 dimensions");
+                "BarycentricFromGlobal: only 1 to 3 dimensions");
   Kokkos::Array<Real, Dim> r;
   for (int d = 0; d < Dim; ++d) {
     r[d] = x[d] - p[0][d];
   }
-  const auto inverse_basis = invert(simplex_basis<Dim>(p));
-  return form_barycentric<Dim>(multiply<Dim>(inverse_basis, r));
+  const auto inverse_basis = Invert(SimplexBasis<Dim>(p));
+  return FormBarycentric<Dim>(Multiply<Dim>(inverse_basis, r));
 }
 
 // Whether barycentric coordinates are inside the simplex, within `fuzz`, as
 // Omega_h::is_barycentric_inside.
 template <std::size_t N>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool is_barycentric_inside(
+[[nodiscard]] KOKKOS_INLINE_FUNCTION bool IsBarycentricInside(
   const Kokkos::Array<Real, N>& xi, Real fuzz = 0)
 {
   Real lo = xi[0];
@@ -212,7 +166,7 @@ template <std::size_t N>
 }
 
 KOKKOS_INLINE_FUNCTION
-AABBox<2> triangle_bbox(const SimplexVertices<2>& coords)
+AABBox<2> TriangleBBox(const SimplexVertices<2>& coords)
 {
   Kokkos::Array<Real, 2> max{coords[0][0], coords[0][1]};
   Kokkos::Array<Real, 2> min{coords[0][0], coords[0][1]};
@@ -227,7 +181,7 @@ AABBox<2> triangle_bbox(const SimplexVertices<2>& coords)
 }
 
 template <unsigned dim>
-KOKKOS_INLINE_FUNCTION AABBox<dim> simplex_bbox(
+KOKKOS_INLINE_FUNCTION AABBox<dim> SimplexBBox(
   const SimplexVertices<dim>& coords)
 {
   Kokkos::Array<Real, dim> max;
@@ -258,7 +212,7 @@ KOKKOS_INLINE_FUNCTION AABBox<dim> simplex_bbox(
 // Clipping." ACM Transactions on Graphics 3, no. 1 (January 1984): 1-22.
 // https://doi.org/10.1145/357332.357333.
 KOKKOS_INLINE_FUNCTION
-bool clipt(Real p, Real q, Real& t0, Real& t1)
+bool ClipT(Real p, Real q, Real& t0, Real& t1)
 {
   if (p < 0) {
     auto r = q / p;
@@ -287,7 +241,7 @@ bool clipt(Real p, Real q, Real& t0, Real& t1)
 }
 
 template <int dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool bbox_verts_within_simplex(
+[[nodiscard]] KOKKOS_INLINE_FUNCTION bool BBoxVertsWithinSimplex(
   const AABBox<dim>& bbox, const SimplexVertices<dim>& coords)
 {
   // each dimension has a pair of opposing "walls"
@@ -312,62 +266,24 @@ template <int dim>
       // eg 01 = 1 = [right, top]
       vert[j] = (i >> j) & 1 ? bbox_walls[j * 2] : bbox_walls[j * 2 + 1];
     }
-    auto xi = barycentric_from_global<dim>(vert, coords);
-    if (is_barycentric_inside(xi)) {
+    auto xi = BarycentricFromGlobal<dim>(vert, coords);
+    if (IsBarycentricInside(xi)) {
       return true;
     }
   }
   return false;
 }
 
-} // namespace detail
-
-/**
- * The smallest axis-aligned box containing a shape.
- */
-template <int Dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<Dim> bounding_box(
-  const Simplex<Dim>& simplex)
-{
-  return detail::simplex_bbox<Dim>(simplex.vertices);
-}
-
-template <int Dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION AABBox<Dim> bounding_box(
-  const AABBox<Dim>& box)
-{
-  return box;
-}
-
+// The overlap test of a pair of shapes, by their tags.
 template <typename TagA, typename TagB, typename A, typename B>
 struct Overlap;
-
-/**
- * True when `a` and `b` overlaps.
- */
-template <typename A, typename B>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION bool overlaps(const A& a, const B& b)
-{
-  static_assert(dimension_v<A> == dimension_v<B>,
-                "overlaps: operands have different dimensions");
-  using Forward = Overlap<tag_t<A>, tag_t<B>, A, B>;
-  using Reverse = Overlap<tag_t<B>, tag_t<A>, B, A>;
-  if constexpr (requires { Forward::apply(a, b); }) {
-    return Forward::apply(a, b);
-  } else {
-    static_assert(
-      requires { Reverse::apply(b, a); },
-      "overlaps: no overlap test for this pair of shapes");
-    return Reverse::apply(b, a);
-  }
-}
 
 template <typename A, typename B>
 struct Overlap<BoxTag, BoxTag, A, B>
 {
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool apply(const A& a, const B& b)
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool Apply(const A& a, const B& b)
   {
-    for (int i = 0; i < dimension_v<A>; ++i) {
+    for (int i = 0; i < ShapeDimension<A>; ++i) {
       if (std::abs(a.center[i] - b.center[i]) >
           (a.half_width[i] + b.half_width[i]))
         return false;
@@ -379,10 +295,10 @@ struct Overlap<BoxTag, BoxTag, A, B>
 template <typename A, typename B>
 struct Overlap<PointTag, BoxTag, A, B>
 {
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool apply(const A& point,
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool Apply(const A& point,
                                                          const B& bbox)
   {
-    for (int i = 0; i < dimension_v<A>; ++i) {
+    for (int i = 0; i < ShapeDimension<A>; ++i) {
       if (point.coords[i] < bbox.center[i] - bbox.half_width[i])
         return false;
       if (point.coords[i] > bbox.center[i] + bbox.half_width[i])
@@ -395,13 +311,12 @@ struct Overlap<PointTag, BoxTag, A, B>
 template <typename A, typename B>
 struct Overlap<PointTag, SimplexTag, A, B>
 {
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool apply(const A& point,
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool Apply(const A& point,
                                                          const B& simplex)
   {
-    constexpr int dim = dimension_v<A>;
-    const auto xi =
-      detail::barycentric_from_global<dim>(point.coords, simplex.vertices);
-    return detail::is_barycentric_inside(xi);
+    constexpr int dim = ShapeDimension<A>;
+    const auto xi = BarycentricFromGlobal<dim>(point.coords, simplex.vertices);
+    return IsBarycentricInside(xi);
   }
 };
 
@@ -411,24 +326,24 @@ struct Overlap<PointTag, SimplexTag, A, B>
 template <typename A, typename B>
 struct Overlap<SegmentTag, BoxTag, A, B>
 {
-  static_assert(dimension_v<A> == 2,
+  static_assert(ShapeDimension<A> == 2,
                 "segment-box overlap is implemented for 2D only");
 
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool apply(const A& seg,
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool Apply(const A& seg,
                                                          const B& bbox)
   {
     Real t0 = 0;
     Real t1 = 1;
     auto xleft = bbox.center[0] - bbox.half_width[0];
     auto deltax = seg.end[0] - seg.start[0];
-    if (detail::clipt(-deltax, seg.start[0] - xleft, t0, t1)) {
+    if (ClipT(-deltax, seg.start[0] - xleft, t0, t1)) {
       auto xright = bbox.center[0] + bbox.half_width[0];
-      if (detail::clipt(deltax, xright - seg.start[0], t0, t1)) {
+      if (ClipT(deltax, xright - seg.start[0], t0, t1)) {
         auto deltay = seg.end[1] - seg.start[1];
         auto ybottom = bbox.center[1] - bbox.half_width[1];
-        if (detail::clipt(-deltay, seg.start[1] - ybottom, t0, t1)) {
+        if (ClipT(-deltay, seg.start[1] - ybottom, t0, t1)) {
           auto ytop = bbox.center[1] + bbox.half_width[1];
-          if (detail::clipt(deltay, ytop - seg.start[1], t0, t1)) {
+          if (ClipT(deltay, ytop - seg.start[1], t0, t1)) {
             // full liang-barksy algorithm computes new x-y coordinates here,
             // but we just need to check intersections
             return true;
@@ -443,64 +358,38 @@ struct Overlap<SegmentTag, BoxTag, A, B>
 template <typename A, typename B>
 struct Overlap<SimplexTag, BoxTag, A, B>
 {
-  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool apply(const A& simplex,
+  [[nodiscard]] KOKKOS_INLINE_FUNCTION static bool Apply(const A& simplex,
                                                          const B& bbox)
   {
-    if constexpr (dimension_v<A> == 2) {
+    if constexpr (ShapeDimension<A> == 2) {
       const auto& coords = simplex.vertices;
       // triangle and grid cell bounding box intersect
-      if (overlaps(detail::triangle_bbox(coords), bbox)) {
+      if (Overlaps(TriangleBBox(coords), bbox)) {
         // if any of the triangle verts inside of bbox
-        if (overlaps(simplex.Vertex(0), bbox) ||
-            overlaps(simplex.Vertex(1), bbox) ||
-            overlaps(simplex.Vertex(2), bbox)) {
+        if (Overlaps(simplex.Vertex(0), bbox) ||
+            Overlaps(simplex.Vertex(1), bbox) ||
+            Overlaps(simplex.Vertex(2), bbox)) {
           return true;
         }
         // if any of the bbox verts are within the triangle
-        if (detail::bbox_verts_within_simplex<2>(bbox, coords)) {
+        if (BBoxVertsWithinSimplex<2>(bbox, coords)) {
           return true;
         }
         // if any of the triangle's edges intersect with the bounding box
-        if (overlaps(simplex.Edge(0, 1), bbox) ||
-            overlaps(simplex.Edge(1, 2), bbox) ||
-            overlaps(simplex.Edge(2, 0), bbox)) {
+        if (Overlaps(simplex.Edge(0, 1), bbox) ||
+            Overlaps(simplex.Edge(1, 2), bbox) ||
+            Overlaps(simplex.Edge(2, 0), bbox)) {
           return true;
         }
       }
       return false;
     } else {
       // TODO: Add refined cases from the 2D test
-      return overlaps(detail::simplex_bbox<dimension_v<A>>(simplex.vertices),
-                      bbox);
+      return Overlaps(SimplexBBox<ShapeDimension<A>>(simplex.vertices), bbox);
     }
   }
 };
 
-/// Low-level cell range: cells overlapped by `box` on `grid`, widened by `pad`
-/// cells per side and clamped to the grid.
-template <int Dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION CellRange<Dim> overlapping_cells(
-  const AABBox<Dim>& box, const UniformGrid<Dim>& grid, LO pad = 1)
-{
-  CellRange<Dim> range;
-  for (int d = 0; d < Dim; ++d) {
-    range.lo[d] = Kokkos::max(
-      grid.AxisCellIndex(d, box.center[d] - box.half_width[d]) - pad, 0);
-    range.hi[d] = Kokkos::min(
-      grid.AxisCellIndex(d, box.center[d] + box.half_width[d]) + pad,
-      grid.divisions[d] - 1);
-  }
-  return range;
-}
+} // namespace pcms::detail
 
-// Cells on `grid` that a shape inside `bound` could overlap.
-template <int Dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION CellRange<Dim> candidate_cells(
-  const AABBox<Dim>& bound, const UniformGrid<Dim>& grid)
-{
-  return overlapping_cells<Dim>(bound, grid, 1);
-}
-
-} // namespace pcms
-
-#endif // PCMS_LOCALIZATION_OVERLAP_HPP
+#endif // PCMS_LOCALIZATION_DETAIL_OVERLAP_HPP

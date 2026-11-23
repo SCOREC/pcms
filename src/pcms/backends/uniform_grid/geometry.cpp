@@ -132,7 +132,7 @@ Quadrature UniformGridGeometry<Dim>::CreateQuadrature(
     }
     DeviceView<Real**> device_xi("trapezoid_points", n, 1);
     DeepCopyMismatchLayouts(device_xi, xi);
-    return pcms::detail::BindQuadrature(
+    return pcms::detail::WeightedQuadrature(
       *this,
       CoordinateView<DeviceMemorySpace>(system_, MakeConstRank2View(device_xi)),
       Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, weights));
@@ -142,7 +142,7 @@ Quadrature UniformGridGeometry<Dim>::CreateQuadrature(
     return Geometry::CreateQuadrature(rule);
   }
   auto [xi, weights] = CellRule(gauss->order);
-  return pcms::detail::BindQuadrature(
+  return pcms::detail::WeightedQuadrature(
     *this, CoordinateView<DeviceMemorySpace>(system_, MakeConstRank2View(xi)),
     weights);
 }

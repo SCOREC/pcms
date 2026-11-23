@@ -32,17 +32,6 @@ void ApplyWeights(const Kokkos::View<const Real*, DeviceMemorySpace>& weights,
 
 } // namespace
 
-std::shared_ptr<const BoundPoints> BindQuadrature(
-  const Geometry& geometry, const Quadrature& quadrature,
-  std::shared_ptr<const CoordinateMap> map)
-{
-  if (map == nullptr && quadrature.points->GetGeometry().get() == &geometry) {
-    return quadrature.points;
-  }
-  return geometry.Bind(quadrature.points->LocatedPoints(), quadrature.other,
-                       OutOfBoundsPolicy{}, std::move(map));
-}
-
 LinearForm::LinearForm(std::shared_ptr<const FunctionSpace> space,
                        Quadrature quadrature)
   : space_(std::move(space)), quadrature_(std::move(quadrature))

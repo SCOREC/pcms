@@ -1,5 +1,6 @@
 #include "pcms/transfer/l2_inner_product.hpp"
 #include "pcms/field/detail/field_ops.hpp"
+#include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/transfer/forms.hpp"
 #include "pcms/utility/assert.hpp"
 #include <cmath>
@@ -63,7 +64,7 @@ L2Integral::L2Integral(std::shared_ptr<const FunctionSpace> space,
       throw pcms_error("L2Integral: `other` must have a geometry");
     }
     other_ = other->CreatePointEvaluator<Real>(
-      transfer::detail::BindQuadrature(*other->GetGeometry(), rule));
+      pcms::detail::BindOn(rule, *other->GetGeometry()));
   }
   const auto num_points = rule.points->NumPoints();
   const int num_components = space->GetLayout()->GetNumComponents();

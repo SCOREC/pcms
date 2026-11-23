@@ -161,6 +161,19 @@ Quadrature ProductGeometry::CreateQuadrature(
                           detail::CreateQuadrature(*b_, rule));
 }
 
+Quadrature CreateTensorQuadrature(
+  const std::shared_ptr<const Geometry>& product, const Quadrature& qa,
+  const Quadrature& qb)
+{
+  const auto* geometry = dynamic_cast<const ProductGeometry*>(product.get());
+  if (geometry == nullptr || qa.points->GetGeometry() != geometry->FactorA() ||
+      qb.points->GetGeometry() != geometry->FactorB()) {
+    throw pcms_error("CreateTensorQuadrature: needs a product geometry and a "
+                     "quadrature on each of its factors");
+  }
+  return geometry->TensorQuadrature(qa, qb);
+}
+
 std::shared_ptr<const Geometry> CreateProductGeometry(
   std::shared_ptr<const Geometry> a, std::shared_ptr<const Geometry> b,
   std::shared_ptr<const CoordinateSystem> system)

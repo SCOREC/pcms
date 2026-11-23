@@ -45,11 +45,18 @@ void CheckEntityIds(Kokkos::View<const LO*, DeviceMemorySpace> ids,
 void ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
                          const BoundPoints& bound, bool divide = false);
 
+/// @return the binding of the points of `quadrature` on `geometry`: its own
+///         or one it carries (Quadrature::also) on that geometry, else a bind
+///         of its located points
+[[nodiscard]] std::shared_ptr<const BoundPoints> BindOn(
+  const Quadrature& quadrature, const Geometry& geometry,
+  OutOfBoundsPolicy policy = {});
+
 /// @brief The quadrature of points whose weights are in the parameter measure.
 /// @param weights one weight per point; scaled in place by the volume factor
 ///        when the geometry's coordinate system has a metric
 /// @param owners the owners of the points, as for Geometry::Bind
-[[nodiscard]] Quadrature BindQuadrature(
+[[nodiscard]] Quadrature WeightedQuadrature(
   const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& points,
   Kokkos::View<Real*, DeviceMemorySpace> weights,
   const OwnerHints& owners = {});

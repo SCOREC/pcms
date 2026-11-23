@@ -1,6 +1,7 @@
 #include "pcms/transfer/galerkin_projection.hpp"
 #include "pcms/field/detail/field_ops.hpp"
 #include "pcms/field/field_ops.hpp"
+#include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include <Kokkos_Core.hpp>
 
@@ -62,9 +63,12 @@ GalerkinProjection::GalerkinProjection(
   const FunctionSpace& target_space = *target_space_;
   // The source is bound to the points in the cells of its geometry that the
   // quadrature names (no search), else searched for.
-  source_at_points_ =
-    source_->CreatePointEvaluator<Real>(detail::BindQuadrature(
-      source_geometry, right_hand_side_.GetQuadrature(), options.to_source));
+  const Quadrature& quadrature = right_hand_side_.GetQuadrature();
+  source_at_points_ = source_->CreatePointEvaluator<Real>(
+    options.to_source == nullptr
+      ? pcms::detail::BindOn(quadrature, source_geometry)
+      : source_geometry.Bind(quadrature.points->LocatedPoints(),
+                             OutOfBoundsPolicy{}, options.to_source));
   if (options.mass_matrix_type == MassMatrixType::Lumped) {
     lumped_ =
       std::make_unique<Function<Real>>(detail::ScratchFunction(target_space));

@@ -29,6 +29,15 @@ namespace pcms
   std::shared_ptr<const Geometry> a, std::shared_ptr<const Geometry> b,
   std::shared_ptr<const CoordinateSystem> system = nullptr);
 
+/// @brief The tensor product of a quadrature of each factor of `product`:
+///        point (i, k) pairs point i of `qa` with point k of `qb`, at index
+///        i * (points of qb) + k, with the product of their weights.
+/// @throws pcms_error if `product` is not a product geometry or a quadrature
+///         is not on its factor
+[[nodiscard]] Quadrature CreateTensorQuadrature(
+  const std::shared_ptr<const Geometry>& product, const Quadrature& qa,
+  const Quadrature& qb);
+
 } // namespace pcms
 
 #endif // PCMS_GEOMETRY_PRODUCT_GEOMETRY_HPP

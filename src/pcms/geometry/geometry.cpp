@@ -242,6 +242,25 @@ Quadrature CreateMonteCarloQuadrature(
     *geometry, detail::MonteCarloRule{samples_per_cell, seed});
 }
 
+Quadrature MapQuadrature(const std::shared_ptr<const Geometry>& geometry,
+                         const Quadrature& quadrature)
+{
+  const auto& system = quadrature.points->GetGeometry()->GetCoordinateSystem();
+  const auto parameter = geometry->GetParameterSystem();
+  if (parameter == nullptr ||
+      !detail::SameCoordinateSystem(system, parameter)) {
+    throw pcms_error("MapQuadrature: the quadrature is on a geometry in '" +
+                     std::string(system->Kind()) +
+                     "', not in the geometry's parameter system");
+  }
+  const auto points = quadrature.points->LocatedPoints();
+  Kokkos::View<Real*, DeviceMemorySpace> weights(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "mapped_weights"),
+    quadrature.weights.extent(0));
+  Kokkos::deep_copy(weights, quadrature.weights);
+  return detail::WeightedQuadrature(*geometry, points, weights);
+}
+
 void detail::GaussLegendre(int order, std::vector<Real>& nodes,
                            std::vector<Real>& weights)
 {
@@ -303,7 +322,22 @@ void detail::ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
   Kokkos::fence("ScaleByVolumeFactor");
 }
 
-Quadrature detail::BindQuadrature(
+std::shared_ptr<const BoundPoints> detail::BindOn(const Quadrature& quadrature,
+                                                  const Geometry& geometry,
+                                                  OutOfBoundsPolicy policy)
+{
+  if (quadrature.points->GetGeometry().get() == &geometry) {
+    return quadrature.points;
+  }
+  for (const auto& bound : quadrature.also) {
+    if (bound->GetGeometry().get() == &geometry) {
+      return bound;
+    }
+  }
+  return geometry.Bind(quadrature.points->LocatedPoints(), policy);
+}
+
+Quadrature detail::WeightedQuadrature(
   const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& points,
   Kokkos::View<Real*, DeviceMemorySpace> weights, const OwnerHints& owners)
 {

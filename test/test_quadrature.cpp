@@ -162,9 +162,9 @@ TEST_CASE("CreateIntersectionQuadrature: weights sum to the domain, the rule "
     pcms::omega_h::CreateIntersectionQuadrature(source, target, order);
   CHECK(quadrature.points->GetGeometry() == target);
   CHECK(quadrature.points->MissingPoints().extent(0) == 0);
-  CHECK(quadrature.other.geometry == source);
-  CHECK(quadrature.other.entities.extent(0) ==
-        static_cast<std::size_t>(quadrature.points->NumPoints()));
+  REQUIRE(quadrature.also.size() == 1);
+  CHECK(quadrature.also[0]->GetGeometry() == source);
+  CHECK(quadrature.also[0]->MissingPoints().extent(0) == 0);
   CHECK(WeightSum(quadrature) == Catch::Approx(1.0).margin(1e-12));
   for (int a = 0; a <= order; ++a) {
     for (int b = 0; a + b <= order; ++b) {
@@ -177,12 +177,6 @@ TEST_CASE("CreateIntersectionQuadrature: weights sum to the domain, the rule "
             Catch::Approx(ExactMonomial(a, b, c, dim)).margin(1e-12));
     }
   }
-  // the source binds to the points in the elements they were generated in
-  const pcms::CoordinateView<pcms::DeviceMemorySpace> points(
-    quadrature.points->GetCoordinateSystem(),
-    quadrature.points->LocatedPoints().GetValues());
-  const auto bound = source->Bind(points, quadrature.other);
-  CHECK(bound->MissingPoints().extent(0) == 0);
 }
 
 namespace

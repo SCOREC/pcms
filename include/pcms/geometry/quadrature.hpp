@@ -7,6 +7,7 @@
 #include <Kokkos_Core.hpp>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace pcms
 {
@@ -24,8 +25,8 @@ struct Quadrature
   std::shared_ptr<const BoundPoints> points;
   /// one weight per point, in the physical measure
   Kokkos::View<const Real*, DeviceMemorySpace> weights;
-  /// cells of a second geometry the points lie in; empty if there is none
-  OwnerHints other;
+  /// the same points bound on other geometries
+  std::vector<std::shared_ptr<const BoundPoints>> also;
 };
 
 /// @brief The Gauss rule of each cell of `geometry` (on simplices, the
@@ -51,6 +52,15 @@ struct Quadrature
 [[nodiscard]] Quadrature CreateMonteCarloQuadrature(
   const std::shared_ptr<const Geometry>& geometry, int samples_per_cell,
   std::uint64_t seed = DefaultQuadratureSeed);
+
+/// @brief The points of `quadrature`, a rule of the parameter geometry of
+///        `geometry`, bound on `geometry`, with the weights times the volume
+///        factor at the points.
+/// @throws pcms_error if the quadrature's geometry is not in the geometry's
+///         parameter system
+[[nodiscard]] Quadrature MapQuadrature(
+  const std::shared_ptr<const Geometry>& geometry,
+  const Quadrature& quadrature);
 
 } // namespace pcms
 

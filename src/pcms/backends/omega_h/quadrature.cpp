@@ -134,7 +134,7 @@ Quadrature CreateSimplexQuadrature(const OmegaHGeometry& geometry, int order,
         }
       }
     });
-  return pcms::detail::BindQuadrature(
+  return pcms::detail::WeightedQuadrature(
     geometry,
     CoordinateView<DeviceMemorySpace>(geometry.GetCoordinateSystem(),
                                       MakeConstRank2View(coords)),

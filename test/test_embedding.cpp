@@ -1130,6 +1130,18 @@ struct Shear
   }
 };
 
+// U = (r, theta, phi) -> Xi = (r, theta, phi - q(r) theta)
+struct Unshear
+{
+  KOKKOS_FUNCTION void operator()(const Kokkos::Array<Real, 3>& u,
+                                  Kokkos::Array<Real, 3>& x,
+                                  Kokkos::Array<Real, 9>& j) const
+  {
+    x = {u[0], u[1], u[2] - SafetyFactor(u[0]) * u[1]};
+    j = {1, 0, 0, 0, 1, 0, -u[1], -SafetyFactor(u[0]), 1};
+  }
+};
+
 // T = (a, b, c) -> Xi = (0.6 + 0.2 a, 1 + 2 b, 2 pi c)
 struct Box
 {
@@ -1321,11 +1333,23 @@ TEST_CASE("A chained embedded geometry binds physical points through its "
           "[embedding][embedded_geometry][chain]")
 {
   const Torus t;
+  const auto unshear = pcms::CreateCoordinateMap(
+    t.u->GetParameterSystem(), t.xi->GetParameterSystem(), Unshear{});
+  const auto inverted =
+    pcms::CreateEmbeddedGeometry(t.xi_grid, t.shear, t.u, {.inverse = unshear});
+  CHECK_THROWS_WITH(
+    pcms::CreateEmbeddedGeometry(t.xi_grid, t.shear, t.u, {.inverse = t.shear}),
+    ContainsSubstring("the inverse must map"));
+  CHECK_THROWS_WITH(pcms::CreateEmbeddedGeometry(t.xi_grid, unshear, t.u),
+                    ContainsSubstring("the link must map"));
   const auto [xi, u] = XiPoints(20);
-  const auto found = t.RoundTrip(t.xi, u);
-  for (std::size_t i = 0; i < xi.size(); ++i) {
-    CAPTURE(i);
-    CHECK_THAT(found[i], WithinAbs(xi[i], 1e-8));
+  for (const auto& g : {t.xi, inverted}) {
+    CAPTURE(g == inverted);
+    const auto found = t.RoundTrip(g, u);
+    for (std::size_t i = 0; i < xi.size(); ++i) {
+      CAPTURE(i);
+      CHECK_THAT(found[i], WithinAbs(xi[i], 1e-8));
+    }
   }
 }
 

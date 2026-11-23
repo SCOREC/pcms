@@ -691,11 +691,12 @@ private:
 } // namespace
 
 // The search of an embedded geometry: the images of the parameter cells,
-// binned modulo the translation identifications of the coordinate system, and
-// the link.
+// binned modulo the translation identifications of the coordinate system, the
+// link and its inverse, if given (then nothing is binned).
 struct detail::EmbeddedSearch
 {
   std::shared_ptr<const CoordinateMap> link;
+  std::shared_ptr<const CoordinateMap> inverse;
   std::variant<CandidateMap<1>, CandidateMap<2>, CandidateMap<3>> map;
   Kokkos::Array<Real, 3> period = {};
   Real residual_tolerance = 0;
@@ -712,6 +713,10 @@ std::shared_ptr<const detail::EmbeddedSearch> CreateSearch(
   const UniformGrid<Dim>& grid, std::shared_ptr<const CoordinateMap> link,
   const EmbeddingOptions& options)
 {
+  if (options.inverse != nullptr) {
+    return std::make_shared<detail::EmbeddedSearch>(
+      detail::EmbeddedSearch{std::move(link), options.inverse});
+  }
   const auto& system = link->GetTargetCoordinateSystem();
   const int dt = system->Dimension();
   const LO num_cells = grid.GetNumCells();
@@ -751,6 +756,7 @@ std::shared_ptr<const detail::EmbeddedSearch> CreateSearch(
       : std::max(1, static_cast<int>(std::ceil(std::pow(num_cells, 1.0 / dt))));
   auto search = std::make_shared<detail::EmbeddedSearch>(
     detail::EmbeddedSearch{std::move(link),
+                           nullptr,
                            {},
                            period,
                            ResidualTol * extent,
@@ -827,10 +833,11 @@ protected:
 
 private:
   // Points in the parameter system are bound on the parameter geometry as
-  // they are; points of the coordinate system are searched for first (in the
-  // parent's parameter coordinates, if there is a parent). The parameter
-  // geometry gets all the points (a missing one at its last iterate,
-  // clamped): the evaluators fill the rows of the missing points.
+  // they are; points of the coordinate system are mapped by the inverse or
+  // searched for first (in the parent's parameter coordinates, if there is a
+  // parent). The parameter geometry gets all the points (a missing one at its
+  // last iterate, clamped): the evaluators fill the rows of the missing
+  // points.
   void Locate()
   {
     auto points = LocatedPointValues();
@@ -848,13 +855,25 @@ private:
         OutOfBoundsPolicy{OutOfBoundsMode::FILL});
       points = dynamic_cast<const EmbeddedBound&>(*parent_bound).Parameters();
     }
+    const auto& inverse = search_.inverse;
+    std::unique_ptr<BoundCoordinateMap> inverted;
+    if (!parametric && inverse != nullptr) {
+      inverted = Evaluate(*inverse, MakeConstRank2View(points));
+      points = inverted->Mapped();
+    }
     DeviceView<bool*> found;
-    if (parametric) {
+    if (parametric || inverse != nullptr) {
       DeviceView<Real**> xi("embedded_xi", n, points.extent(1));
       Kokkos::deep_copy(xi, points);
       SetParameters(*geometry_->GetParameterGeometry(), xi, Policy());
-      LocateImage();
-      found = detail::FoundMask(n, {Inner()->MissingPoints()});
+      if (parametric) {
+        LocateImage();
+      }
+      found =
+        detail::FoundMask(n, {Inner()->MissingPoints(),
+                              parent_bound == nullptr
+                                ? Kokkos::View<const LO*, DeviceMemorySpace>{}
+                                : parent_bound->MissingPoints()});
     } else {
       const auto located = uniform_grid::VisitUniformGrid(
         geometry_->GetParameterGeometry(),
@@ -1049,6 +1068,15 @@ std::shared_ptr<const EmbeddedGeometry> EmbeddedGeometry::Create(
       "CreateEmbeddedGeometry: the parameter geometry's coordinate system "
       "must differ from the coordinate system of the position (give the "
       "parameter geometry a parameter system)");
+  }
+  if (options.inverse != nullptr &&
+      (!detail::SameCoordinateSystem(
+         options.inverse->GetSourceCoordinateSystem(),
+         link->GetTargetCoordinateSystem()) ||
+       !detail::SameCoordinateSystem(
+         options.inverse->GetTargetCoordinateSystem(), parameter_system))) {
+    throw pcms_error("CreateEmbeddedGeometry: the inverse must map the "
+                     "position's coordinate system to the parameter system");
   }
   if (link->GetTargetCoordinateSystem()->Dimension() <
       parameter_system->Dimension()) {

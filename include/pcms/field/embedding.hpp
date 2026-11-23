@@ -46,6 +46,10 @@ struct EmbeddingOptions
   /// on the parameter geometry. Null: sqrt(det g) of the metric, or without
   /// one |det J| (the coordinate measure)
   std::shared_ptr<const Function<Real>> volume;
+  /// the inverse of the position or link, if given: a map from its target
+  /// system to the parameter system, which Bind uses instead of a search
+  /// (none is built). Null: search
+  std::shared_ptr<const CoordinateMap> inverse;
 };
 
 /// @brief A geometry whose cells are those of a parameter geometry and whose
@@ -171,7 +175,8 @@ private:
 /// @throws pcms_error if the geometry is not a 2D or 3D uniform grid, the
 ///         position is not a Function of coordinates on it with a Gradient,
 ///         the parameter system has a metric other than the identity or is
-///         the position's coordinate system, or the
+///         the position's coordinate system, the inverse does not map the
+///         position's coordinate system to the parameter system, or the
 ///         metric is not a rank-2 Function on the
 ///         parameter geometry in the parameter system with indices of one
 ///         variance, or the volume factor is not a scalar Function on the

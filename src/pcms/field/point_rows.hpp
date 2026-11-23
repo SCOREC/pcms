@@ -10,7 +10,9 @@
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/detail/memory_spaces.hpp"
+#include "pcms/utility/detail/periodic.hpp"
 #include <Kokkos_Core.hpp>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <set>
@@ -29,6 +31,9 @@ struct PointRows
   Kokkos::View<const LO*, DeviceMemorySpace> holders;
   Kokkos::View<const Real*, DeviceMemorySpace> values;
   int num_out = 1;
+  /// per entry, bit d set if its node wrapped along grid axis d, where the
+  /// entry 2^d before it is the node one cell back; empty if none wraps
+  Kokkos::View<const std::uint8_t*, DeviceMemorySpace> wraps;
 };
 
 /// @brief The offsets of `num_rows` rows of `stride` entries each.
@@ -44,14 +49,35 @@ inline Kokkos::View<LO*, DeviceMemorySpace> StrideOffsets(LO num_rows,
   return offsets;
 }
 
+/// @brief The lengths of the translation identifications of the coordinate
+///        axes of Coordinates values, per component (0: none).
+using Periods = Kokkos::Array<Real, 3>;
+
+/// @return the Periods of values in `basis`: none unless they are coordinates
+inline Periods CoordinatePeriods(const ValueBasis& basis)
+{
+  Periods periods = {};
+  if (basis.kind == ValueKind::Coordinates) {
+    for (const auto& id : basis.system->Identifications()) {
+      if (id.map == nullptr && id.axis < static_cast<int>(periods.size())) {
+        periods[id.axis] = id.length;
+      }
+    }
+  }
+  return periods;
+}
+
 /// @brief out(p, c * num_out + r) = row (p, r) times component c of the DOFs.
 /// @param dofs dofs(holder, c)
+/// @param periods per component: a wrapped DOF is taken at the image nearest
+///        the DOF one cell back along each axis it wrapped
 template <typename Dofs, typename Out>
-void Apply(const PointRows& rows, Dofs dofs, Out out)
+void Apply(const PointRows& rows, Dofs dofs, Out out, Periods periods = {})
 {
   const auto offsets = rows.offsets;
   const auto holders = rows.holders;
   const auto values = rows.values;
+  const auto wraps = rows.wraps;
   const int num_out = rows.num_out;
   const int num_components = static_cast<int>(out.extent(1)) / num_out;
   ForEach(
@@ -60,9 +86,22 @@ void Apply(const PointRows& rows, Dofs dofs, Out out)
       for (int r = 0; r < num_out; ++r) {
         const LO row = p * num_out + r;
         for (int c = 0; c < num_components; ++c) {
+          const Real period =
+            c < static_cast<int>(periods.size()) ? periods[c] : 0;
           Real sum = 0;
           for (LO j = offsets(row); j < offsets(row + 1); ++j) {
-            sum += values(j) * dofs(holders(j), c);
+            const Real dof = dofs(holders(j), c);
+            const unsigned bits =
+              period > 0 && wraps.extent(0) > 0 ? wraps(j) : 0U;
+            Real image = dof;
+            for (unsigned d = 0; (bits >> d) != 0; ++d) {
+              if ((bits >> d) & 1U) {
+                const Real to_partner =
+                  dofs(holders(j - (LO{1} << d)), c) - dof;
+                image += to_partner - NearestImage(to_partner, period);
+              }
+            }
+            sum += values(j) * image;
           }
           out(p, c * num_out + r) = sum;
         }
@@ -141,12 +180,20 @@ public:
   void EvaluateImpl(const Field<Real>& field,
                     ValueView<Real, DeviceMemorySpace> values) const override
   {
-    Apply(rows_, field.GetDOFHolderData().GetValues(), values.GetValues());
+    Apply(rows_, field.GetDOFHolderData().GetValues(), values.GetValues(),
+          CoordinatePeriods(field.GetData().GetValueBasis()));
   }
 
   void EvaluateTransposeImpl(Rank2View<const Real, DeviceMemorySpace> values,
                              Field<Real>& functional) const override
   {
+    const auto periods =
+      CoordinatePeriods(functional.GetData().GetValueBasis());
+    if (periods[0] > 0 || periods[1] > 0 || periods[2] > 0) {
+      throw pcms_error("PointEvaluator::EvaluateTranspose: Coordinates on a "
+                       "identification evaluate through their nearest image, "
+                       "which is not linear");
+    }
     const auto& layout = functional.GetLayout();
     Kokkos::View<Real**, DeviceMemorySpace> total("point_rows_transpose",
                                                   layout.GetNumDofHolder(),

@@ -7,6 +7,7 @@
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 
+#include <cstdint>
 #include <memory>
 #include <set>
 
@@ -22,7 +23,7 @@ namespace detail
 /// @param cells the cell of each point
 /// @param t the position of each point in its cell
 /// @param missing points whose rows are zero
-/// @return the rows
+/// @return the rows, with the wrapped axes of each order 1 entry
 template <unsigned Dim>
 pcms::detail::PointRows BuildGridRows(
   UniformGrid<Dim> grid, unsigned wrapped, int order, bool gradient,
@@ -40,6 +41,8 @@ pcms::detail::PointRows BuildGridRows(
   Kokkos::View<Real*, DeviceMemorySpace> weights(
     Kokkos::view_alloc(Kokkos::WithoutInitializing, "uniform_grid_weights"),
     size);
+  Kokkos::View<std::uint8_t*, DeviceMemorySpace> wraps(
+    "uniform_grid_wraps", order == 1 && wrapped != 0 ? size : 0);
   pcms::detail::ForEach(
     "uniform_grid_rows", num_points, KOKKOS_LAMBDA(const LO i) {
       if (order == 0) {
@@ -64,9 +67,11 @@ pcms::detail::PointRows BuildGridRows(
       }
       for (int corner = 0; corner < stride; ++corner) {
         LO vertex = 0;
+        unsigned bits = 0;
         for (unsigned d = 0; d < Dim; ++d) {
           const LO node = reversed[Dim - 1 - d] + ((corner >> d) & 1);
           vertex += (node % nodes[d]) * vertex_stride[d];
+          bits |= static_cast<unsigned>(node / nodes[d]) << d;
         }
         for (int r = 0; r < num_out; ++r) {
           Real weight = 1;
@@ -80,6 +85,9 @@ pcms::detail::PointRows BuildGridRows(
             (static_cast<std::size_t>(i) * num_out + r) * stride + corner;
           holders(k) = vertex;
           weights(k) = weight;
+          if (wraps.extent(0) > 0) {
+            wraps(k) = static_cast<std::uint8_t>(bits);
+          }
         }
       }
     });
@@ -93,7 +101,7 @@ pcms::detail::PointRows BuildGridRows(
       }
     });
   return {pcms::detail::StrideOffsets(num_points * num_out, stride), holders,
-          weights, num_out};
+          weights, num_out, wraps};
 }
 
 } // namespace detail

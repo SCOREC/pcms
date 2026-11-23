@@ -16,6 +16,8 @@
 #include <array>
 #include <memory>
 #include <utility>
+#include <variant>
+#include <vector>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/backends/omega_h/omega_h.hpp"
 
@@ -63,14 +65,9 @@ CreateUniformGridBinaryField(Omega_h::Mesh& mesh, const UniformGrid<Dim>& grid)
 
   // Run point-in-mesh search
   Kokkos::View<typename PointLocalizationSearch<Dim>::Result*> results_d;
-  if constexpr (Dim == 2) {
-    GridPointSearch2D search(mesh, grid.divisions[0], grid.divisions[1]);
-    results_d = search(coords_d);
-  } else {
-    GridPointSearch3D search(mesh, grid.divisions[0], grid.divisions[1],
-                             grid.divisions[2]);
-    results_d = search(coords_d);
-  }
+  const auto search = std::get<GridPointSearch<Dim>>(CreateGridPointSearch(
+    mesh, std::vector<LO>(grid.divisions.data(), grid.divisions.data() + Dim)));
+  results_d = search.Locate(coords_d);
   auto results_h =
     Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, results_d);
 

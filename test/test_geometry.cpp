@@ -74,8 +74,8 @@ Kokkos::View<LO*> StartElements(Omega_h::Mesh& mesh,
 {
   return std::visit(
     [&](const auto& s) {
-      constexpr int Dim = std::decay_t<decltype(s)>::DIM;
-      const auto results = s(points);
+      constexpr int Dim = std::decay_t<decltype(s)>::Dimension;
+      const auto results = s.Locate(points);
       return pcms::omega_h::detail::LiftElements<Dim>(
         mesh, Kokkos::View<const typename std::decay_t<decltype(s)>::Result*,
                            pcms::DeviceMemorySpace>(results));

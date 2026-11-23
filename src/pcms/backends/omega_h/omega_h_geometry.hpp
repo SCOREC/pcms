@@ -332,7 +332,7 @@ public:
   /// One source element per query point, to seed adjacency searches. Points
   /// must be in the mesh's native coordinate system. `guesses`, empty or an
   /// element per point (-1 for none), makes the search start there, see
-  /// GridPointSearch2D::operator()(points, guesses, results); they are
+  /// GridPointSearch::Locate(points, guesses, results); they are
   /// verified and do not change the result. An outside point uses
   /// the nearest entity reported by the grid search, lifted to an element;
   /// -1 means the search cell has no candidate. Unlike Bind, this preserves

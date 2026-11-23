@@ -37,6 +37,15 @@ void FunctionSpace::ValidateFieldData(const FieldDataVariant& data) const
     data);
 }
 
+Quadrature FunctionSpace::CreateQuadrature() const
+{
+  if (!natural_) {
+    throw pcms_error("FunctionSpace::CreateQuadrature: this space has no "
+                     "quadrature");
+  }
+  return natural_(geometry_);
+}
+
 bool FunctionSpace::Supports(DifferentialOperator op) const noexcept
 {
   return evaluator_ != nullptr ? evaluator_->Supports(op)

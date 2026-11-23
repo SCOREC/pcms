@@ -1,7 +1,6 @@
 #include "pcms/field/embedding.hpp"
 #include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
 #include "pcms/field/detail/transformed_point_evaluator.hpp"
-#include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/localization/candidate_map.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/dense_linear_algebra.hpp"
@@ -16,7 +15,6 @@
 #include <optional>
 #include <string>
 #include <utility>
-#include <variant>
 #include <vector>
 
 namespace pcms
@@ -767,31 +765,6 @@ private:
   std::shared_ptr<const FunctionSpace> space_;
 };
 
-/// @brief A space on the parameter geometry evaluated on an embedded
-///        geometry; its quadrature is the space's, in the physical measure.
-class EmbeddedSpace final : public FunctionSpace
-{
-public:
-  EmbeddedSpace(std::shared_ptr<const EmbeddedGeometry> embedded,
-                std::shared_ptr<const FunctionSpace> space)
-    : FunctionSpace(space->GetLayout(),
-                    std::make_shared<EmbeddedEvaluatorFactory>(embedded, space),
-                    embedded),
-      embedded_(std::move(embedded)),
-      space_(std::move(space))
-  {
-  }
-
-  [[nodiscard]] Quadrature CreateQuadrature() const override
-  {
-    return MapQuadrature(embedded_, space_->CreateQuadrature());
-  }
-
-private:
-  std::shared_ptr<const EmbeddedGeometry> embedded_;
-  std::shared_ptr<const FunctionSpace> space_;
-};
-
 } // namespace
 
 EmbeddedGeometry::EmbeddedGeometry(
@@ -901,7 +874,13 @@ std::shared_ptr<const FunctionSpace> CreateEmbeddedSpace(
     throw pcms_error("CreateEmbeddedSpace: the geometry must be an embedded "
                      "geometry of the space's geometry");
   }
-  return std::make_shared<EmbeddedSpace>(std::move(embedded), std::move(space));
+  auto evaluator = std::make_shared<EmbeddedEvaluatorFactory>(embedded, space);
+  auto layout = space->GetLayout();
+  return std::make_shared<FunctionSpace>(
+    std::move(layout), std::move(evaluator), std::move(embedded),
+    [space](const std::shared_ptr<const Geometry>& g) {
+      return MapQuadrature(g, space->CreateQuadrature());
+    });
 }
 
 } // namespace pcms

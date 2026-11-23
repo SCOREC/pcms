@@ -11,7 +11,6 @@
 #include "pcms/utility/detail/memory_spaces.hpp"
 #include "pcms/field/layout/serial.hpp"
 #include "pcms/field/point_rows.hpp"
-#include "quadrature_space.hpp"
 #include <cmath>
 #include <numbers>
 #include <set>
@@ -179,14 +178,14 @@ std::vector<Real> NodePositions(const UniformGrid<1>& g, int per_node)
 std::shared_ptr<const FunctionSpace> MakeSpace(
   std::shared_ptr<const Geometry> geometry,
   std::shared_ptr<const FieldLayout> layout, RowsFactory::MakeRows make_rows,
-  std::function<Quadrature()> make_quadrature)
+  std::function<Quadrature(const std::shared_ptr<const Geometry>&)> natural)
 {
   auto evaluator = std::make_shared<RowsFactory>(
     geometry, layout, std::set{DifferentialOperator::Gradient},
     std::move(make_rows));
-  return std::make_shared<detail::QuadratureSpace>(
+  return std::make_shared<FunctionSpace>(
     std::move(layout), std::move(evaluator), std::move(geometry),
-    std::move(make_quadrature));
+    std::move(natural));
 }
 
 } // namespace
@@ -206,7 +205,9 @@ std::shared_ptr<const FunctionSpace> CreatePeriodicHermiteSpace(
                        binding.NumPoints(), 4,
                        op == DifferentialOperator::Gradient);
     },
-    [geometry] { return CreateGaussQuadrature(geometry, 6); });
+    [](const std::shared_ptr<const Geometry>& g) {
+      return CreateGaussQuadrature(g, 6);
+    });
 }
 
 std::shared_ptr<const FunctionSpace> detail::CreatePeriodicSplineSpace(
@@ -244,7 +245,9 @@ std::shared_ptr<const FunctionSpace> detail::CreatePeriodicSplineSpace(
                        binding.NumPoints(), n,
                        op == DifferentialOperator::Gradient);
     },
-    [geometry] { return CreateGaussQuadrature(geometry, 6); });
+    [](const std::shared_ptr<const Geometry>& g) {
+      return CreateGaussQuadrature(g, 6);
+    });
 }
 
 std::shared_ptr<const FunctionSpace> CreateFourierSpace(
@@ -297,8 +300,8 @@ std::shared_ptr<const FunctionSpace> CreateFourierSpace(
                        op == DifferentialOperator::Gradient);
     },
     // the product of two functions has frequencies up to 2 max_mode stride
-    [geometry, n = 2 * max_mode * stride + 1] {
-      return CreateTrapezoidQuadrature(geometry, n);
+    [n = 2 * max_mode * stride + 1](const std::shared_ptr<const Geometry>& g) {
+      return CreateTrapezoidQuadrature(g, n);
     });
 }
 

@@ -30,9 +30,9 @@ namespace pcms
 //
 // It is concrete: backends differ in the components they hand to its
 // constructor, and the Create* factories (CreateLagrangeSpace, ...) assemble
-// them. A kind with behaviour that is not a component derives from it and
-// overrides the virtuals: the creation of its field data and the validation of
-// wrapped field data. A Function co-owns its space via shared_ptr (obtained
+// them. A kind with its own storage derives from it and overrides the
+// virtuals: the creation of its field data and the validation of wrapped field
+// data. A Function co-owns its space via shared_ptr (obtained
 // through enable_shared_from_this), so spaces are always shared-owned:
 // CreateFunction throws for a space that is not.
 class FunctionSpace
@@ -49,15 +49,20 @@ public:
   ///        points
   /// @param geometry the geometry the space is on: the evaluator source's,
   ///        when there is one
+  /// @param natural the space's quadrature on a geometry (CreateQuadrature),
+  ///        or empty for a space without one
   /// @throws pcms_error if `geometry` is null or is not the evaluator
   ///         source's geometry
   explicit FunctionSpace(
     std::shared_ptr<const FieldLayout> layout,
     std::shared_ptr<const PointEvaluatorFactory> evaluator,
-    std::shared_ptr<const Geometry> geometry)
+    std::shared_ptr<const Geometry> geometry,
+    std::function<Quadrature(const std::shared_ptr<const Geometry>&)> natural =
+      {})
     : layout_(std::move(layout)),
       evaluator_(std::move(evaluator)),
-      geometry_(std::move(geometry))
+      geometry_(std::move(geometry)),
+      natural_(std::move(natural))
   {
     if (geometry_ == nullptr) {
       throw pcms_error("FunctionSpace: the geometry must not be null");
@@ -87,14 +92,10 @@ public:
     return geometry_->GetCoordinateSystem();
   }
 
-  /// @brief The space's own quadrature on its geometry: exact for the
+  /// @brief The space's natural quadrature on its geometry: exact for the
   ///        product of two functions of the space.
-  /// @throws pcms_error unless the kind overrides it
-  [[nodiscard]] virtual Quadrature CreateQuadrature() const
-  {
-    throw pcms_error("FunctionSpace::CreateQuadrature: this space has no "
-                     "quadrature");
-  }
+  /// @throws pcms_error if the space has none
+  [[nodiscard]] Quadrature CreateQuadrature() const;
 
   /// @return whether the space's evaluator source supports `op`; for a space
   ///         without one, whether `op` is Value
@@ -184,6 +185,7 @@ private:
   std::shared_ptr<const FieldLayout> layout_;
   std::shared_ptr<const PointEvaluatorFactory> evaluator_;
   std::shared_ptr<const Geometry> geometry_;
+  std::function<Quadrature(const std::shared_ptr<const Geometry>&)> natural_;
 };
 
 template <typename T>

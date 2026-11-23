@@ -42,28 +42,15 @@ namespace pcms
 namespace
 {
 
-/// @brief A Lagrange space of order p; its quadrature defaults to the
-///        geometry's rule of degree max(1, 2p).
-class LagrangeFunctionSpace : public FunctionSpace
+/// @brief The natural quadrature of a Lagrange space of order p: the
+///        geometry's Gauss rule of degree max(1, 2p)
+std::function<Quadrature(const std::shared_ptr<const Geometry>&)>
+LagrangeQuadrature(int order)
 {
-public:
-  LagrangeFunctionSpace(std::shared_ptr<const FieldLayout> layout,
-                        std::shared_ptr<const PointEvaluatorFactory> evaluator,
-                        std::shared_ptr<const Geometry> geometry, int order)
-    : FunctionSpace(std::move(layout), std::move(evaluator),
-                    std::move(geometry)),
-      order_(order)
-  {
-  }
-
-  [[nodiscard]] Quadrature CreateQuadrature() const override
-  {
-    return CreateGaussQuadrature(GetGeometry(), std::max(1, 2 * order_));
-  }
-
-private:
-  int order_;
-};
+  return [order](const std::shared_ptr<const Geometry>& geometry) {
+    return CreateGaussQuadrature(geometry, std::max(1, 2 * order));
+  };
+}
 
 #ifdef PCMS_ENABLE_OMEGA_H
 /// Throws unless every alternative of `data` is a `Data<T>`.
@@ -82,15 +69,15 @@ void CheckFieldDataType(const FieldDataVariant& data, const char* message)
 
 #ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 /// The MeshFields flavour of the space: its fields are MeshFieldsFieldData.
-class MeshFieldsLagrangeFunctionSpace final : public LagrangeFunctionSpace
+class MeshFieldsLagrangeFunctionSpace final : public FunctionSpace
 {
 public:
   MeshFieldsLagrangeFunctionSpace(
     std::shared_ptr<const omega_h_meshfields::MeshFieldsAdapterLayout> layout,
     std::shared_ptr<const PointEvaluatorFactory> evaluator,
     std::shared_ptr<const Geometry> geometry, int order)
-    : LagrangeFunctionSpace(layout, std::move(evaluator), std::move(geometry),
-                            order),
+    : FunctionSpace(layout, std::move(evaluator), std::move(geometry),
+                    LagrangeQuadrature(order)),
       layout_(std::move(layout))
   {
   }
@@ -130,15 +117,15 @@ private:
 #endif
 
 /// The native flavour of the space: its fields are OmegaHFieldData.
-class NativeOmegaHLagrangeFunctionSpace final : public LagrangeFunctionSpace
+class NativeOmegaHLagrangeFunctionSpace final : public FunctionSpace
 {
 public:
   NativeOmegaHLagrangeFunctionSpace(
     std::shared_ptr<const OmegaHLagrangeLayout> layout,
     std::shared_ptr<const PointEvaluatorFactory> evaluator,
     std::shared_ptr<const Geometry> geometry, int order)
-    : LagrangeFunctionSpace(layout, std::move(evaluator), std::move(geometry),
-                            order),
+    : FunctionSpace(layout, std::move(evaluator), std::move(geometry),
+                    LagrangeQuadrature(order)),
       layout_(std::move(layout))
   {
   }
@@ -250,8 +237,9 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridLagrangeSpace(
     geometry, num_components, order, options.layout_name);
   auto eval_factory = uniform_grid::CreateLagrangeEvaluatorFactory<Dim>(
     std::move(geometry), ug_layout);
-  return std::make_shared<LagrangeFunctionSpace>(
-    ug_layout, eval_factory, eval_factory->GetGeometry(), order);
+  return std::make_shared<FunctionSpace>(ug_layout, eval_factory,
+                                         eval_factory->GetGeometry(),
+                                         LagrangeQuadrature(order));
 }
 
 } // namespace

@@ -9,7 +9,6 @@
 #include "product_binding.hpp"
 #include "pcms/field/layout/serial.hpp"
 #include "pcms/field/point_rows.hpp"
-#include "quadrature_space.hpp"
 #include <set>
 
 namespace pcms
@@ -227,10 +226,11 @@ std::shared_ptr<const FunctionSpace> CreateProductSpace(
                                                      {binding.MissingPoints()}),
                              da, db, gradient, holders_b);
       });
-  return std::make_shared<detail::QuadratureSpace>(
-    layout, std::move(evaluator), geometry, [a, b, product] {
-      return product->TensorQuadrature(a->CreateQuadrature(),
-                                       b->CreateQuadrature());
+  return std::make_shared<FunctionSpace>(
+    layout, std::move(evaluator), geometry,
+    [a, b](const std::shared_ptr<const Geometry>& g) {
+      return CreateTensorQuadrature(g, a->CreateQuadrature(),
+                                    b->CreateQuadrature());
     });
 }
 

@@ -39,15 +39,18 @@ struct EmbeddingOptions
   /// parameter system, g_ij (both indices covariant) or its inverse g^ij (both
   /// contravariant, inverted at the points). Its volume factor is sqrt(det
   /// g), so a metric given for a coordinate system of a toroidal wedge must
-  /// include the ignored direction. Null: the metric induced by the position
+  /// include the ignored direction. Null: the metric induced by the position,
+  /// if its coordinate system has one
   std::shared_ptr<const Function<Real>> metric;
   /// the volume factor per unit parameter volume, if given: a scalar Function
-  /// on the parameter geometry. Null: sqrt(det g) of the metric
+  /// on the parameter geometry. Null: sqrt(det g) of the metric, or without
+  /// one |det J| (the coordinate measure)
   std::shared_ptr<const Function<Real>> volume;
 };
 
 /// @brief A geometry whose cells are those of a parameter geometry and whose
-///        coordinate system is that of a position Function over it.
+///        coordinate system is that of a position Function over it, or that
+///        of a parent geometry its parameter system is linked into.
 class EmbeddedGeometry final : public Geometry
 {
 public:
@@ -72,11 +75,19 @@ public:
   }
 
   /// @return the position: the map from the parameter system to
-  ///         GetCoordinateSystem()
+  ///         GetCoordinateSystem(), or null when the geometry was created from
+  ///         a link into a parent
   [[nodiscard]] const std::shared_ptr<const Function<Real>>& GetPosition()
     const noexcept
   {
     return position_;
+  }
+
+  /// @return the geometry whose parameter system the link maps into, or null
+  [[nodiscard]] const std::shared_ptr<const Geometry>& GetParent()
+    const noexcept
+  {
+    return parent_;
   }
 
   /// @return the metric given at creation (EmbeddingOptions::metric), or
@@ -103,14 +114,27 @@ private:
   friend std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
     std::shared_ptr<const Geometry> parameter_geometry,
     std::shared_ptr<const Function<Real>> position, EmbeddingOptions options);
+  friend std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
+    std::shared_ptr<const Geometry> parameter_geometry,
+    std::shared_ptr<const CoordinateMap> link,
+    std::shared_ptr<const Geometry> parent, EmbeddingOptions options);
+
+  [[nodiscard]] static std::shared_ptr<const EmbeddedGeometry> Create(
+    std::shared_ptr<const Geometry> parameter,
+    std::shared_ptr<const CoordinateMap> link,
+    std::shared_ptr<const Geometry> parent,
+    std::shared_ptr<const Function<Real>> position, EmbeddingOptions options);
 
   EmbeddedGeometry(std::shared_ptr<const Geometry> parameter,
+                   std::shared_ptr<const Geometry> parent,
+                   std::shared_ptr<const CoordinateSystem> system,
                    std::shared_ptr<const Function<Real>> position,
                    std::shared_ptr<const Function<Real>> metric,
                    std::shared_ptr<const Function<Real>> volume,
                    std::shared_ptr<const detail::EmbeddedSearch> search);
 
   std::shared_ptr<const Geometry> parameter_;
+  std::shared_ptr<const Geometry> parent_;
   std::shared_ptr<const Function<Real>> position_;
   std::shared_ptr<const Function<Real>> metric_;
   std::shared_ptr<const Function<Real>> volume_;
@@ -133,7 +157,9 @@ private:
 /// or the one the position induces, g = J^T G J (G the coordinate system's
 /// metric at the image); their volume factor, the physical volume per unit
 /// of parameter volume, is the given one (EmbeddingOptions::volume) or that
-/// of the metric. The geometry does not support
+/// of the metric. In a coordinate system without a metric, the geometry has
+/// none unless one is given, and its volume factor is |det J| unless one is
+/// given. The geometry does not support
 /// OutOfBoundsMode::NEAREST_BOUNDARY, and a Rebind searches anew.
 /// @param parameter_geometry a uniform-grid geometry (the cells are boxes in
 ///        the parameter space), whose coordinate system is a parameter system
@@ -149,11 +175,36 @@ private:
 ///         metric is not a rank-2 Function on the
 ///         parameter geometry in the parameter system with indices of one
 ///         variance, or the volume factor is not a scalar Function on the
+///         parameter geometry, or neither is given for a parameter geometry
+///         of a lower dimension than a coordinate system without a metric, or
+///         the position's coordinate system has fewer dimensions than the
 ///         parameter geometry
 [[nodiscard]] std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
   std::shared_ptr<const Geometry> parameter_geometry,
   std::shared_ptr<const Function<Real>> position,
   EmbeddingOptions options = {});
+
+/// @brief An embedded geometry whose parameter system is linked into the
+///        parameter system of a parent geometry: a chain of embeddings.
+///
+/// The coordinate system is the parent's. Bind binds points of it in the
+/// parent, then searches the images of the cells under the link for the
+/// parent's parameter coordinates, as the position overload does. The factors
+/// compose: J = J_parent J_link, the metric is the pullback of the parent's
+/// and the volume factor the parent's times sqrt(det g / det g_parent) (both
+/// unless given).
+/// @param link a map from the parameter geometry's coordinate system to the
+///        parent's parameter system
+/// @param parent an embedded geometry
+/// @throws pcms_error as the position overload, and if the link or the
+///         parent is null, the link does not map the parameter geometry's
+///         coordinate system to the parent's parameter system, a system has
+///         more than 3 dimensions, or the parent's parameter system has fewer
+///         dimensions than the parameter geometry
+[[nodiscard]] std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
+  std::shared_ptr<const Geometry> parameter_geometry,
+  std::shared_ptr<const CoordinateMap> link,
+  std::shared_ptr<const Geometry> parent, EmbeddingOptions options = {});
 
 /// @brief The space `space`, on the parameter geometry, as a space on the
 ///        embedded geometry built from it: same layout and values, evaluated

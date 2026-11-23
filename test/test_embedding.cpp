@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 #include <pcms/transfer/l2_inner_product.hpp>
+#include <pcms/transfer/projection.hpp>
 #include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include "embedding_test_utils.hpp"
 #include <numbers>
@@ -9,6 +10,7 @@
 
 using Catch::Matchers::ContainsSubstring;
 using Catch::Matchers::WithinAbs;
+using Catch::Matchers::WithinRel;
 using pcms::DeviceMemorySpace;
 using pcms::Real;
 using pcms::test::Annulus;
@@ -472,6 +474,63 @@ TEST_CASE("An embedded geometry binds points of its parameter system without "
     pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::FILL, -7.0});
   CHECK(missing->MissingPoints().extent(0) == 1);
   CHECK(EvaluateLinearInParameters(f, missing)[0] == -7.0);
+}
+
+TEST_CASE("The located points of a bind in the parameter system are their "
+          "images in the coordinate system",
+          "[embedding][embedded_geometry]")
+{
+  const EmbeddedFixture f;
+  const auto bound =
+    f.embedded->Bind(pcms::test::CreateDeviceCoordinateView(
+                       Params, f.embedded->GetParameterSystem(), 2)
+                       .coordinate_view);
+  const auto located = bound->LocatedPoints();
+  CHECK(located.GetCoordinateSystem() == f.embedded->GetCoordinateSystem());
+  const auto host = pcms::test::CopyCoordinatesToHost(located.GetValues());
+  REQUIRE(host.extent(1) == 2);
+  for (int p = 0; p < 4; ++p) {
+    CAPTURE(p);
+    const auto x = Annulus::Position(Params[std::size_t{2} * p],
+                                     Params[std::size_t{2} * p + 1]);
+    CHECK_THAT(host(p, 0), WithinAbs(x[0], SplineTol));
+    CHECK_THAT(host(p, 1), WithinAbs(x[1], SplineTol));
+  }
+}
+
+TEST_CASE("A source on another geometry projects onto an embedded space",
+          "[embedding][embedded_geometry][transfer]")
+{
+  const EmbeddedFixture f;
+  pcms::UniformGrid<2> box;
+  box.bot_left = {1.3, 0.0};
+  box.edge_length = {1.8, 1.1};
+  box.divisions = {36, 22};
+  const auto plane = pcms::CreateLagrangeSpace(
+    pcms::uniform_grid::CreateGeometry(box, f.embedded->GetCoordinateSystem()),
+    1, 1);
+  auto source = plane->CreateFunction<Real>("f");
+  pcms::test::SetFieldComponents(
+    source, [](Real r, Real z, Real* out) { out[0] = r + 2 * z; });
+  auto target = f.space->CreateFunction<Real>("f");
+  pcms::ProjectionOptions options;
+  options.quadrature = pcms::MapQuadrature(
+    f.embedded,
+    pcms::CreateGaussQuadrature(f.embedded->GetParameterGeometry(), 2));
+  pcms::CreateProjection(plane, f.space, options)->Apply(source, target);
+  const auto bound =
+    f.embedded->Bind(pcms::test::CreateDeviceCoordinateView(
+                       Params, f.embedded->GetParameterSystem(), 2)
+                       .coordinate_view);
+  const auto values =
+    pcms::test::EvaluateToHost(*f.space->CreatePointEvaluator<Real>(bound),
+                               target, target.GetData().GetValueBasis());
+  for (int p = 0; p < 4; ++p) {
+    CAPTURE(p);
+    const auto x = Annulus::Position(Params[std::size_t{2} * p],
+                                     Params[std::size_t{2} * p + 1]);
+    CHECK_THAT(values(p, 0), WithinAbs(x[0] + 2 * x[1], 5e-3));
+  }
 }
 
 TEST_CASE("An embedded geometry applies the out-of-bounds policy to points "
@@ -1071,18 +1130,6 @@ struct Shear
   }
 };
 
-// U = (r, theta, phi) -> Xi = (r, theta, phi - q(r) theta)
-struct Unshear
-{
-  KOKKOS_FUNCTION void operator()(const Kokkos::Array<Real, 3>& u,
-                                  Kokkos::Array<Real, 3>& x,
-                                  Kokkos::Array<Real, 9>& j) const
-  {
-    x = {u[0], u[1], u[2] - SafetyFactor(u[0]) * u[1]};
-    j = {1, 0, 0, 0, 1, 0, -u[1], -SafetyFactor(u[0]), 1};
-  }
-};
-
 // T = (a, b, c) -> Xi = (0.6 + 0.2 a, 1 + 2 b, 2 pi c)
 struct Box
 {
@@ -1129,9 +1176,8 @@ struct Torus
   std::shared_ptr<const pcms::Geometry> xi_grid =
     MakeGrid(pcms::csys::CreateParameterSystem("Xi", 3, {{2, 0, 2 * Pi}}),
              {0.5, 0, 0}, {0.5, 2 * Pi, 2 * Pi}, {4, 64, 8});
-  std::shared_ptr<const pcms::CoordinateMap> shear =
-    pcms::CreateCoordinateMap<3, 3>(xi_grid->GetCoordinateSystem(),
-                                    u->GetParameterSystem(), Shear{});
+  std::shared_ptr<const pcms::CoordinateMap> shear = pcms::CreateCoordinateMap(
+    xi_grid->GetCoordinateSystem(), u->GetParameterSystem(), Shear{});
   std::shared_ptr<const pcms::EmbeddedGeometry> xi =
     pcms::CreateEmbeddedGeometry(xi_grid, shear, u);
 
@@ -1221,7 +1267,7 @@ TEST_CASE("A chained embedded geometry composes the factors of its links",
     });
   const auto host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace(), device);
-  for (int p = 0; p < 2; ++p) {
+  for (std::size_t p = 0; p < 2; ++p) {
     CAPTURE(p);
     const Real r = params[3 * p];
     const Real theta = params[3 * p + 1];
@@ -1259,7 +1305,7 @@ TEST_CASE("The located points of a chained embedded geometry are the images "
   CHECK(located.GetCoordinateSystem() == t.xi->GetCoordinateSystem());
   const auto host = pcms::test::CopyCoordinatesToHost(located.GetValues());
   REQUIRE(host.extent(1) == 3);
-  for (int p = 0; p < 2; ++p) {
+  for (std::size_t p = 0; p < 2; ++p) {
     CAPTURE(p);
     const Real r = params[3 * p];
     const Real theta = params[3 * p + 1];
@@ -1275,23 +1321,11 @@ TEST_CASE("A chained embedded geometry binds physical points through its "
           "[embedding][embedded_geometry][chain]")
 {
   const Torus t;
-  const auto unshear = pcms::CreateCoordinateMap<3, 3>(
-    t.u->GetParameterSystem(), t.xi->GetParameterSystem(), Unshear{});
-  const auto inverted =
-    pcms::CreateEmbeddedGeometry(t.xi_grid, t.shear, t.u, {.inverse = unshear});
-  CHECK_THROWS_WITH(
-    pcms::CreateEmbeddedGeometry(t.xi_grid, t.shear, t.u, {.inverse = t.shear}),
-    ContainsSubstring("the inverse must map"));
-  CHECK_THROWS_WITH(pcms::CreateEmbeddedGeometry(t.xi_grid, unshear, t.u),
-                    ContainsSubstring("the link must map"));
   const auto [xi, u] = XiPoints(20);
-  for (const auto& g : {t.xi, inverted}) {
-    CAPTURE(g == inverted);
-    const auto found = t.RoundTrip(g, u);
-    for (std::size_t i = 0; i < xi.size(); ++i) {
-      CAPTURE(i);
-      CHECK_THAT(found[i], WithinAbs(xi[i], 1e-8));
-    }
+  const auto found = t.RoundTrip(t.xi, u);
+  for (std::size_t i = 0; i < xi.size(); ++i) {
+    CAPTURE(i);
+    CHECK_THAT(found[i], WithinAbs(xi[i], 1e-8));
   }
 }
 
@@ -1316,8 +1350,7 @@ TEST_CASE("Three chained embedded geometries compose",
   const auto box = pcms::csys::CreateParameterSystem("T", 3);
   const auto tube = pcms::CreateEmbeddedGeometry(
     MakeGrid(box, {0, 0, 0}, {1, 1, 1}, {2, 16, 2}),
-    pcms::CreateCoordinateMap<3, 3>(box, t.xi->GetParameterSystem(), Box{}),
-    t.xi);
+    pcms::CreateCoordinateMap(box, t.xi->GetParameterSystem(), Box{}), t.xi);
   CHECK(tube->GetCoordinateSystem() == t.u->GetCoordinateSystem());
   // 2 pi (R0 (r1^2 - r0^2) / 2 (theta1 - theta0) + (r1^3 - r0^3) / 3
   // (sin theta1 - sin theta0)) over 0.6 < r < 0.8, 1 < theta < 3
@@ -1337,4 +1370,173 @@ TEST_CASE("Three chained embedded geometries compose",
   for (std::size_t i = 0; i < params.size(); ++i) {
     CHECK_THAT(found[i], WithinAbs(params[i], 1e-8));
   }
+}
+
+namespace
+{
+
+// The affine map Affine into a parameter system, which has no metric.
+struct MetricLess
+{
+  std::shared_ptr<const pcms::Geometry> grid =
+    pcms::test::MakeUnitSquareGrid(4);
+  std::shared_ptr<const pcms::Function<Real>> position =
+    pcms::test::MakePositionFunction(
+      pcms::CreateLagrangeSpace(grid, 1, 2),
+      [](const Real* xi, Real* x) {
+        const auto y = Affine(xi[0], xi[1]);
+        x[0] = y[0];
+        x[1] = y[1];
+      },
+      pcms::csys::CreateParameterSystem("s", 2));
+
+  // the integral of 1 on `g`
+  static Real Volume(const std::shared_ptr<const pcms::Geometry>& g,
+                     const std::shared_ptr<const pcms::Geometry>& parameter)
+  {
+    const auto plain = pcms::CreateLagrangeSpace(parameter, 0, 1);
+    const auto embedded =
+      std::dynamic_pointer_cast<const pcms::EmbeddedGeometry>(g);
+    const auto space =
+      embedded != nullptr ? pcms::CreateEmbeddedSpace(embedded, plain) : plain;
+    auto one = space->CreateFunction<Real>("one");
+    pcms::test::SetFieldComponents(one,
+                                   [](Real, Real, Real* out) { out[0] = 1; });
+    return pcms::L2Integral(space).Apply(one);
+  }
+
+  [[nodiscard]] std::shared_ptr<const pcms::BoundPoints> Bind(
+    const pcms::Geometry& g) const
+  {
+    return g.Bind(pcms::test::CreateDeviceCoordinateView(
+                    Params, grid->GetCoordinateSystem(), 2)
+                    .coordinate_view);
+  }
+};
+
+} // namespace
+
+TEST_CASE("Without a metric, an embedded geometry measures by a given volume "
+          "factor",
+          "[embedding][embedded_geometry][measure]")
+{
+  const MetricLess m;
+  auto volume = std::make_shared<pcms::Function<Real>>(
+    pcms::CreateLagrangeSpace(m.grid, 0, 1)->CreateFunction<Real>("volume"));
+  pcms::test::SetFieldComponents(*volume,
+                                 [](Real, Real, Real* out) { out[0] = 3.5; });
+  const auto g =
+    pcms::CreateEmbeddedGeometry(m.grid, m.position, {.volume = volume});
+  CHECK_THAT(MetricLess::Volume(g, m.grid), WithinRel(3.5, 1e-12));
+  CHECK_THROWS_WITH(m.Bind(*g)->Metric(), ContainsSubstring("no metric"));
+}
+
+TEST_CASE("Without a metric in its coordinate system, an embedded geometry "
+          "uses a given metric",
+          "[embedding][embedded_geometry][measure]")
+{
+  const MetricLess m;
+  const std::array<Real, 4> given = {2.0, 0.5, 0.5, 3.0};
+  const auto g = pcms::CreateEmbeddedGeometry(
+    m.grid, m.position, {.metric = ConstantMetric(m.grid, given, false)});
+  const auto factors = FactorsOnHost(*m.Bind(*g));
+  for (int p = 0; p < 4; ++p) {
+    CAPTURE(p);
+    for (int k = 0; k < 4; ++k) {
+      CHECK_THAT(factors.metric(p, k), WithinAbs(given[k], 1e-12));
+    }
+    CHECK_THAT(factors.volume(p), WithinAbs(std::sqrt(5.75), 1e-12));
+  }
+}
+
+TEST_CASE("Without a metric, an embedded geometry of a square Jacobian "
+          "measures by |det J|",
+          "[embedding][embedded_geometry][measure]")
+{
+  const MetricLess m;
+  const auto g = pcms::CreateEmbeddedGeometry(m.grid, m.position);
+  const Real det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+  CHECK_THAT(MetricLess::Volume(g, m.grid), WithinRel(det, 1e-12));
+  CHECK_THROWS_WITH(m.Bind(*g)->Metric(), ContainsSubstring("no metric"));
+}
+
+TEST_CASE("A surface in a coordinate system without a metric has no measure",
+          "[embedding][embedded_geometry][measure]")
+{
+  const MetricLess m;
+  const auto position = pcms::test::MakePositionFunction(
+    pcms::CreateLagrangeSpace(m.grid, 1, 3),
+    [](const Real* xi, Real* x) {
+      x[0] = xi[0];
+      x[1] = xi[1];
+      x[2] = xi[0] * xi[1];
+    },
+    pcms::csys::CreateParameterSystem("s3", 3));
+  CHECK_THROWS_WITH(pcms::CreateEmbeddedGeometry(m.grid, position),
+                    ContainsSubstring("no measure"));
+}
+
+TEST_CASE("A geometry in a parameter system measures by its coordinates",
+          "[embedding][measure]")
+{
+  const MetricLess m;
+  CHECK_THAT(MetricLess::Volume(m.grid, m.grid), WithinRel(1.0, 1e-12));
+  const auto bound = m.Bind(*m.grid);
+  const auto volume = Kokkos::create_mirror_view_and_copy(
+    pcms::HostMemorySpace(),
+    Kokkos::View<const Real*, DeviceMemorySpace,
+                 Kokkos::MemoryTraits<Kokkos::Unmanaged>>(
+      bound->VolumeFactor().data_handle(), 1));
+  CHECK(volume(0) == 1.0);
+  CHECK_THROWS_WITH(bound->Metric(), ContainsSubstring("no metric"));
+}
+
+namespace
+{
+
+// (a, b, c) -> (a, b)
+struct DropLast
+{
+  KOKKOS_FUNCTION void operator()(const Kokkos::Array<Real, 3>& u,
+                                  Kokkos::Array<Real, 2>& xi,
+                                  Kokkos::Array<Real, 6>& j) const
+  {
+    xi = {u[0], u[1]};
+    j = {1, 0, 0, 0, 1, 0};
+  }
+};
+
+} // namespace
+
+TEST_CASE("An embedding does not collapse parameter directions",
+          "[embedding][embedded_geometry]")
+{
+  const auto box = pcms::csys::CreateParameterSystem("B", 3);
+  const auto grid = MakeGrid(box, {0, 0, 0}, {1, 1, 1}, {2, 2, 2});
+  const auto flat = pcms::test::MakePositionFunction(
+    pcms::CreateLagrangeSpace(grid, 1, 2),
+    [](const Real* u, Real* x) {
+      x[0] = 2 + u[0];
+      x[1] = u[1] + u[2];
+    },
+    pcms::csys::CreateCylindricalRZ());
+  CHECK_THROWS_WITH(pcms::CreateEmbeddedGeometry(grid, flat),
+                    ContainsSubstring("dim(target) >= dim(parameters)"));
+  // a surface in 3D
+  const auto square = pcms::test::MakeUnitSquareGrid(4);
+  const auto surface = pcms::test::MakePositionFunction(
+    pcms::CreateLagrangeSpace(square, 1, 3),
+    [](const Real* xi, Real* x) {
+      x[0] = xi[0];
+      x[1] = xi[1];
+      x[2] = 0.5 * xi[0] + 0.25 * xi[1];
+    },
+    pcms::csys::CreateCartesian(3));
+  CHECK_NOTHROW(pcms::CreateEmbeddedGeometry(square, surface));
+  // a link from 3 parameters into the 2 of an annulus
+  const EmbeddedFixture f;
+  const auto lower = pcms::CreateCoordinateMap<3, 2>(
+    box, f.embedded->GetParameterSystem(), DropLast{});
+  CHECK_THROWS_WITH(pcms::CreateEmbeddedGeometry(grid, lower, f.embedded),
+                    ContainsSubstring("dim(target) >= dim(parameters)"));
 }

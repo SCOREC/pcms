@@ -129,26 +129,26 @@ public:
   }
 
   /// @return the bound points where they were located, one row per point:
-  ///         the query points, mapped by GetBoundMap() into the geometry's
-  ///         coordinate system if the bind had a map, reduced by the
-  ///         identifications of their coordinate system
+  ///         the query points in the geometry's coordinate system (mapped by
+  ///         GetBoundMap() if the bind had a map, by the geometry if they were
+  ///         in its parameter system), reduced by the identifications of the
+  ///         coordinate system
   [[nodiscard]] CoordinateView<DeviceMemorySpace> LocatedPoints() const;
 
   /// @return J(p, j, i) = d x_j / d xi_i, [points][system][parameter]: the
   ///         Jacobian of the map from the geometry's parameter coordinates to
   ///         its coordinate system (the identity for a geometry without
   ///         parameter coordinates); computed on first use
-  /// @throws pcms_error if the geometry's coordinate system has no metric and
-  ///         the kind provides none
   [[nodiscard]] View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride>
   Jacobian() const;
 
   /// @return g(p, a, b), the metric in the parameter coordinates
-  /// @throws pcms_error as Jacobian()
+  /// @throws pcms_error if the geometry has no metric (only a volume factor)
   [[nodiscard]] BoundCoordinateSystem::MetricView Metric() const;
 
-  /// @return the physical volume per unit of parameter volume at each point
-  /// @throws pcms_error as Jacobian()
+  /// @return the volume per unit of parameter volume at each point: of the
+  ///         metric, or the coordinate measure (1) of a coordinate system
+  ///         without one
   [[nodiscard]] BoundCoordinateSystem::FactorView VolumeFactor() const;
 
   /// @return indices of the query points the source evaluates, ascending
@@ -203,6 +203,11 @@ protected:
   /// @throws pcms_error in OutOfBoundsMode::ERROR if a point is not found
   void SetFound(Kokkos::View<const bool*, DeviceMemorySpace> found);
 
+  /// @brief Replaces the located points by `points`, the image of points in
+  ///        the geometry's parameter system.
+  /// @param points [points][dimension of the geometry's coordinate system]
+  void ReplaceLocatedPoints(Rank2View<const Real, DeviceMemorySpace> points);
+
   /// @brief Takes the points of a rebind, as the constructor does, into the
   ///        storage of this source when they fit in its capacity.
   /// @param request query points of the rebind, without a map
@@ -215,9 +220,8 @@ protected:
   /// @brief The geometric factors at the points: Jacobian(), Metric() and
   ///        VolumeFactor().
   /// @return by default the coordinate system's: J = I and its closed-form
-  ///         metric at the located points
-  /// @throws pcms_error if the geometry's coordinate system has no metric
-  ///         (default)
+  ///         metric at the located points, or no metric and volume factor 1
+  ///         for a coordinate system without one
   [[nodiscard]] virtual detail::GeometricFactors ComputeFactors() const;
 
   /// @brief Locates LocatedPointValues() again after Reset, reusing the

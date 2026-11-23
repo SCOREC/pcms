@@ -27,8 +27,8 @@ public:
 
   /// @param num_points number of points
   /// @param jacobian [points or 1][system][parameter]: d x_j / d xi_i
-  /// @param metric the metric and volume factor in the parameter coordinates
-  ///        at the points
+  /// @param metric the metric (empty without one) and volume factor in the
+  ///        parameter coordinates at the points
   GeometricFactors(LO num_points,
                    Kokkos::View<const Real***, DeviceMemorySpace> jacobian,
                    std::shared_ptr<const BoundCoordinateSystem> metric)
@@ -75,8 +75,7 @@ private:
 /// @brief The geometric factors of a geometry's coordinate system at points
 /// located in
 ///        it: J = I and the coordinate system's closed-form metric and volume
-///        factor.
-/// @throws pcms_error if the coordinate system has no metric
+///        factor; without a metric, none and volume factor 1.
 [[nodiscard]] GeometricFactors SystemFactors(
   const CoordinateSystem& system,
   Kokkos::View<const Real**, DeviceMemorySpace> points);

@@ -53,7 +53,6 @@ void ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
 
 /// @brief The quadrature of points whose weights are in the parameter measure.
 /// @param weights one weight per point; scaled in place by the volume factor
-///        when the geometry's coordinate system has a metric
 /// @param owners the owners of the points, as for Geometry::Bind
 [[nodiscard]] Quadrature WeightedQuadrature(
   const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& points,

@@ -533,17 +533,18 @@ TEST_CASE("BOUT++-like embedded grid with a given metric: quadrature and "
           "conservative projection",
           "[uniform_grid][embedding][projection]")
 {
-  const Bout coarse(2);
-  const Bout fine(4);
+  const Bout coarse(4);
+  const Bout fine(8);
   const auto quadrature = fine.fields->CreateQuadrature();
   CHECK(quadrature.points->GetGeometry() == fine.geometry);
   CHECK(Integrate(quadrature, [](const Real*) { return 1.0; }) ==
         Catch::Approx(Wedge * VolumeFactor()).epsilon(1e-12));
-  const auto rule = pcms::MapQuadrature(
-    fine.geometry,
-    pcms::CreateGaussQuadrature(fine.geometry->GetParameterGeometry(), 2));
+  const auto gauss =
+    pcms::CreateGaussQuadrature(fine.geometry->GetParameterGeometry(), 2);
+  const auto rule = pcms::MapQuadrature(fine.geometry, gauss);
+  // the mapped weights at the parameter coordinates of the points
   CHECK(
-    Integrate(rule,
+    Integrate({gauss.points, rule.weights},
               [](const Real* x) { return x[0] * x[0] * x[1] * x[2] * x[2]; }) ==
     Catch::Approx(VolumeFactor() / 3 / 2 * Wedge * Wedge * Wedge / 3)
       .epsilon(1e-12));

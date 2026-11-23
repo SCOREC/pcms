@@ -539,7 +539,9 @@ TEST_CASE("BOUT++-like embedded grid with a given metric: quadrature and "
   CHECK(quadrature.points->GetGeometry() == fine.geometry);
   CHECK(Integrate(quadrature, [](const Real*) { return 1.0; }) ==
         Catch::Approx(Wedge * VolumeFactor()).epsilon(1e-12));
-  const auto rule = pcms::CreateGaussQuadrature(fine.geometry, 2);
+  const auto rule = pcms::MapQuadrature(
+    fine.geometry,
+    pcms::CreateGaussQuadrature(fine.geometry->GetParameterGeometry(), 2));
   CHECK(
     Integrate(rule,
               [](const Real* x) { return x[0] * x[0] * x[1] * x[2] * x[2]; }) ==
@@ -557,6 +559,7 @@ TEST_CASE("BOUT++-like embedded grid with a given metric: quadrature and "
     pcms::ProjectionOptions options;
     options.mass_matrix_type = mass;
     options.solve.relative_tolerance = 1e-14;
+    options.quadrature = quadrature;
     auto target = fine.fields->CreateFunction<Real>("P");
     pcms::CreateProjection(coarse.fields, fine.fields, options)
       ->Apply(source, target);

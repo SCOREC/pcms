@@ -311,14 +311,12 @@ void detail::CheckNeighbourhoodArguments(
 }
 
 void detail::ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
-                                 const BoundPoints& bound, bool divide)
+                                 const BoundPoints& bound)
 {
   const auto volume = bound.VolumeFactor();
   pcms::detail::ForEach(
     "ScaleByVolumeFactor", static_cast<LO>(weights.extent(0)),
-    KOKKOS_LAMBDA(const LO i) {
-      weights(i) = divide ? weights(i) / volume(i) : weights(i) * volume(i);
-    });
+    KOKKOS_LAMBDA(const LO i) { weights(i) *= volume(i); });
   Kokkos::fence("ScaleByVolumeFactor");
 }
 

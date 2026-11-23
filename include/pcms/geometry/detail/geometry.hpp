@@ -31,19 +31,18 @@ void CheckEntityIds(Kokkos::View<const LO*, DeviceMemorySpace> ids,
                     LO num_entities, const std::string& caller,
                     const std::string& entity);
 
-/// @return the points reduced by the identifications of their coordinate
+/// @return the points reduced by the periodic axes of their coordinate
 ///         system, as Geometry::Bind locates them, or an empty view if it has
 ///         none
 [[nodiscard]] Kokkos::View<Real**, DeviceMemorySpace> ReduceToPeriod(
   const CoordinateView<DeviceMemorySpace>& coords);
 
 /// @brief Multiplies quadrature weights by the volume factor at their bound
-///        points, making parameter-coordinate measures physical, or divides
-///        them by it.
+///        points, making parameter-coordinate measures physical.
 /// @param weights one weight per point of `bound`; scaled in place
 /// @param bound the bound points of the weights
 void ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
-                         const BoundPoints& bound, bool divide = false);
+                         const BoundPoints& bound);
 
 /// @return the binding of the points of `quadrature` on `geometry`: its own
 ///         or one it carries (Quadrature::also) on that geometry, else a bind

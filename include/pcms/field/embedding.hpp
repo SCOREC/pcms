@@ -88,9 +88,6 @@ protected:
   [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override;
 
-  [[nodiscard]] Quadrature CreateQuadrature(
-    const detail::QuadratureRule& rule) const override;
-
 private:
   friend std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
     std::shared_ptr<const Geometry> parameter_geometry,
@@ -126,14 +123,15 @@ private:
 /// OutOfBoundsMode::NEAREST_BOUNDARY, and a Rebind searches anew.
 /// @param parameter_geometry a uniform-grid geometry (the cells are boxes in
 ///        the parameter space), whose coordinate system is a parameter system
-///        (csys::CreateParameterSystem) or at least not the position's
+///        (csys::CreateParameterSystem) or Cartesian, and not the position's
 ///        coordinate system
 /// @param position a Function on `parameter_geometry` with a
 ///        ValueBasis::Coordinates basis, whose space evaluates Gradient
 /// @param options the options of the search and the metric
 /// @throws pcms_error if the geometry is not a 2D or 3D uniform grid, the
 ///         position is not a Function of coordinates on it with a Gradient,
-///         the parameter system is the position's coordinate system, or the
+///         the parameter system has a metric other than the identity or is
+///         the position's coordinate system, or the
 ///         metric is not a rank-2 Function on the
 ///         parameter geometry in the parameter system with indices of one
 ///         variance
@@ -149,8 +147,8 @@ private:
 /// Vectors and covectors whose basis is the parameter system are not yet
 /// supported (their evaluation throws). Only Value is supported, and the
 /// fields are plain DOF holders data (the data of a SimpleFieldData), which is
-/// what uniform-grid spaces use. CreateQuadrature is `space`'s rule bound on
-/// the embedded geometry, with the weights of the physical measure.
+/// what uniform-grid spaces use. CreateQuadrature is `space`'s rule mapped
+/// onto the embedded geometry (MapQuadrature).
 /// @throws pcms_error if `embedded` is not an embedded geometry of
 ///         `space`'s geometry
 [[nodiscard]] std::shared_ptr<const FunctionSpace> CreateEmbeddedSpace(

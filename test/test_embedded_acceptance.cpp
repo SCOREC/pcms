@@ -227,7 +227,9 @@ TEST_CASE("BOUT++-like 2D grid: quadrature, induced metric and curvilinear "
   const Section section;
   SECTION("quadrature integrates the volume of revolution per radian")
   {
-    const auto quadrature = pcms::CreateGaussQuadrature(section.embedded, 4);
+    const auto quadrature = pcms::MapQuadrature(
+      section.embedded,
+      pcms::CreateGaussQuadrature(section.embedded->GetParameterGeometry(), 4));
     const auto weights = Kokkos::create_mirror_view_and_copy(
       pcms::HostMemorySpace(), quadrature.weights);
     Real sum = 0;
@@ -330,10 +332,13 @@ struct Shifted
   }
 };
 
-Real TotalWeight(const std::shared_ptr<const pcms::Geometry>& geometry)
+Real TotalWeight(const std::shared_ptr<const pcms::EmbeddedGeometry>& geometry)
 {
   const auto weights = Kokkos::create_mirror_view_and_copy(
-    pcms::HostMemorySpace(), pcms::CreateGaussQuadrature(geometry, 2).weights);
+    pcms::HostMemorySpace(),
+    pcms::MapQuadrature(geometry, pcms::CreateGaussQuadrature(
+                                    geometry->GetParameterGeometry(), 2))
+      .weights);
   Real sum = 0;
   for (std::size_t i = 0; i < weights.extent(0); ++i) {
     sum += weights(i);

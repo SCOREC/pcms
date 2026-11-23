@@ -6,6 +6,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/dense_linear_algebra.hpp"
 #include "pcms/utility/detail/arrays.hpp"
+#include "pcms/utility/detail/coordinate_system.hpp"
 #include "pcms/utility/detail/memory_spaces.hpp"
 #include "pcms/utility/detail/periodic.hpp"
 #include <algorithm>
@@ -783,16 +784,7 @@ public:
 
   [[nodiscard]] Quadrature CreateQuadrature() const override
   {
-    const auto parameter = space_->CreateQuadrature();
-    DeviceView<Real*> weights(
-      Kokkos::view_alloc(Kokkos::WithoutInitializing, "embedded_weights"),
-      parameter.weights.extent(0));
-    Kokkos::deep_copy(weights, parameter.weights);
-    if (embedded_->GetParameterSystem()->HasMetric()) {
-      detail::ScaleByVolumeFactor(weights, *parameter.points, true);
-    }
-    return detail::BindQuadrature(*embedded_, parameter.points->LocatedPoints(),
-                                  weights);
+    return MapQuadrature(embedded_, space_->CreateQuadrature());
   }
 
 private:
@@ -836,24 +828,6 @@ std::shared_ptr<BoundPoints> EmbeddedGeometry::BindImpl(
     *search_, request);
 }
 
-Quadrature EmbeddedGeometry::CreateQuadrature(
-  const detail::QuadratureRule& rule) const
-{
-  const auto* gauss = std::get_if<detail::GaussRule>(&rule);
-  if (gauss == nullptr) {
-    throw pcms_error("CreateQuadrature: an embedded geometry has only the "
-                     "Gauss rule");
-  }
-  return uniform_grid::VisitUniformGrid(parameter_, [&](const auto& grid) {
-    auto [xi, weights] = grid->CellRule(gauss->order);
-    return detail::BindQuadrature(
-      *this,
-      CoordinateView<DeviceMemorySpace>(GetParameterSystem(),
-                                        MakeConstRank2View(xi)),
-      weights);
-  });
-}
-
 std::shared_ptr<const CoordinateMap> CreateCoordinateMap(
   std::shared_ptr<const Function<Real>> position)
 {
@@ -890,6 +864,13 @@ std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
       "CreateEmbeddedGeometry: the parameter geometry's coordinate system "
       "must differ from the coordinate system of the position (give the "
       "parameter geometry a parameter system)");
+  }
+  const auto& parameter_system = parameter_geometry->GetCoordinateSystem();
+  if (parameter_system->HasMetric() &&
+      !detail::IsCartesian(*parameter_system)) {
+    throw pcms_error(
+      "CreateEmbeddedGeometry: the parameter geometry's coordinate system "
+      "must have no metric or the identity one (Cartesian)");
   }
   auto search = uniform_grid::VisitUniformGrid(
     parameter_geometry,

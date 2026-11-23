@@ -51,9 +51,8 @@ struct ProjectionOptions
   /// the quadrature of the right-hand side, on the target space's geometry
   /// (e.g. CreateGaussQuadrature of the sum of the degrees of the source and
   /// the target space, CreateMonteCarloQuadrature, or the intersection of two
-  /// meshes, whose `other` names the cells of the source's geometry the points
-  /// lie in, to evaluate the source without a search); unset, the Gauss rule
-  /// of degree 2
+  /// meshes, which carries the points bound on the source's geometry); unset,
+  /// the Gauss rule of degree 2
   std::optional<Quadrature> quadrature;
   /// project only the residual of the source from its interpolation onto the
   /// target space (a control variate), which is what the Monte Carlo

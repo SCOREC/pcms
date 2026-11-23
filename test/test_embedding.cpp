@@ -531,7 +531,9 @@ TEST_CASE("The quadrature of an embedded geometry integrates in the physical "
           "[embedding][embedded_geometry][quadrature]")
 {
   const EmbeddedFixture f;
-  const auto quadrature = pcms::CreateGaussQuadrature(f.embedded, 4);
+  const auto quadrature = pcms::MapQuadrature(
+    f.embedded,
+    pcms::CreateGaussQuadrature(f.embedded->GetParameterGeometry(), 4));
   CHECK(quadrature.points->NumPoints() == 32 * 32 * 9);
   const auto weights = Kokkos::create_mirror_view_and_copy(
     pcms::HostMemorySpace(), quadrature.weights);
@@ -544,6 +546,7 @@ TEST_CASE("The quadrature of an embedded geometry integrates in the physical "
   CHECK_THROWS(pcms::CreateMonteCarloQuadrature(f.embedded, 3));
   // the points are bound on the embedded geometry
   CHECK(quadrature.points->GetGeometry() == f.embedded);
+  CHECK_THROWS(pcms::MapQuadrature(f.embedded, quadrature));
 }
 
 TEST_CASE("An embedded geometry survives a singular point of the position",
@@ -658,10 +661,13 @@ std::shared_ptr<const pcms::Function<Real>> ConstantMetric(
 }
 
 std::vector<Real> QuadratureWeights(
-  const std::shared_ptr<const pcms::Geometry>& geometry)
+  const std::shared_ptr<const pcms::EmbeddedGeometry>& geometry)
 {
   const auto weights = Kokkos::create_mirror_view_and_copy(
-    pcms::HostMemorySpace(), pcms::CreateGaussQuadrature(geometry, 2).weights);
+    pcms::HostMemorySpace(),
+    pcms::MapQuadrature(geometry, pcms::CreateGaussQuadrature(
+                                    geometry->GetParameterGeometry(), 2))
+      .weights);
   return std::vector<Real>(weights.data(), weights.data() + weights.size());
 }
 

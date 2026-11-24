@@ -216,9 +216,10 @@ namespace
 {
 
 // Whether values in `in` leave a transform unchanged: scalars and
-// coordinates, values already in the output coordinate system of a map, values
-// already in the output scaling of a Scale.
-bool PassesThrough(const ValueBasis& in, bool scale,
+// coordinates, values already in the output coordinate system of a map (in
+// any coordinate system but the parameter system along a map), values already
+// in the output scaling of a Scale.
+bool PassesThrough(const ValueBasis& in, bool scale, bool along,
                    const std::shared_ptr<const CoordinateSystem>& from,
                    const std::shared_ptr<const CoordinateSystem>& to,
                    ComponentScaling scale_to)
@@ -230,7 +231,7 @@ bool PassesThrough(const ValueBasis& in, bool scale,
     return detail::SameCoordinateSystem(in.system, from) &&
            in.scaling == scale_to;
   }
-  return detail::SameCoordinateSystem(in.system, to) &&
+  return (along || detail::SameCoordinateSystem(in.system, to)) &&
          !detail::SameCoordinateSystem(in.system, from);
 }
 
@@ -245,7 +246,8 @@ ValueBasis ValueTransform::OutputBasis(const ValueBasis& in) const
                      " cannot be transformed yet (scalars, vectors and "
                      "covectors can)");
   }
-  if (PassesThrough(in, scale, from_, to_, scale_to_)) {
+  if (PassesThrough(in, scale, direction_ == Direction::With, from_, to_,
+                    scale_to_)) {
     return in;
   }
   if (!detail::SameCoordinateSystem(in.system, from_)) {
@@ -324,8 +326,8 @@ void ValueTransform::Apply(ValueView<const Real, DeviceMemorySpace> in,
                                  OutputBasis(in.GetBasis()));
   CheckRows("ValueTransform::Apply", in.extent(0), num_points_);
   CheckRows("ValueTransform::Apply", out.extent(0), num_points_);
-  if (PassesThrough(in.GetBasis(), direction_ == Direction::None, from_, to_,
-                    scale_to_)) {
+  if (PassesThrough(in.GetBasis(), direction_ == Direction::None,
+                    direction_ == Direction::With, from_, to_, scale_to_)) {
     CopyValues(in.GetValues(), out.GetValues());
     return;
   }
@@ -342,8 +344,8 @@ void ValueTransform::ApplyTranspose(
                                  in.GetBasis(), OutputBasis(out.GetBasis()));
   CheckRows("ValueTransform::ApplyTranspose", in.extent(0), num_points_);
   CheckRows("ValueTransform::ApplyTranspose", out.extent(0), num_points_);
-  if (PassesThrough(out.GetBasis(), direction_ == Direction::None, from_, to_,
-                    scale_to_)) {
+  if (PassesThrough(out.GetBasis(), direction_ == Direction::None,
+                    direction_ == Direction::With, from_, to_, scale_to_)) {
     CopyValues(in.GetValues(), out.GetValues());
     return;
   }

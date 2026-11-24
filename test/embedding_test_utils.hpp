@@ -37,14 +37,15 @@ struct Annulus
   }
 };
 
-inline std::shared_ptr<const Geometry> MakeUnitSquareGrid(int divisions)
+inline std::shared_ptr<const Geometry> MakeUnitSquareGrid(
+  int divisions, std::shared_ptr<const CoordinateSystem> system =
+                   csys::CreateParameterSystem("xi", 2))
 {
   UniformGrid<2> grid;
   grid.bot_left = {0.0, 0.0};
   grid.edge_length = {1.0, 1.0};
   grid.divisions = {divisions, divisions};
-  return uniform_grid::CreateGeometry(grid,
-                                      csys::CreateParameterSystem("xi", 2));
+  return uniform_grid::CreateGeometry(grid, std::move(system));
 }
 
 /// The spline position Function of a 2D map xi -> position(xi) on `geometry`,

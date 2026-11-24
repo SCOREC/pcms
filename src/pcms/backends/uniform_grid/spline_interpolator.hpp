@@ -4,6 +4,7 @@
 #include "mdspan/mdspan.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/periodic.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
@@ -128,11 +129,9 @@ KOKKOS_INLINE_FUNCTION T wrap_periodic(T xget, Rank1View<T, MemorySpace> x,
 {
   if (!periodic || (xget >= x[0] && xget <= x[nx - 1]))
     return xget;
-  const T period = x[nx - 1] - x[0];
-  T offset = Kokkos::fmod(xget - x[0], period);
-  if (offset < 0)
-    offset += period;
-  return x[0] + offset;
+  Real wraps = 0;
+  return static_cast<T>(
+    pcms::detail::WrapToPeriod(xget, x[0], x[nx - 1] - x[0], wraps));
 }
 
 /** \brief Detect if the boundary conditions are homogeneous

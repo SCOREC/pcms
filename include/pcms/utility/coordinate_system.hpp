@@ -22,9 +22,9 @@ class BoundCoordinateSystem
 {
 public:
   using MetricView =
-    View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride>;
+    Rank3View<const Real, DeviceMemorySpace, Kokkos::layout_stride>;
   using FactorView =
-    View<1, const Real, DeviceMemorySpace, Kokkos::layout_stride>;
+    Rank1View<const Real, DeviceMemorySpace, Kokkos::layout_stride>;
 
   /// @param num_points number of points
   /// @param metric [points or 1][dimension][dimension]
@@ -66,9 +66,8 @@ public:
   /// @param points [points][dimension], the identified axis already reduced
   /// @param wraps the number of lengths each point was moved down the
   ///        identified axis
-  virtual void Apply(
-    Kokkos::View<Real**, DeviceMemorySpace> points,
-    Kokkos::View<const Real*, DeviceMemorySpace> wraps) const = 0;
+  virtual void Apply(Rank2View<Real, DeviceMemorySpace> points,
+                     Rank1View<const Real, DeviceMemorySpace> wraps) const = 0;
 
   virtual ~IdentificationMap() = default;
 };

@@ -94,7 +94,7 @@ Kokkos::View<Real**, DeviceMemorySpace> detail::ReduceToPeriod(
   for (const auto& id : identifications) {
     ReduceAxis(points, wraps, id.axis, id.lower, id.length);
     if (id.map != nullptr) {
-      id.map->Apply(points, wraps);
+      id.map->Apply(MakeRank2View(points), MakeRank1View(wraps));
       mapped = true;
     }
   }

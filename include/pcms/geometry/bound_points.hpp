@@ -139,7 +139,7 @@ public:
   ///         Jacobian of the map from the geometry's parameter coordinates to
   ///         its coordinate system (the identity for a geometry without
   ///         parameter coordinates); computed on first use
-  [[nodiscard]] View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride>
+  [[nodiscard]] Rank3View<const Real, DeviceMemorySpace, Kokkos::layout_stride>
   Jacobian() const;
 
   /// @return g(p, a, b), the metric in the parameter coordinates

@@ -14,7 +14,7 @@ namespace
 /// Copies the columns `axes` of `points` (a free function: CUDA does not allow
 /// device lambdas in members).
 Kokkos::View<Real**, DeviceMemorySpace> Columns(
-  Kokkos::View<const Real**, DeviceMemorySpace> points,
+  Rank2View<const Real, DeviceMemorySpace> points,
   Kokkos::View<const int*, DeviceMemorySpace> axes)
 {
   Kokkos::View<Real**, DeviceMemorySpace> out("twist_shift_inputs",
@@ -30,8 +30,8 @@ Kokkos::View<Real**, DeviceMemorySpace> Columns(
   return out;
 }
 
-void AddShift(Kokkos::View<Real**, DeviceMemorySpace> points,
-              Kokkos::View<const Real*, DeviceMemorySpace> wraps, int axis,
+void AddShift(Rank2View<Real, DeviceMemorySpace> points,
+              Rank1View<const Real, DeviceMemorySpace> wraps, int axis,
               Kokkos::View<const Real**, DeviceMemorySpace> shift)
 {
   pcms::detail::ForEach(
@@ -71,15 +71,15 @@ public:
     Kokkos::deep_copy(input_axes_, host);
   }
 
-  void Apply(Kokkos::View<Real**, DeviceMemorySpace> points,
-             Kokkos::View<const Real*, DeviceMemorySpace> wraps) const override
+  void Apply(Rank2View<Real, DeviceMemorySpace> points,
+             Rank1View<const Real, DeviceMemorySpace> wraps) const override
   {
     if (max_axis_ >= static_cast<int>(points.extent(1))) {
       throw pcms_error("twist-shift: an axis of the map is not an axis of the "
                        "coordinate system");
     }
     const auto inputs = Columns(points, input_axes_);
-    const auto geometry = shift_function.GetSpace().GetGeometry();
+    const auto geometry = shift_->GetSpace().GetGeometry();
     // S is needed only at the points that wrapped
     const auto bound = geometry->Bind(
       CoordinateView<DeviceMemorySpace>(geometry->GetCoordinateSystem(),
@@ -89,8 +89,7 @@ public:
       throw pcms_error("twist-shift: a point crosses the identification "
                        "outside the domain of the shift");
     }
-    const auto evaluator =
-      shift_function.GetSpace().CreatePointEvaluator<Real>(bound);
+    const auto evaluator = shift_->GetSpace().CreatePointEvaluator<Real>(bound);
     Kokkos::View<Real**, DeviceMemorySpace> shift("twist_shift",
                                                   points.extent(0), 1);
     evaluator->Evaluate(

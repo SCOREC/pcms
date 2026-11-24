@@ -27,6 +27,11 @@ template <typename ElementType, typename MemorySpace,
             detail::default_layout_for_memory_space_t<MemorySpace>>
 using Rank2View = View<2, ElementType, MemorySpace, LayoutPolicy>;
 
+template <typename ElementType, typename MemorySpace,
+          typename LayoutPolicy =
+            detail::default_layout_for_memory_space_t<MemorySpace>>
+using Rank3View = View<3, ElementType, MemorySpace, LayoutPolicy>;
+
 template <typename MemorySpace>
 using GlobalIDView = View<1, const GO, MemorySpace, Kokkos::layout_right, GO>;
 

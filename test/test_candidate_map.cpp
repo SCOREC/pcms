@@ -111,3 +111,56 @@ TEST_CASE("CandidateMap bins shapes and answers queries")
     REQUIRE(rows[2] == std::vector<LO>{1});
   }
 }
+
+TEST_CASE("CandidateMap answers queries modulo a periodic axis")
+{
+  // 4 x 4 unit cells over [0, 4]^2, x periodic with period 4
+  const pcms::UniformGrid2D grid{
+    .edge_length = {4, 4}, .bot_left = {0, 0}, .divisions = {4, 4}};
+  const auto cell = [](LO i, LO j) { return i + 4 * j; };
+  // shape 0 across the seam, shape 1 two periods up, shape 2 wider than a
+  // period
+  const auto shapes =
+    ToDevice(std::vector{Box(3.5, 4.5, 0.25, 0.75), Box(9.25, 9.75, 1.25, 1.75),
+                         Box(-1, 5, 2.25, 2.75)});
+  const auto map = pcms::CreateCandidateMap(shapes, grid, 0, {true, false});
+
+  SECTION("bins")
+  {
+    const auto bins = Rows(map.GetBins());
+    REQUIRE(bins[cell(3, 0)] == std::vector<LO>{0});
+    REQUIRE(bins[cell(0, 0)] == std::vector<LO>{0});
+    REQUIRE(bins[cell(1, 0)].empty());
+    REQUIRE(bins[cell(1, 1)] == std::vector<LO>{1});
+    for (LO i = 0; i < 4; ++i) {
+      REQUIRE(bins[cell(i, 2)] == std::vector<LO>{2});
+    }
+  }
+
+  SECTION("points")
+  {
+    Kokkos::View<Real* [2]> points("points", 4);
+    auto points_h = Kokkos::create_mirror_view(points);
+    const Real coords[4][2] = {
+      {-0.3, 0.5}, {5.5, 1.5}, {-6.5, 2.5}, {1e300, 1e300}};
+    for (int i = 0; i < 4; ++i) {
+      points_h(i, 0) = coords[i][0];
+      points_h(i, 1) = coords[i][1];
+    }
+    Kokkos::deep_copy(points, points_h);
+    const auto rows = Rows(map.GetCandidates(points));
+    REQUIRE(rows[0] == std::vector<LO>{0});
+    REQUIRE(rows[1] == std::vector<LO>{1});
+    REQUIRE(rows[2] == std::vector<LO>{2});
+    REQUIRE(rows[3].empty());
+  }
+
+  SECTION("boxes")
+  {
+    const auto boxes =
+      ToDevice(std::vector{Box(7.9, 8.1, 0.2, 0.8), Box(-10, 10, 1.2, 2.8)});
+    const auto rows = Rows(map.GetCandidates(boxes));
+    REQUIRE(rows[0] == std::vector<LO>{0});
+    REQUIRE(rows[1] == std::vector<LO>{1, 2});
+  }
+}

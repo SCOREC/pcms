@@ -40,16 +40,21 @@ public:
     return CellIndexFromAxisIndices(indexes);
   }
 
-  /// Index of the cell containing `coord` along `axis`, clamped to the grid.
+  /// Index of the cell containing `coord` along `axis`, clamped to the grid;
+  /// 0 for a NaN coordinate.
   /// The single definition of the grid's binning rule: keeping the point query
   /// and the cell-range query on this one formula is what guarantees a point
   /// always lands in a cell that its own element was binned into.
   [[nodiscard]] KOKKOS_INLINE_FUNCTION LO AxisCellIndex(size_t axis,
                                                         Real coord) const
   {
-    const auto index = static_cast<LO>(std::floor(
-      (coord - bot_left[axis]) * divisions[axis] / edge_length[axis]));
-    return Kokkos::clamp(index, 0, divisions[axis] - 1);
+    const Real index = std::floor((coord - bot_left[axis]) * divisions[axis] /
+                                  edge_length[axis]);
+    if (!(index > 0)) {
+      return 0;
+    }
+    return index < divisions[axis] - 1 ? static_cast<LO>(index)
+                                       : divisions[axis] - 1;
   }
 
   /// Linear cell ID from per-axis indices given in coordinate order (x,y,z).

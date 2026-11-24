@@ -22,6 +22,45 @@ template <int Dim>
 inline constexpr bool IsAABBox<AABBox<Dim>> = true;
 
 /**
+ * @brief The cells of `grid` overlapped by `box` widened by `pad` cells:
+ * clamped to the grid, unclamped along `periodic` axes, over at most a period
+ * and a cell
+ */
+template <int Dim>
+KOKKOS_INLINE_FUNCTION CellRange<Dim> PeriodicCells(
+  const AABBox<Dim>& box, const UniformGrid<Dim>& grid,
+  const Kokkos::Array<bool, Dim>& periodic, LO pad)
+{
+  auto range = OverlappingCells<Dim>(box, grid, pad);
+  for (int d = 0; d < Dim; ++d) {
+    if (periodic[d]) {
+      const Real n = grid.divisions[d];
+      const Real x =
+        (box.center[d] - grid.bot_left[d]) * n / grid.edge_length[d];
+      const Real h = box.half_width[d] * n / grid.edge_length[d];
+      const Real lo = Kokkos::floor(x - h) - pad;
+      const Real width = Kokkos::min(Kokkos::floor(x + h) + pad - lo, n);
+      // far (or NaN) boxes take the first cell
+      range.lo[d] = Kokkos::fabs(lo) < 1e9 ? static_cast<LO>(lo) : 0;
+      range.hi[d] = range.lo[d] + (width >= 0 ? static_cast<LO>(width) : 0);
+    }
+  }
+  return range;
+}
+
+/** @brief The cell of per-axis indices `idx`, wrapped into the grid */
+template <int Dim>
+KOKKOS_INLINE_FUNCTION LO WrappedCell(const UniformGrid<Dim>& grid,
+                                      Kokkos::Array<LO, Dim> idx)
+{
+  for (int d = 0; d < Dim; ++d) {
+    idx[d] =
+      (idx[d] % grid.divisions[d] + grid.divisions[d]) % grid.divisions[d];
+  }
+  return grid.CellIndexFromAxisIndices(idx);
+}
+
+/**
  * Functor for the shape -> grid cell map, the transpose of what the search
  * needs. Row `i` lists the cells shape `i` overlaps.
  *
@@ -33,8 +72,10 @@ struct ShapeCellOverlapFunctor
   static constexpr int Dim = ShapeDimension<S>;
 
   ShapeCellOverlapFunctor(Kokkos::View<const S*> shapes,
-                          const UniformGrid<Dim>& grid, Real inflation)
-    : shapes_(shapes), grid_(grid), inflation_(inflation)
+                          const UniformGrid<Dim>& grid,
+                          const Kokkos::Array<bool, Dim>& periodic,
+                          Real inflation)
+    : shapes_(shapes), grid_(grid), periodic_(periodic), inflation_(inflation)
   {
   }
 
@@ -49,14 +90,17 @@ struct ShapeCellOverlapFunctor
     for (int d = 0; d < Dim; ++d) {
       bound.half_width[d] += inflation_;
     }
-    const auto range = OverlappingCells<Dim>(bound, grid_);
+    const auto range = PeriodicCells<Dim>(bound, grid_, periodic_, 1);
 
     Kokkos::Array<LO, Dim> idx = range.lo;
     LO num_overlaps = 0;
     while (true) {
-      const LO cell = grid_.CellIndexFromAxisIndices(idx);
+      const LO cell = WrappedCell<Dim>(grid_, idx);
       auto cell_bbox = grid_.GetCellBBOX(cell);
+      const auto wrapped = grid_.AxisIndicesFromCellIndex(cell);
       for (int d = 0; d < Dim; ++d) {
+        cell_bbox.center[d] +=
+          (idx[d] - wrapped[d]) * grid_.edge_length[d] / grid_.divisions[d];
         cell_bbox.half_width[d] += inflation_;
       }
       if (Overlaps(shape, cell_bbox)) {
@@ -83,6 +127,7 @@ struct ShapeCellOverlapFunctor
 private:
   Kokkos::View<const S*> shapes_;
   UniformGrid<Dim> grid_;
+  Kokkos::Array<bool, Dim> periodic_;
   Real inflation_;
 };
 
@@ -106,6 +151,9 @@ inline void SortRows(CandidateBins& crs)
     });
 }
 
+// `crs` with the repeats in each row removed; rows end up ascending.
+inline CandidateBins UniqueRows(CandidateBins crs);
+
 /**
  * Build the grid cell -> shape candidate map. Cells are inflated by
  * `inflation` (the search tolerance), so a shape within that distance of a
@@ -117,9 +165,9 @@ inline void SortRows(CandidateBins& crs)
  * writes out of bounds once num_grid_cells exceeds the shape count.
  */
 template <typename S>
-CandidateBins BuildCandidateBins(Kokkos::View<const S*> shapes,
-                                 const UniformGrid<ShapeDimension<S>>& grid,
-                                 Real inflation)
+CandidateBins BuildCandidateBins(
+  Kokkos::View<const S*> shapes, const UniformGrid<ShapeDimension<S>>& grid,
+  const Kokkos::Array<bool, ShapeDimension<S>>& periodic, Real inflation)
 {
   const auto num_shapes = static_cast<LO>(shapes.extent(0));
   const auto num_grid_cells = static_cast<LO>(grid.GetNumCells());
@@ -127,7 +175,7 @@ CandidateBins BuildCandidateBins(Kokkos::View<const S*> shapes,
   CandidateBins elem2cells{};
   Kokkos::count_and_fill_crs(
     elem2cells, num_shapes,
-    ShapeCellOverlapFunctor<S>{shapes, grid, inflation});
+    ShapeCellOverlapFunctor<S>{shapes, grid, periodic, inflation});
 
   Kokkos::View<LO*> counts("candidate_counts", num_grid_cells);
   Kokkos::parallel_for(
@@ -157,8 +205,9 @@ CandidateBins BuildCandidateBins(Kokkos::View<const S*> shapes,
   // query takes the first candidate that contains the point, so ordering
   // decides which element wins when a point sits on a shared face, and the
   // out-of-bounds path reports the row's first candidate. Without this the
-  // search results would vary run to run.
-  SortRows(cell2elems);
+  // search results would vary run to run. A shape wider than a period is
+  // in a bin once.
+  cell2elems = UniqueRows(std::move(cell2elems));
   Kokkos::fence();
   return cell2elems;
 }
@@ -170,16 +219,18 @@ struct PointCandidatesFunctor
 {
   Kokkos::View<const Real* [Dim]> points;
   UniformGrid<Dim> grid;
+  Kokkos::Array<bool, Dim> periodic;
   CandidateBins bins;
 
   KOKKOS_INLINE_FUNCTION
   LO operator()(LO i, LO* fill) const
   {
-    Kokkos::Array<Real, Dim> point;
+    AABBox<Dim> point{};
     for (int d = 0; d < Dim; ++d) {
-      point[d] = points(i, d);
+      point.center[d] = points(i, d);
     }
-    const LO cell = grid.ClosestCellID(point);
+    const LO cell =
+      WrappedCell<Dim>(grid, PeriodicCells<Dim>(point, grid, periodic, 0).lo);
     const auto begin = bins.row_map(cell);
     const auto end = bins.row_map(cell + 1);
     if (fill) {
@@ -197,6 +248,7 @@ struct BoxCandidatesFunctor
 {
   Kokkos::View<const AABBox<Dim>*> boxes;
   UniformGrid<Dim> grid;
+  Kokkos::Array<bool, Dim> periodic;
   CandidateBins bins;
 
   KOKKOS_INLINE_FUNCTION
@@ -204,11 +256,11 @@ struct BoxCandidatesFunctor
   {
     // a shape touching a cell boundary is in the bins of the cells on both
     // sides, so the box needs no padding
-    const auto range = OverlappingCells<Dim>(boxes(i), grid, 0);
+    const auto range = PeriodicCells<Dim>(boxes(i), grid, periodic, 0);
     Kokkos::Array<LO, Dim> idx = range.lo;
     LO count = 0;
     while (true) {
-      const LO cell = grid.CellIndexFromAxisIndices(idx);
+      const LO cell = WrappedCell<Dim>(grid, idx);
       for (auto k = bins.row_map(cell); k < bins.row_map(cell + 1); ++k) {
         if (fill) {
           fill[count] = bins.entries(k);

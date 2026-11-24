@@ -46,7 +46,7 @@ struct LagrangeOptions
 /// orders 1 and 2) or a uniform-grid geometry (orders 0 and 1, backend
 /// ignored; an axis identified over the grid's extent has no last node).
 /// On a uniform grid, Coordinates values (and their Gradient) along the axes
-/// of their system with a plain identification interpolate through the
+/// of their system with a plain periodic axis interpolate through the
 /// image of each wrapped node nearest the node one cell back; for them,
 /// EvaluateTranspose throws and GetMatrix is the derivative of the evaluation.
 /// Spaces on one geometry accept each other's BoundPoints.

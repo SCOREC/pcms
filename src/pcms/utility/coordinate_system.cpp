@@ -86,26 +86,26 @@ std::unique_ptr<BoundCoordinateSystem> BindCylindrical(
   return std::make_unique<BoundCoordinateSystem>(n, metric, volume);
 }
 
-/// @throws pcms_error if an identification has an axis outside `dimension` or
+/// @throws pcms_error if a periodic axis has an axis outside `dimension` or
 ///         a length that is not positive
-std::vector<Identification> CheckIdentifications(
-  std::vector<Identification> identifications, int dimension,
+std::vector<PeriodicAxis> CheckPeriodicAxes(
+  std::vector<PeriodicAxis> periodic_axes, int dimension,
   const std::string& caller)
 {
-  for (const auto& id : identifications) {
+  for (const auto& id : periodic_axes) {
     if (id.axis < 0 || id.axis >= dimension || !(id.length > 0)) {
-      throw pcms_error(caller + ": an identification needs an axis of the "
+      throw pcms_error(caller + ": a periodic axis needs an axis of the "
                                 "system and a positive length");
     }
   }
-  return identifications;
+  return periodic_axes;
 }
 
 class Cartesian final : public CoordinateSystem
 {
 public:
-  explicit Cartesian(int dim, std::vector<Identification> identifications = {})
-    : dim_(dim), identifications_(std::move(identifications))
+  explicit Cartesian(int dim, std::vector<PeriodicAxis> periodic_axes = {})
+    : dim_(dim), periodic_axes_(std::move(periodic_axes))
   {
   }
 
@@ -115,10 +115,10 @@ public:
   }
   [[nodiscard]] int Dimension() const noexcept override { return dim_; }
   [[nodiscard]] bool IsOrthonormal() const noexcept override { return true; }
-  [[nodiscard]] std::span<const Identification> Identifications()
+  [[nodiscard]] std::span<const PeriodicAxis> PeriodicAxes()
     const noexcept override
   {
-    return identifications_;
+    return periodic_axes_;
   }
   [[nodiscard]] std::unique_ptr<BoundCoordinateSystem> Bind(
     Rank2View<const Real, DeviceMemorySpace> points) const override
@@ -130,19 +130,19 @@ public:
   {
     const auto* p = dynamic_cast<const Cartesian*>(&other);
     return p != nullptr && p->dim_ == dim_ &&
-           p->identifications_ == identifications_;
+           p->periodic_axes_ == periodic_axes_;
   }
 
 private:
   int dim_;
-  std::vector<Identification> identifications_;
+  std::vector<PeriodicAxis> periodic_axes_;
 };
 
 class CylindricalRThetaZ final : public CoordinateSystem
 {
 public:
   explicit CylindricalRThetaZ(Real phi_period)
-    : identifications_{Identification{1, 0, phi_period, nullptr}}
+    : periodic_axes_{PeriodicAxis{1, 0, phi_period, nullptr}}
   {
   }
   [[nodiscard]] std::string_view Kind() const noexcept override
@@ -151,10 +151,10 @@ public:
   }
   [[nodiscard]] int Dimension() const noexcept override { return 3; }
   [[nodiscard]] bool IsOrthonormal() const noexcept override { return false; }
-  [[nodiscard]] std::span<const Identification> Identifications()
+  [[nodiscard]] std::span<const PeriodicAxis> PeriodicAxes()
     const noexcept override
   {
-    return identifications_;
+    return periodic_axes_;
   }
   [[nodiscard]] std::unique_ptr<BoundCoordinateSystem> Bind(
     Rank2View<const Real, DeviceMemorySpace> points) const override
@@ -165,11 +165,11 @@ public:
     const CoordinateSystem& other) const noexcept override
   {
     const auto* p = dynamic_cast<const CylindricalRThetaZ*>(&other);
-    return p != nullptr && p->identifications_ == identifications_;
+    return p != nullptr && p->periodic_axes_ == periodic_axes_;
   }
 
 private:
-  std::vector<Identification> identifications_;
+  std::vector<PeriodicAxis> periodic_axes_;
 };
 
 // The poloidal plane of an axisymmetric system: its metric is the identity,
@@ -201,10 +201,10 @@ class ParameterSystem final : public CoordinateSystem
 {
 public:
   ParameterSystem(std::string name, int dimension,
-                  std::vector<Identification> identifications)
+                  std::vector<PeriodicAxis> periodic_axes)
     : name_(std::move(name)),
       dimension_(dimension),
-      identifications_(std::move(identifications))
+      periodic_axes_(std::move(periodic_axes))
   {
   }
   [[nodiscard]] std::string_view Kind() const noexcept override
@@ -214,10 +214,10 @@ public:
   [[nodiscard]] int Dimension() const noexcept override { return dimension_; }
   [[nodiscard]] bool IsOrthonormal() const noexcept override { return false; }
   [[nodiscard]] bool HasMetric() const noexcept override { return false; }
-  [[nodiscard]] std::span<const Identification> Identifications()
+  [[nodiscard]] std::span<const PeriodicAxis> PeriodicAxes()
     const noexcept override
   {
-    return identifications_;
+    return periodic_axes_;
   }
   [[nodiscard]] std::unique_ptr<BoundCoordinateSystem> Bind(
     Rank2View<const Real, DeviceMemorySpace>) const override
@@ -235,7 +235,7 @@ public:
 private:
   std::string name_;
   int dimension_;
-  std::vector<Identification> identifications_;
+  std::vector<PeriodicAxis> periodic_axes_;
 };
 
 } // namespace
@@ -244,7 +244,7 @@ namespace csys
 {
 
 std::shared_ptr<const CoordinateSystem> CreateParameterSystem(
-  std::string name, int dimension, std::vector<Identification> identifications)
+  std::string name, int dimension, std::vector<PeriodicAxis> periodic_axes)
 {
   if (dimension < 1 || dimension > 6) {
     throw pcms_error(
@@ -253,20 +253,20 @@ std::shared_ptr<const CoordinateSystem> CreateParameterSystem(
   }
   return std::make_shared<const ParameterSystem>(
     std::move(name), dimension,
-    CheckIdentifications(std::move(identifications), dimension,
-                         "csys::CreateParameterSystem"));
+    CheckPeriodicAxes(std::move(periodic_axes), dimension,
+                      "csys::CreateParameterSystem"));
 }
 
 std::shared_ptr<const CoordinateSystem> CreateCartesian(
-  int dim, std::vector<Identification> identifications)
+  int dim, std::vector<PeriodicAxis> periodic_axes)
 {
   if (dim < 1 || dim > 3) {
     throw pcms_error("csys::CreateCartesian: dimension must be 1..3, got " +
                      std::to_string(dim));
   }
   return std::make_shared<const Cartesian>(
-    dim, CheckIdentifications(std::move(identifications), dim,
-                              "csys::CreateCartesian"));
+    dim,
+    CheckPeriodicAxes(std::move(periodic_axes), dim, "csys::CreateCartesian"));
 }
 
 std::shared_ptr<const CoordinateSystem> CreateCylindricalRThetaZ(

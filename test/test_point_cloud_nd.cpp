@@ -346,8 +346,8 @@ TEST_CASE("parameter system axes: periods, validation and equality")
     pcms::csys::CreateParameterSystem("theta_energy", 2, {{0, 0.0, TwoPi}});
   REQUIRE(system->Dimension() == 2);
   REQUIRE(system->Kind() == "theta_energy");
-  REQUIRE(system->Identifications().size() == 1);
-  REQUIRE(system->Identifications()[0].length == TwoPi);
+  REQUIRE(system->PeriodicAxes().size() == 1);
+  REQUIRE(system->PeriodicAxes()[0].length == TwoPi);
   REQUIRE_FALSE(*system == *pcms::csys::CreateParameterSystem(
                              "theta_energy", 2, {{0, 0.0, TwoPi}}));
   REQUIRE_FALSE(Phase(2)->HasMetric());

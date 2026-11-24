@@ -71,9 +71,9 @@ AxisPeriods MakeAxisPeriods(const CoordinateSystem& system)
                      std::string(system.Kind()) + "'");
   }
   AxisPeriods periods;
-  for (const auto& id : system.Identifications()) {
-    if (id.map != nullptr) {
-      throw pcms_error("point cloud: only translation identifications are "
+  for (const auto& id : system.PeriodicAxes()) {
+    if (id.transform != nullptr) {
+      throw pcms_error("point cloud: only plain periodic axes are "
                        "supported; '" +
                        std::string(system.Kind()) + "' has another");
     }

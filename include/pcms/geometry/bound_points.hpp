@@ -131,7 +131,7 @@ public:
   /// @return the bound points where they were located, one row per point:
   ///         the query points in the geometry's coordinate system (mapped by
   ///         GetBoundMap() if the bind had a map, by the geometry if they were
-  ///         in its parameter system), reduced by the identifications of the
+  ///         in its parameter system), reduced by the periodic axes of the
   ///         coordinate system
   [[nodiscard]] CoordinateView<DeviceMemorySpace> LocatedPoints() const;
 

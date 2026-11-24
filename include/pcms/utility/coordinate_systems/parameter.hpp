@@ -20,11 +20,11 @@ namespace pcms::csys
 /// equals only itself.
 /// @param name what the coordinates are, e.g. "bout_index"; Kind() returns it
 /// @param dimension number of coordinates, 1 to 6
-/// @throws pcms_error if the dimension is out of range, or an identification
+/// @throws pcms_error if the dimension is out of range, or a periodic axis
 ///         has an axis outside the system or a length that is not positive
 [[nodiscard]] std::shared_ptr<const CoordinateSystem> CreateParameterSystem(
   std::string name, int dimension,
-  std::vector<Identification> identifications = {});
+  std::vector<PeriodicAxis> periodic_axes = {});
 
 } // namespace pcms::csys
 

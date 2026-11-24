@@ -109,17 +109,17 @@ void bind_coordinate_system_module(py::module& m)
     "create_parameter_system",
     [](std::string name, int dimension,
        const std::vector<std::tuple<int, Real, Real>>& translations) {
-      std::vector<Identification> identifications;
+      std::vector<PeriodicAxis> periodic_axes;
       for (const auto& [axis, lower, length] : translations) {
-        identifications.push_back({axis, lower, length, nullptr});
+        periodic_axes.push_back({axis, lower, length, nullptr});
       }
       return Immutable<CoordinateSystem>{csys::CreateParameterSystem(
-        std::move(name), dimension, std::move(identifications))};
+        std::move(name), dimension, std::move(periodic_axes))};
     },
     py::arg("name"), py::arg("dimension"),
     py::arg("translations") = std::vector<std::tuple<int, Real, Real>>{},
     "Coordinates that are labels, of dimension 1..6, with no metric; "
-    "translations are (axis, lower, length) identifications");
+    "translations are (axis, lower, length) periodic axes");
 
   py::class_<PyCoordinateView>(m, "CoordinateView",
                                "Coordinates tagged with their coordinate "

@@ -151,7 +151,7 @@ private:
 /// Bind of physical points inverts the position: the images of the cells
 /// are binned by their bounding boxes, and Gauss-Newton (Newton for a square
 /// Jacobian) finds the parameter coordinates in the candidate cells of a
-/// point's bin, modulo the translation identifications of the coordinate
+/// point's bin, modulo the plain periodic axes of the coordinate
 /// system. Bind also accepts points in the parameter system
 /// (GetParameterSystem), located directly (no search). The BoundPoints carry
 /// the parameter coordinates, so the evaluators of spaces on the parameter

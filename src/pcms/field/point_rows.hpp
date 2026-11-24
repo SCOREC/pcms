@@ -49,7 +49,7 @@ inline Kokkos::View<LO*, DeviceMemorySpace> StrideOffsets(LO num_rows,
   return offsets;
 }
 
-/// @brief The lengths of the translation identifications of the coordinate
+/// @brief The lengths of the plain periodic axes of the coordinate
 ///        axes of Coordinates values, per component (0: none).
 using Periods = Kokkos::Array<Real, 3>;
 
@@ -58,8 +58,9 @@ inline Periods CoordinatePeriods(const ValueBasis& basis)
 {
   Periods periods = {};
   if (basis.kind == ValueKind::Coordinates) {
-    for (const auto& id : basis.system->Identifications()) {
-      if (id.map == nullptr && id.axis < static_cast<int>(periods.size())) {
+    for (const auto& id : basis.system->PeriodicAxes()) {
+      if (id.transform == nullptr &&
+          id.axis < static_cast<int>(periods.size())) {
         periods[id.axis] = id.length;
       }
     }
@@ -191,7 +192,7 @@ public:
       CoordinatePeriods(functional.GetData().GetValueBasis());
     if (periods[0] > 0 || periods[1] > 0 || periods[2] > 0) {
       throw pcms_error("PointEvaluator::EvaluateTranspose: Coordinates on a "
-                       "identification evaluate through their nearest image, "
+                       "periodic axis evaluate through their nearest image, "
                        "which is not linear");
     }
     const auto& layout = functional.GetLayout();

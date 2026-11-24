@@ -6,7 +6,7 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/detail/units.hpp
         ../../../include/pcms/field/coordinate_map.hpp
         ../../../include/pcms/field/embedding.hpp
-        ../../../include/pcms/field/identification.hpp
+        ../../../include/pcms/field/periodic_axis.hpp
         ../../../include/pcms/field/detail/embedding.hpp
         ../../../include/pcms/field/value_transform.hpp
         ../../../include/pcms/field/value_view.hpp
@@ -48,7 +48,7 @@ set(PCMS_FIELD_SOURCES
         function_space.cpp
         function_spaces.cpp
         gradient_source.cpp
-        identification.cpp
+        periodic_axis.cpp
         query_points.cpp
         gid_permutation.cpp
         layout/empty.cpp

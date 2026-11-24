@@ -102,7 +102,7 @@ public:
     return false;
   }
 
-  /// @brief Localizes physical query points, reduced by the identifications
+  /// @brief Localizes physical query points, reduced by the periodic axes
   ///        of the coordinate system they are located in.
   /// @param coords query points, in GetCoordinateSystem() or, with `map`, in
   ///        its source coordinate system; or, without a map, in

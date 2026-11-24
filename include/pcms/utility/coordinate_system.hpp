@@ -57,9 +57,9 @@ private:
 
 class CoordinateSystem;
 
-/// @brief The map of an identification that is not a translation
-///        (CreateTwistShiftMap)
-class IdentificationMap
+/// @brief The transform of a periodic axis that is not a translation
+///        (CreateTwistShiftTransform)
+class PeriodicTransform
 {
 public:
   /// @brief Applies the map `wraps(p)` times to point p.
@@ -69,27 +69,27 @@ public:
   virtual void Apply(Rank2View<Real, DeviceMemorySpace> points,
                      Rank1View<const Real, DeviceMemorySpace> wraps) const = 0;
 
-  virtual ~IdentificationMap() = default;
+  virtual ~PeriodicTransform() = default;
 };
 
 /// @brief Points of a coordinate system that are one point: x and x + length
 ///        along `axis`, after `map` for a twist-shift.
-struct Identification
+struct PeriodicAxis
 {
   int axis = 0;
   /// the fundamental interval [lower, lower + length) of the axis
   Real lower = 0;
   Real length = 0;
   /// what else changes per length crossed; null for a translation
-  std::shared_ptr<const IdentificationMap> map;
+  std::shared_ptr<const PeriodicTransform> transform;
 
-  [[nodiscard]] bool operator==(const Identification&) const = default;
+  [[nodiscard]] bool operator==(const PeriodicAxis&) const = default;
 };
 
 /// @brief A coordinate system: labels and closed forms, never data.
 ///
 /// A coordinate system says what its coordinates are (kind, dimension,
-/// identifications) and, when it has one, its closed-form metric (Bind);
+/// periodic axes) and, when it has one, its closed-form metric (Bind);
 /// per-point values come only from bound objects. A parameter system
 /// (csys::CreateParameterSystem) has no metric: the metric of a geometry over
 /// it belongs to the geometry.
@@ -104,8 +104,8 @@ public:
   ///         physical and natural components coincide
   [[nodiscard]] virtual bool IsOrthonormal() const noexcept = 0;
 
-  /// @return the identifications, applied in order by Geometry::Bind
-  [[nodiscard]] virtual std::span<const Identification> Identifications()
+  /// @return the periodic axes, applied in order by Geometry::Bind
+  [[nodiscard]] virtual std::span<const PeriodicAxis> PeriodicAxes()
     const noexcept
   {
     return {};

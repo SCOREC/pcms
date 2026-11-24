@@ -86,9 +86,9 @@ TEST_CASE("Bound coordinate systems give the metric and the volume factor",
     CHECK(bound.metric[4] == 4.0);
     CHECK(bound.metric[9 + 4] == 9.0);
     CHECK(bound.metric[1] == 0.0);
-    REQUIRE(system->Identifications().size() == 1);
-    CHECK(system->Identifications()[0] ==
-          pcms::Identification{1, 0.0, 2.0 * std::numbers::pi, nullptr});
+    REQUIRE(system->PeriodicAxes().size() == 1);
+    CHECK(system->PeriodicAxes()[0] ==
+          pcms::PeriodicAxis{1, 0.0, 2.0 * std::numbers::pi, nullptr});
   }
   SECTION("cylindrical (R, Z): identity metric, volume factor R")
   {
@@ -110,10 +110,10 @@ TEST_CASE("Parameter systems are labels without a metric",
   CHECK(system->Dimension() == 3);
   CHECK_FALSE(system->HasMetric());
   CHECK_FALSE(system->IsOrthonormal());
-  REQUIRE(system->Identifications().size() == 2);
-  CHECK(system->Identifications()[0].length == 2.0 * std::numbers::pi);
-  CHECK(system->Identifications()[1].axis == 2);
-  CHECK(system->Identifications()[1].length == 1.5);
+  REQUIRE(system->PeriodicAxes().size() == 2);
+  CHECK(system->PeriodicAxes()[0].length == 2.0 * std::numbers::pi);
+  CHECK(system->PeriodicAxes()[1].axis == 2);
+  CHECK(system->PeriodicAxes()[1].length == 1.5);
   CHECK(pcms::csys::CreateCartesian(2)->HasMetric());
   const auto coords = pcms::test::CreateDeviceRank2View({0.1, 0.2, 0.3}, 3);
   CHECK_THROWS_AS(system->Bind(pcms::MakeConstRank2View(coords)),

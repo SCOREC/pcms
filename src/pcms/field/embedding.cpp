@@ -691,7 +691,7 @@ private:
 } // namespace
 
 // The search of an embedded geometry: the images of the parameter cells,
-// binned modulo the translation identifications of the coordinate system, the
+// binned modulo the plain periodic axes of the coordinate system, the
 // link and its inverse, if given (then nothing is binned).
 struct detail::EmbeddedSearch
 {
@@ -745,8 +745,8 @@ std::shared_ptr<const detail::EmbeddedSearch> CreateSearch(
     }
   }
   Kokkos::Array<Real, 3> period = {};
-  for (const auto& id : system->Identifications()) {
-    if (id.map == nullptr) {
+  for (const auto& id : system->PeriodicAxes()) {
+    if (id.transform == nullptr) {
       period[id.axis] = id.length;
     }
   }

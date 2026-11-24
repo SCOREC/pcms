@@ -899,7 +899,7 @@ TEST_CASE("Coordinates on an identified axis interpolate through the nearest "
           "[embedding]")
 {
   // u = (x, y + x / 2) on a grid periodic in y, with u2 stored modulo 1
-  const std::vector<pcms::Identification> periodic = {{1, 0.0, 1.0}};
+  const std::vector<pcms::PeriodicAxis> periodic = {{1, 0.0, 1.0}};
   const auto grid = pcms::test::MakeUnitSquareGrid(
     8, pcms::csys::CreateParameterSystem("xi", 2, periodic));
   const auto position = pcms::test::MakePositionFunction(
@@ -1081,7 +1081,7 @@ TEST_CASE("Coordinates at a node wrapped along two axes interpolate through "
 {
   // u = (2 x + 2 y, x - y) on a grid periodic in x and y, both of period 1
   constexpr int N = 6;
-  const std::vector<pcms::Identification> periodic = {{0, 0.0, 1.0},
+  const std::vector<pcms::PeriodicAxis> periodic = {{0, 0.0, 1.0},
                                                     {1, 0.0, 1.0}};
   const auto grid = pcms::test::MakeUnitSquareGrid(
     N, pcms::csys::CreateParameterSystem("xi", 2, periodic));

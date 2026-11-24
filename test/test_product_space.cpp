@@ -1,7 +1,7 @@
 #include "periodic_test_utils.hpp"
 #include "field_test_utils.hpp"
 #include <Omega_h_library.hpp>
-#include <pcms/field/identification.hpp>
+#include <pcms/field/periodic_axis.hpp>
 #include <pcms/geometry/product_geometry.hpp>
 #include <pcms/utility/coordinate_systems/parameter.hpp>
 #include <pcms/configuration.hpp>
@@ -361,7 +361,7 @@ TEST_CASE("Product space: projection of an analytic source (matrix-free)",
 }
 #endif
 
-TEST_CASE("Product space: twist-shift identification wraps the plane's y into "
+TEST_CASE("Product space: twist-shift periodic axis wraps the plane's y into "
           "its interval and shifts z by the number of periods times a function "
           "of x",
           "[product][twist]")
@@ -382,7 +382,7 @@ TEST_CASE("Product space: twist-shift identification wraps the plane's y into "
     pcms::csys::CreateParameterSystem(
       "twisted", 3,
       {{1, 0.0, 1.0,
-        pcms::CreateTwistShiftMap(
+        pcms::CreateTwistShiftTransform(
           2, std::make_shared<const pcms::Function<Real>>(std::move(shift)),
           {0})},
        {2, 0.0, TwoPi}}));
@@ -407,7 +407,7 @@ TEST_CASE("Product space: twist-shift identification wraps the plane's y into "
         Catch::Approx((x + 2 * 0.37) * Z(1.9 + n * delta(x))).margin(1e-10));
     }
   }
-  // without the identification a point outside the plane is an error
+  // without the periodic axis a point outside the plane is an error
   const auto plain = pcms::CreateProductSpace(plane, zs);
   CHECK_THROWS(
     EvaluateAt(*plain, plain->CreateFunction<Real>(), {{0.5, 1.37, 0.0}}));
@@ -418,8 +418,8 @@ TEST_CASE("Product space: twist-shift identification wraps the plane's y into "
     p[2] = (p[2] - 0.5) * 20;
   }
   pcms::test::CheckAdjointAndMatrix(space, pts);
-  // invalid identifications
-  CHECK_THROWS(pcms::CreateTwistShiftMap(2, nullptr, {0}));
+  // invalid periodic axes
+  CHECK_THROWS(pcms::CreateTwistShiftTransform(2, nullptr, {0}));
   // the twist-shift of a second factor would shift the wrong product axes
   CHECK_THROWS(pcms::CreateProductGeometry(zs->GetGeometry(), geometry));
 }

@@ -58,7 +58,7 @@ UniformGridGeometry<Dim>::UniformGridGeometry(
   : grid_(grid),
     system_(pcms::detail::ResolveCoordinateSystem(std::move(system), Dim))
 {
-  for (const auto& id : system_->Identifications()) {
+  for (const auto& id : system_->PeriodicAxes()) {
     const Real extent = grid_.edge_length[id.axis];
     const Real tol = 1e-12 * std::max(extent, id.length);
     if (grid_.bot_left[id.axis] < id.lower - tol ||
@@ -66,9 +66,9 @@ UniformGridGeometry<Dim>::UniformGridGeometry(
       throw pcms_error("uniform_grid::CreateGeometry: the grid along axis " +
                        std::to_string(id.axis) +
                        " is not inside the fundamental interval of its "
-                       "identification, where Bind locates points");
+                       "periodic axis, where Bind locates points");
     }
-    if (id.map == nullptr &&
+    if (id.transform == nullptr &&
         std::abs(id.lower - grid_.bot_left[id.axis]) <= 1e-12 * extent &&
         std::abs(id.length - extent) <= 1e-12 * extent) {
       wrapped_ |= 1U << id.axis;

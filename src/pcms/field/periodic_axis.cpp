@@ -1,4 +1,4 @@
-#include "pcms/field/identification.hpp"
+#include "pcms/field/periodic_axis.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
@@ -53,11 +53,12 @@ LO CountWrapped(Kokkos::View<const LO*, DeviceMemorySpace> missing,
   return count;
 }
 
-class TwistShiftMap final : public IdentificationMap
+class TwistShiftTransform final : public PeriodicTransform
 {
 public:
-  TwistShiftMap(int shift_axis, std::shared_ptr<const Function<Real>> shift,
-                const std::vector<int>& input_axes)
+  TwistShiftTransform(int shift_axis,
+                      std::shared_ptr<const Function<Real>> shift,
+                      const std::vector<int>& input_axes)
     : shift_axis_(shift_axis),
       shift_(std::move(shift)),
       input_axes_("twist_shift_axes", input_axes.size()),
@@ -86,7 +87,7 @@ public:
                                         MakeConstRank2View(inputs)),
       OutOfBoundsPolicy{OutOfBoundsMode::FILL});
     if (CountWrapped(bound->MissingPoints(), wraps) > 0) {
-      throw pcms_error("twist-shift: a point crosses the identification "
+      throw pcms_error("twist-shift: a point crosses the periodic axis "
                        "outside the domain of the shift");
     }
     const auto evaluator = shift_->GetSpace().CreatePointEvaluator<Real>(bound);
@@ -108,7 +109,7 @@ private:
 
 } // namespace
 
-std::shared_ptr<const IdentificationMap> CreateTwistShiftMap(
+std::shared_ptr<const PeriodicTransform> CreateTwistShiftTransform(
   int shift_axis, std::shared_ptr<const Function<Real>> shift,
   std::vector<int> input_axes)
 {
@@ -118,12 +119,13 @@ std::shared_ptr<const IdentificationMap> CreateTwistShiftMap(
   if (negative || shift == nullptr ||
       shift->GetSpace().GetGeometry()->GetCoordinateSystem()->Dimension() !=
         static_cast<int>(input_axes.size())) {
-    throw pcms_error("CreateTwistShiftMap: needs axes that are not negative "
-                     "and a shift Function on a geometry of one dimension per "
-                     "input axis");
+    throw pcms_error(
+      "CreateTwistShiftTransform: needs axes that are not negative "
+      "and a shift Function on a geometry of one dimension per "
+      "input axis");
   }
-  return std::make_shared<const TwistShiftMap>(shift_axis, std::move(shift),
-                                               input_axes);
+  return std::make_shared<const TwistShiftTransform>(
+    shift_axis, std::move(shift), input_axes);
 }
 
 } // namespace pcms

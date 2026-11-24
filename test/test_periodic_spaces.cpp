@@ -1,6 +1,6 @@
 #include "periodic_test_utils.hpp"
 #include <catch2/generators/catch_generators.hpp>
-#include <pcms/field/identification.hpp>
+#include <pcms/field/periodic_axis.hpp>
 #include <pcms/transfer/forms.hpp>
 #include <pcms/transfer/interpolator.hpp>
 #include <pcms/transfer/l2_inner_product.hpp>
@@ -446,8 +446,8 @@ TEST_CASE("Periodic Lagrange: the matrix-free projection onto a refined "
   }
 }
 
-TEST_CASE("Twist-shift identification: points just across the seam evaluate "
-          "as the shifted interior, in either identification order",
+TEST_CASE("Twist-shift periodic axis: points just across the seam evaluate "
+          "as the shifted interior, in either periodic axis order",
           "[periodic][twist]")
 {
   const bool translation_first = GENERATE(false, true);
@@ -464,11 +464,11 @@ TEST_CASE("Twist-shift identification: points just across the seam evaluate "
   SetDofs(shift, {0.3, 0.425, 0.55, 0.675, 0.8});
   const auto s = [](Real x) { return 0.3 + 0.5 * x; };
   // index coordinates (x, y, z): y twist-shifted by S(x), z periodic
-  const pcms::Identification twist{
+  const pcms::PeriodicAxis twist{
     1, 0.0, 1.0,
-    pcms::CreateTwistShiftMap(
+    pcms::CreateTwistShiftTransform(
       2, std::make_shared<const pcms::Function<Real>>(std::move(shift)), {0})};
-  const pcms::Identification translation{2, 0.0, TwoPi};
+  const pcms::PeriodicAxis translation{2, 0.0, TwoPi};
   const auto index = pcms::csys::CreateParameterSystem(
     "index", 3,
     translation_first ? std::vector{translation, twist}
@@ -510,5 +510,5 @@ TEST_CASE("Twist-shift identification: points just across the seam evaluate "
       geometry->GetCoordinateSystem(), pcms::MakeConstRank2View(outside)),
     pcms::OutOfBoundsPolicy{pcms::OutOfBoundsMode::FILL});
   CHECK(bound->MissingPoints().extent(0) == 1);
-  CHECK_THROWS(pcms::CreateTwistShiftMap(2, nullptr, {0}));
+  CHECK_THROWS(pcms::CreateTwistShiftTransform(2, nullptr, {0}));
 }

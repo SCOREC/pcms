@@ -73,8 +73,8 @@ void ReduceAxis(Kokkos::View<Real**, DeviceMemorySpace> points,
 Kokkos::View<Real**, DeviceMemorySpace> detail::ReduceToPeriod(
   const CoordinateView<DeviceMemorySpace>& coords)
 {
-  const auto identifications = coords.GetCoordinateSystem()->Identifications();
-  if (identifications.empty()) {
+  const auto periodic_axes = coords.GetCoordinateSystem()->PeriodicAxes();
+  if (periodic_axes.empty()) {
     return {};
   }
   const auto in = coords.GetValues();
@@ -89,19 +89,19 @@ Kokkos::View<Real**, DeviceMemorySpace> detail::ReduceToPeriod(
       }
     });
   Kokkos::View<Real*, DeviceMemorySpace> wraps(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "identification_wraps"), n);
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "periodic_wraps"), n);
   bool mapped = false;
-  for (const auto& id : identifications) {
+  for (const auto& id : periodic_axes) {
     ReduceAxis(points, wraps, id.axis, id.lower, id.length);
-    if (id.map != nullptr) {
-      id.map->Apply(MakeRank2View(points), MakeRank1View(wraps));
+    if (id.transform != nullptr) {
+      id.transform->Apply(MakeRank2View(points), MakeRank1View(wraps));
       mapped = true;
     }
   }
   // a map can move an axis that an earlier translation reduced
   if (mapped) {
-    for (const auto& id : identifications) {
-      if (id.map == nullptr) {
+    for (const auto& id : periodic_axes) {
+      if (id.transform == nullptr) {
         ReduceAxis(points, wraps, id.axis, id.lower, id.length);
       }
     }

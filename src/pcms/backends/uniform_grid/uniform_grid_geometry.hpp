@@ -136,7 +136,7 @@ public:
     return grid_;
   }
 
-  /// @return bit d set if axis d has a translation identification over the
+  /// @return bit d set if axis d is a plain periodic axis over the
   ///         grid's extent: its last node is its first
   [[nodiscard]] unsigned WrappedAxes() const noexcept { return wrapped_; }
 

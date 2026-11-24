@@ -20,11 +20,11 @@ namespace pcms
 /// product holds no partitioning: it is serial, its factors are not
 /// distributed.
 /// @param system the product's coordinate system, e.g. a parameter system
-///        with a twist-shift identification; null for a parameter system
-///        with the factors' identifications
+///        with a twist-shift periodic axis; null for a parameter system
+///        with the factors' periodic axes
 /// @throws pcms_error if a geometry is null, the dimensions add up to more
 ///         than 6, `system` has a metric or another dimension, or `system`
-///         is null and `b` has a twist-shift identification
+///         is null and `b` has a twist-shift periodic axis
 [[nodiscard]] std::shared_ptr<const Geometry> CreateProductGeometry(
   std::shared_ptr<const Geometry> a, std::shared_ptr<const Geometry> b,
   std::shared_ptr<const CoordinateSystem> system = nullptr);

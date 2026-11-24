@@ -36,27 +36,27 @@ CoordinateView<DeviceMemorySpace> FactorView(
 }
 
 /// The parameter system of the product of `a` and `b`, with their
-/// identifications.
+/// periodic axes.
 std::shared_ptr<const CoordinateSystem> ProductSystem(const Geometry& a,
                                                       const Geometry& b)
 {
   const int da = a.GetCoordinateSystem()->Dimension();
-  std::vector<Identification> identifications;
-  for (const auto& id : a.GetCoordinateSystem()->Identifications()) {
-    identifications.push_back(id);
+  std::vector<PeriodicAxis> periodic_axes;
+  for (const auto& id : a.GetCoordinateSystem()->PeriodicAxes()) {
+    periodic_axes.push_back(id);
   }
-  for (auto id : b.GetCoordinateSystem()->Identifications()) {
-    if (id.map != nullptr) {
+  for (auto id : b.GetCoordinateSystem()->PeriodicAxes()) {
+    if (id.transform != nullptr) {
       throw pcms_error("CreateProductGeometry: the second factor has a "
-                       "twist-shift identification; pass the product's "
+                       "twist-shift periodic axis; pass the product's "
                        "coordinate system");
     }
     id.axis += da;
-    identifications.push_back(id);
+    periodic_axes.push_back(id);
   }
   return csys::CreateParameterSystem("product",
                                      da + b.GetCoordinateSystem()->Dimension(),
-                                     std::move(identifications));
+                                     std::move(periodic_axes));
 }
 
 } // namespace

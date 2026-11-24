@@ -32,20 +32,18 @@ void CheckSameValues(const Field<T>& a, const Field<T>& b, const char* what)
   }
 }
 
-template <typename T>
-using OwnedValues = Rank2View<const T, DeviceMemorySpace>;
-
-/// @brief op(x, y) elementwise over values of the same shape
+/// @brief op(x, y) elementwise over values of the same shape, into a new array
 template <typename T, typename Op>
-Kokkos::View<T**, DeviceMemorySpace> MapOwned(OwnedValues<T> x,
-                                              OwnedValues<T> y, Op op)
+Kokkos::View<T**, DeviceMemorySpace> Elementwise(
+  Rank2View<const T, DeviceMemorySpace> x,
+  Rank2View<const T, DeviceMemorySpace> y, Op op)
 {
   Kokkos::View<T**, DeviceMemorySpace> out(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "pcms::MapOwned"),
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "pcms::Elementwise"),
     x.extent(0), x.extent(1));
   const auto nc = static_cast<int>(x.extent(1));
   Kokkos::parallel_for(
-    "pcms::MapOwned",
+    "pcms::Elementwise",
     Kokkos::RangePolicy<DefaultExecutionSpace>(
       0, static_cast<int>(x.extent(0)) * nc),
     KOKKOS_LAMBDA(const int k) {
@@ -67,13 +65,14 @@ template <typename T>
 /// @brief The sum over the layout's ranks of op(x, y) over values of the same
 ///        shape
 template <typename T, typename Op>
-[[nodiscard]] T SumOwned(const FieldLayout& layout, OwnedValues<T> x,
-                         OwnedValues<T> y, Op op)
+[[nodiscard]] T Sum(const FieldLayout& layout,
+                    Rank2View<const T, DeviceMemorySpace> x,
+                    Rank2View<const T, DeviceMemorySpace> y, Op op)
 {
   const auto nc = static_cast<int>(x.extent(1));
   T sum{};
   Kokkos::parallel_reduce(
-    "pcms::SumOwned",
+    "pcms::Sum",
     Kokkos::RangePolicy<DefaultExecutionSpace>(
       0, static_cast<int>(x.extent(0)) * nc),
     KOKKOS_LAMBDA(const int k, T& partial) {
@@ -83,16 +82,27 @@ template <typename T, typename Op>
   return Allreduce(layout, sum, MPI_SUM);
 }
 
+/// @brief Sets the owned values of the field, in its value basis, and
+///        synchronizes it.
+template <typename T>
+void SetValues(Field<T>& field,
+               const Kokkos::View<T**, DeviceMemorySpace>& values)
+{
+  field.SetDOFHolderData(ValueView<const T, DeviceMemorySpace>(
+    field.GetData().GetValueBasis(), MakeConstRank2View(values)));
+  field.Synchronize();
+}
+
 /// @brief field += addend over the owned values, then synchronizes the field.
 /// @param addend shaped [owned DOF holders][components]
 template <typename T>
 void AddToField(Field<T>& field,
                 const Kokkos::View<T**, DeviceMemorySpace>& addend)
 {
-  field.SetDOFHolderDataUnchecked(MakeConstRank2View(MapOwned<T>(
-    field.GetDOFHolderData().GetValues(), MakeConstRank2View(addend),
-    KOKKOS_LAMBDA(const T a, const T b) { return a + b; })));
-  field.Synchronize();
+  SetValues(field,
+            Elementwise<T>(
+              field.GetDOFHolderData().GetValues(), MakeConstRank2View(addend),
+              KOKKOS_LAMBDA(const T a, const T b) { return a + b; }));
 }
 
 /// @brief y += a x over the owned values, whatever their value bases
@@ -100,10 +110,10 @@ template <typename T>
 void AxpyValues(T a, const Field<T>& x, Field<T>& y)
 {
   CheckSameLayout(x, y, "Axpy");
-  y.SetDOFHolderDataUnchecked(MakeConstRank2View(MapOwned<T>(
-    x.GetDOFHolderData().GetValues(), y.GetDOFHolderData().GetValues(),
-    KOKKOS_LAMBDA(const T u, const T v) { return a * u + v; })));
-  y.Synchronize();
+  SetValues(y, Elementwise<T>(
+                 x.GetDOFHolderData().GetValues(),
+                 y.GetDOFHolderData().GetValues(),
+                 KOKKOS_LAMBDA(const T u, const T v) { return a * u + v; }));
 }
 
 /// @brief y = x over the owned values, whatever their value bases
@@ -119,11 +129,9 @@ void CopyValues(const Field<T>& x, Field<T>& y)
 template <typename T>
 void SetZero(Field<T>& field)
 {
-  Kokkos::View<T**, DeviceMemorySpace> zeros(
-    "pcms::SetZero", field.GetLayout().GetNumDofHolder(),
-    field.GetLayout().GetNumComponents());
-  field.SetDOFHolderDataUnchecked(MakeConstRank2View(zeros));
-  field.Synchronize();
+  SetValues(field, Kokkos::View<T**, DeviceMemorySpace>(
+                     "pcms::SetZero", field.GetLayout().GetNumDofHolder(),
+                     field.GetLayout().GetNumComponents()));
 }
 
 } // namespace pcms::detail

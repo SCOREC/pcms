@@ -83,7 +83,7 @@ Real L2Integral::Apply(const Field<Real>& u) const
   }
   const auto wu =
     form_->Weight(Evaluate(form_->Evaluator(), u, u_values_)).GetValues();
-  return pcms::detail::SumOwned<Real>(
+  return pcms::detail::Sum<Real>(
     *form_->Space()->GetLayout(), wu, wu,
     KOKKOS_LAMBDA(const Real a, const Real) { return a; });
 }
@@ -95,7 +95,7 @@ Real L2Integral::Inner(const Field<Real>& u, const Field<Real>& v) const
     form_->Weight(Evaluate(form_->Evaluator(), u, u_values_)).GetValues();
   const auto vv =
     Evaluate(other_ ? *other_ : form_->Evaluator(), v, v_values_).GetValues();
-  return pcms::detail::SumOwned<Real>(
+  return pcms::detail::Sum<Real>(
     *form_->Space()->GetLayout(), wu, vv,
     KOKKOS_LAMBDA(const Real a, const Real b) { return a * b; });
 }
@@ -107,14 +107,14 @@ Real L2Integral::Distance(const Field<Real>& u, const Field<Real>& v) const
   const auto vv = Evaluate(other_ ? *other_ : form_->Evaluator(), v, v_values_);
   pcms::detail::CheckWrittenValueBasis("L2Integral::Distance", uu.GetBasis(),
                                        vv.GetBasis());
-  const auto difference = pcms::detail::MapOwned<Real>(
+  const auto difference = pcms::detail::Elementwise<Real>(
     uu.GetValues(), vv.GetValues(),
     KOKKOS_LAMBDA(const Real a, const Real b) { return a - b; });
   const auto d = MakeConstRank2View(difference);
   const auto wd =
     form_->Weight(ValueView<const Real, DeviceMemorySpace>(uu.GetBasis(), d))
       .GetValues();
-  return std::sqrt(pcms::detail::SumOwned<Real>(
+  return std::sqrt(pcms::detail::Sum<Real>(
     *form_->Space()->GetLayout(), wd, d,
     KOKKOS_LAMBDA(const Real a, const Real b) { return a * b; }));
 }
@@ -124,7 +124,7 @@ Real L2Integral::Norm(const Field<Real>& u) const
   CheckInnerProductMetric(u, "L2Integral::Norm");
   const auto uu = Evaluate(form_->Evaluator(), u, u_values_);
   const auto wu = form_->Weight(uu).GetValues();
-  return std::sqrt(pcms::detail::SumOwned<Real>(
+  return std::sqrt(pcms::detail::Sum<Real>(
     *form_->Space()->GetLayout(), wu, uu.GetValues(),
     KOKKOS_LAMBDA(const Real a, const Real b) { return a * b; }));
 }

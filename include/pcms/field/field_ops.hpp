@@ -25,9 +25,9 @@ template <typename T>
 void Scale(T a, Field<T>& y)
 {
   const auto values = y.GetDOFHolderData().GetValues();
-  y.SetDOFHolderDataUnchecked(MakeConstRank2View(detail::MapOwned<T>(
-    values, values, KOKKOS_LAMBDA(const T v, const T) { return a * v; })));
-  y.Synchronize();
+  detail::SetValues(
+    y, detail::Elementwise<T>(
+         values, values, KOKKOS_LAMBDA(const T v, const T) { return a * v; }));
 }
 
 /// @brief y += a x
@@ -53,7 +53,7 @@ template <typename T>
 [[nodiscard]] T Dot(const Field<T>& x, const Field<T>& y)
 {
   detail::CheckSameLayout(x, y, "Dot");
-  return detail::SumOwned<T>(
+  return detail::Sum<T>(
     x.GetLayout(), x.GetDOFHolderData().GetValues(),
     y.GetDOFHolderData().GetValues(),
     KOKKOS_LAMBDA(const T u, const T v) { return u * v; });
@@ -90,7 +90,7 @@ template <typename T>
 [[nodiscard]] T WeightedRmsNorm(const Field<T>& x, const Field<T>& weights)
 {
   detail::CheckSameLayout(x, weights, "WeightedRmsNorm");
-  const T sum = detail::SumOwned<T>(
+  const T sum = detail::Sum<T>(
     x.GetLayout(), x.GetDOFHolderData().GetValues(),
     weights.GetDOFHolderData().GetValues(),
     KOKKOS_LAMBDA(const T u, const T w) { return (w * u) * (w * u); });

@@ -7,6 +7,7 @@
 #include "pcms/field/function_space.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include <memory>
+#include <optional>
 
 namespace pcms
 {
@@ -27,12 +28,27 @@ namespace pcms
 [[nodiscard]] std::shared_ptr<const CoordinateMap> CreateCoordinateMap(
   std::shared_ptr<const Function<Real>> position);
 
+/// @brief A translation symmetry of the domain of an embedded geometry: the
+///        domain is invariant under adding `length` to coordinate `axis` of
+///        the position's coordinate system, and its cells cover one `length`
+///        (e.g. a 1/zperiod toroidal wedge: axis phi, length 2 pi / zperiod).
+struct TranslationSymmetry
+{
+  int axis = 0;
+  Real length = 0;
+};
+
 /// @brief Options of CreateEmbeddedGeometry.
 struct EmbeddingOptions
 {
   /// the search: `divisions` search bins per axis (0 derives it from the
   /// cell count), `tolerance` the relative slack of the point-in-cell test
   SearchOptions search;
+  /// a symmetry of the domain: a query is reduced by it before the search
+  /// (as by a period of the coordinate system), and the BoundPoints keep the
+  /// reduced coordinates as their located points. The reduction replaces the
+  /// period of the axis, so a symmetry must divide it; none by default
+  std::optional<TranslationSymmetry> symmetry;
 };
 
 /// @brief A geometry whose cells are those of a parameter geometry and whose
@@ -95,10 +111,11 @@ private:
 /// Bind of physical points inverts the position: the images of the cells
 /// are binned by their bounding boxes, and Gauss-Newton (Newton for a square
 /// Jacobian) finds the parameter coordinates in the candidate cells of a
-/// point's bin, modulo the periods of the coordinate system. Bind also
-/// accepts points in the parameter system (GetParameterSystem), located
-/// directly (no search). The BoundPoints carry the parameter coordinates, so
-/// the evaluators of spaces on the parameter geometry evaluate unchanged
+/// point's bin, modulo the periods of the coordinate system and the options'
+/// symmetry. Bind also accepts points in the parameter system
+/// (GetParameterSystem), located directly (no search). The BoundPoints carry
+/// the parameter coordinates, so the evaluators of spaces on the parameter
+/// geometry evaluate unchanged
 /// (CreateEmbeddedSpace). The geometric factors at the points are J, the
 /// Gradient of the position, and the metric it induces, g = J^T G J (G the
 /// coordinate system's metric at the image); their volume factor is the
@@ -110,11 +127,12 @@ private:
 ///        coordinate system
 /// @param position a Function on `parameter_geometry` with a
 ///        ValueBasis::Coordinates basis, whose space evaluates Gradient
-/// @param options the options of the search
+/// @param options the options of the search and the symmetry
 /// @throws pcms_error if the geometry is not a 2D or 3D uniform grid, the
-///         position is
-///         not a Function of coordinates on it with a Gradient, or the
-///         parameter system is the position's coordinate system
+///         position is not a Function of coordinates on it with a Gradient,
+///         the parameter system is the position's coordinate system, or the
+///         symmetry has an axis outside the coordinate system or a
+///         non-positive length
 [[nodiscard]] std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
   std::shared_ptr<const Geometry> parameter_geometry,
   std::shared_ptr<const Function<Real>> position,

@@ -130,6 +130,16 @@ Kokkos::View<const Real**, DeviceMemorySpace> BoundPoints::LocatedPointValues()
                          Kokkos::ALL);
 }
 
+void BoundPoints::ReplaceLocatedPoints(
+  Kokkos::View<const Real**, DeviceMemorySpace> points)
+{
+  PCMS_ALWAYS_ASSERT(map_ == nullptr &&
+                     static_cast<LO>(points.extent(0)) == num_points_);
+  CopyPoints(Kokkos::subview(points_, Kokkos::make_pair(LO{0}, num_points_),
+                             Kokkos::ALL),
+             MakeConstRank2View(points));
+}
+
 void BoundPoints::Rebind(RebindKey, const BindRequest& request)
 {
   Reset(request);

@@ -580,10 +580,12 @@ private:
 } // namespace
 
 // The search of an embedded geometry: the images of the parameter cells,
-// binned modulo the periods of the coordinate system, and the position.
+// binned modulo the periods of the coordinate system and the symmetry, and the
+// position.
 struct detail::EmbeddedSearch
 {
   Position position;
+  std::optional<TranslationSymmetry> symmetry;
   std::variant<CandidateMap<1>, CandidateMap<2>, CandidateMap<3>> map;
   Kokkos::Array<Real, 3> period = {};
   Real residual_tolerance = 0;
@@ -597,7 +599,8 @@ namespace
 // from a lattice of sample points of each cell, padded.
 template <unsigned Dim>
 std::shared_ptr<const detail::EmbeddedSearch> CreateSearch(
-  const UniformGrid<Dim>& grid, Position position, const SearchOptions& options)
+  const UniformGrid<Dim>& grid, Position position,
+  const EmbeddingOptions& options)
 {
   const auto& system = position.System();
   const int dt = system->Dimension();
@@ -630,12 +633,20 @@ std::shared_ptr<const detail::EmbeddedSearch> CreateSearch(
   for (int j = 0; j < dt; ++j) {
     period[j] = system->Period(j).value_or(0);
   }
+  if (options.symmetry) {
+    period[options.symmetry->axis] = options.symmetry->length;
+  }
   const LO count =
-    options.divisions > 0
-      ? options.divisions
+    options.search.divisions > 0
+      ? options.search.divisions
       : std::max(1, static_cast<int>(std::ceil(std::pow(num_cells, 1.0 / dt))));
-  auto search = std::make_shared<detail::EmbeddedSearch>(detail::EmbeddedSearch{
-    std::move(position), {}, period, ResidualTol * extent, options.tolerance});
+  auto search = std::make_shared<detail::EmbeddedSearch>(
+    detail::EmbeddedSearch{std::move(position),
+                           options.symmetry,
+                           {},
+                           period,
+                           ResidualTol * extent,
+                           options.search.tolerance});
   if (dt == 1) {
     search->map = CreateBoxMap<1>(lo, hi, count, period);
   } else if (dt == 2) {
@@ -644,6 +655,25 @@ std::shared_ptr<const detail::EmbeddedSearch> CreateSearch(
     search->map = CreateBoxMap<3>(lo, hi, count, period);
   }
   return search;
+}
+
+// The points with their coordinate on the symmetry's axis reduced into
+// [0, length).
+DeviceView<Real**> ReduceBySymmetry(
+  Kokkos::View<const Real**, DeviceMemorySpace> points,
+  TranslationSymmetry symmetry)
+{
+  DeviceView<Real**> reduced("embedded_reduced", points.extent(0),
+                             points.extent(1));
+  Kokkos::deep_copy(reduced, points);
+  detail::ForEach(
+    "embedded_reduce_by_symmetry", static_cast<LO>(points.extent(0)),
+    KOKKOS_LAMBDA(const LO p) {
+      const Real x = reduced(p, symmetry.axis);
+      reduced(p, symmetry.axis) =
+        x - symmetry.length * Kokkos::floor(x / symmetry.length);
+    });
+  return reduced;
 }
 
 struct Located
@@ -775,6 +805,9 @@ private:
           return Search<Dim>(search_, grid->GetGrid(),
                              MakeConstRank2View(points));
         });
+      if (search_.symmetry && GetBoundMap() == nullptr) {
+        ReplaceLocatedPoints(ReduceBySymmetry(points, *search_.symmetry));
+      }
       SetParameters(*geometry_->GetParameterGeometry(), located.xi,
                     OutOfBoundsPolicy{OutOfBoundsMode::NEAREST_BOUNDARY});
       found = located.found;
@@ -895,6 +928,13 @@ std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
     throw pcms_error("CreateEmbeddedGeometry: the position must be a Function "
                      "on the parameter geometry");
   }
+  const auto& symmetry = options.symmetry;
+  if (symmetry && (symmetry->length <= 0 || symmetry->axis < 0 ||
+                   symmetry->axis >= checked.System()->Dimension())) {
+    throw pcms_error("CreateEmbeddedGeometry: the symmetry must translate an "
+                     "axis of the position's coordinate system by a positive "
+                     "length");
+  }
   if (detail::SameCoordinateSystem(checked.ParameterSystem(),
                                    checked.System())) {
     throw pcms_error(
@@ -910,7 +950,7 @@ std::shared_ptr<const EmbeddedGeometry> CreateEmbeddedGeometry(
       if constexpr (Dim == 1) {
         return nullptr;
       } else {
-        return CreateSearch<Dim>(grid->GetGrid(), checked, options.search);
+        return CreateSearch<Dim>(grid->GetGrid(), checked, options);
       }
     });
   if (search == nullptr) {

@@ -2,6 +2,7 @@
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
 #include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/arrays.hpp"
 #include "pcms/utility/detail/profile.hpp"
 #include <Kokkos_Core.hpp>
 #include <string>
@@ -203,6 +204,44 @@ std::shared_ptr<const CoordinateMap> CreateCoordinateEmbedding(
   }
   return CreateCoordinateMap<2, 3>(std::move(source), std::move(target),
                                    InsertionKernel<2>{axis, value});
+}
+
+ValueBasis ApplyValueTransforms(const BoundCoordinateMap& map,
+                                ValueView<const Real, DeviceMemorySpace> in,
+                                Rank2View<Real, DeviceMemorySpace> out)
+{
+  ValueBasis basis = in.GetBasis();
+  Rank2View<const Real, DeviceMemorySpace> values = in.GetValues();
+  const auto transforms = map.ValueTransforms(basis);
+  if (transforms.empty() && values.data_handle() != out.data_handle()) {
+    detail::CopyDeviceRank2ViewToRank2View(out, values);
+  }
+  Kokkos::View<Real**, DeviceMemorySpace> scratch;
+  for (const auto* transform : transforms) {
+    const ValueBasis next = transform->OutputBasis(basis);
+    std::size_t components = 1;
+    for (int k = 0; k < next.Rank(); ++k) {
+      components *= next.system->Dimension();
+    }
+    auto target = out;
+    if (components != out.extent(1)) {
+      // a step before the one that changes the number of components
+      if (scratch.extent(1) != components) {
+        scratch = Kokkos::View<Real**, DeviceMemorySpace>(
+          "value_transform_scratch", values.extent(0), components);
+      }
+      target = MakeRank2View(scratch);
+    }
+    transform->Apply(ValueView<const Real, DeviceMemorySpace>(basis, values),
+                     ValueView<Real, DeviceMemorySpace>(next, target));
+    basis = next;
+    values = target;
+  }
+  if (values.data_handle() != out.data_handle()) {
+    throw pcms_error("ApplyValueTransforms: `out` needs the components of the "
+                     "re-expressed values");
+  }
+  return basis;
 }
 
 } // namespace pcms

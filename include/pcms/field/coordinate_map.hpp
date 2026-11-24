@@ -82,6 +82,18 @@ private:
   mutable std::optional<pcms::ValueTransform> to_physical_;
 };
 
+/// @brief Re-expresses `in`, evaluated at the mapped points, in the source
+///        coordinate system of the query points: the transforms of
+///        map.ValueTransforms(in.GetBasis()), in order.
+/// @param out [points][components of the returned basis]; may be `in`'s
+///        storage when both have as many components
+/// @return the basis of `out`
+/// @throws pcms_error as ValueTransforms and ValueTransform::Apply, or if
+///         `out` has another number of components than the returned basis
+[[nodiscard]] ValueBasis ApplyValueTransforms(
+  const BoundCoordinateMap& map, ValueView<const Real, DeviceMemorySpace> in,
+  Rank2View<Real, DeviceMemorySpace> out);
+
 class CoordinateMap
 {
 public:

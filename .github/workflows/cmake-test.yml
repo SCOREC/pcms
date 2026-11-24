@@ -64,26 +64,32 @@ jobs:
             cmake_args: -DPCMS_ENABLE_PYTHON=ON
           - preset: polynomial-reconstruction
             kokkos: serial
+            units: true
             kokkos_kernels: true
           - preset: unstructured
             kokkos: serial
+            units: true
             omega_h: true
             meshfields: true
           - preset: conservative
             kokkos: serial
+            units: true
             omega_h: true
             meshfields: true
             kokkos_kernels: true
             petsc: true
           - preset: coupling-core
             kokkos: serial
+            units: true
             coupler: true
           - preset: coupling
             kokkos: serial
+            units: true
             omega_h: true
             coupler: true
           - preset: full
             kokkos: serial
+            units: true
             omega_h: true
             meshfields: true
             kokkos_kernels: true
@@ -92,6 +98,7 @@ jobs:
             python: true
           - preset: full
             kokkos: openmp
+            units: true
             omega_h: true
             meshfields: true
             kokkos_kernels: true
@@ -100,6 +107,7 @@ jobs:
             python: true
           - preset: full-static
             kokkos: serial
+            units: true
             omega_h: true
             meshfields: true
             kokkos_kernels: true
@@ -220,6 +228,22 @@ jobs:
         cache: true
         options: '-DADIOS2_USE_CUDA=OFF'
 
+    - name: build units
+      if: matrix.units
+      uses: ./.github/actions/install-repo
+      with:
+        repo-name: 'units'
+        repo-path: 'LLNL/units'
+        repo-ref: 'v0.13.1'
+        cache: true
+        options: '-DCMAKE_BUILD_TYPE=Release
+                  -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                  -DUNITS_BUILD_STATIC_LIBRARY=ON
+                  -DUNITS_BUILD_SHARED_LIBRARY=OFF
+                  -DUNITS_ENABLE_TESTS=OFF
+                  -DUNITS_BUILD_CONVERTER_APP=OFF
+                  -DUNITS_BUILD_WEBSERVER=OFF'
+
     - name: build redev
       if: matrix.coupler
       uses: ./.github/actions/install-repo
@@ -300,6 +324,9 @@ jobs:
         if [ "${{ matrix.petsc }}" = true ]; then
           dirs+=(-DPETSC_DIR=${{ runner.temp }}/petsc -DPETSC_ARCH=ubuntu-kokkos
                  -DPCMS_PETSC_LINK_STATIC=${{ matrix.python && 'OFF' || 'ON' }})
+        fi
+        if [ "${{ matrix.units }}" = true ]; then
+          dirs+=(-Dunits_DIR=${{ runner.temp }}/build-units/install/lib/cmake/units)
         fi
         if [ "${{ matrix.coupler }}" = true ]; then
           dirs+=(-Dredev_DIR=${{ runner.temp }}/build-redev/install/lib/cmake/redev

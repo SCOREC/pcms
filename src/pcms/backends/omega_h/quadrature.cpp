@@ -68,7 +68,15 @@ template <int Dim>
 Quadrature CreateSimplexQuadrature(const OmegaHGeometry& geometry, int order,
                                    int samples, std::uint64_t seed)
 {
-  constexpr Real ReferenceMeasure = Dim == 3 ? 1.0 / 6.0 : 0.5;
+  static_assert(Dim == 2 || Dim == 3, "Omega_h meshes are 2D or 3D");
+  // the measure of the reference simplex, 1 / Dim!
+  constexpr Real ReferenceMeasure = [] {
+    Real factorial = 1;
+    for (int k = 2; k <= Dim; ++k) {
+      factorial *= k;
+    }
+    return 1 / factorial;
+  }();
   const bool random = samples > 0;
   int per_cell = samples;
   Kokkos::View<Real * [Dim + 1], DeviceMemorySpace> bary;
@@ -162,9 +170,9 @@ Quadrature OmegaHGeometry::CreateQuadrature(
   } else {
     return Geometry::CreateQuadrature(rule);
   }
-  return mesh_.dim() == 3
-           ? CreateSimplexQuadrature<3>(*this, order, samples, seed)
-           : CreateSimplexQuadrature<2>(*this, order, samples, seed);
+  return detail::VisitMeshDimension(mesh_, [&]<int Dim>() {
+    return CreateSimplexQuadrature<Dim>(*this, order, samples, seed);
+  });
 }
 
 } // namespace pcms::omega_h

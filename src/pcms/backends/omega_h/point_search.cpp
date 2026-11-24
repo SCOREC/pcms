@@ -39,6 +39,7 @@ template <int Dim>
 GridPointSearch<Dim> CreateGridPointSearchOfDim(
   Omega_h::Mesh& mesh, const std::vector<LO>& divisions, Real tolerance)
 {
+  static_assert(Dim == 2 || Dim == 3, "Omega_h meshes are 2D or 3D");
   auto mesh_bbox = Omega_h::get_bounding_box<Dim>(&mesh);
   UniformGrid<Dim> grid{};
   for (int i = 0; i < Dim; ++i) {
@@ -72,10 +73,10 @@ GridPointSearchVariant CreateGridPointSearch(Omega_h::Mesh& mesh,
     throw std::invalid_argument(
       "CreateGridPointSearch: divisions must have one entry per axis");
   }
-  if (mesh.dim() == 2) {
-    return CreateGridPointSearchOfDim<2>(mesh, divisions, tolerance);
-  }
-  return CreateGridPointSearchOfDim<3>(mesh, divisions, tolerance);
+  return detail::VisitMeshDimension(mesh, [&]<int Dim>() {
+    return GridPointSearchVariant(
+      CreateGridPointSearchOfDim<Dim>(mesh, divisions, tolerance));
+  });
 }
 
 } // namespace pcms::omega_h

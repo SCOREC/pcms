@@ -47,6 +47,7 @@ void FillOmegaHLagrangeRows(
   const Kokkos::View<LO*, DeviceMemorySpace>& holders,
   const Kokkos::View<Real*, DeviceMemorySpace>& weights)
 {
+  static_assert(Dim == 2 || Dim == 3, "Omega_h meshes are 2D or 3D");
   const auto found = binding.FoundPoints();
   const auto results = binding.Results<Dim>();
   const auto up = UpAdjacencies<Dim>(mesh);
@@ -78,13 +79,10 @@ inline pcms::detail::PointRows OmegaHLagrangeRows(
     static_cast<std::size_t>(binding.NumPoints()) * stride);
   Kokkos::View<Real*, DeviceMemorySpace> weights("omega_h_lagrange_weights",
                                                  holders.extent(0));
-  if (mesh.dim() == 2) {
-    FillOmegaHLagrangeRows<2>(mesh, layout.GetOrder(), binding, holders,
-                              weights);
-  } else {
-    FillOmegaHLagrangeRows<3>(mesh, layout.GetOrder(), binding, holders,
-                              weights);
-  }
+  VisitMeshDimension(mesh, [&]<int Dim>() {
+    FillOmegaHLagrangeRows<Dim>(mesh, layout.GetOrder(), binding, holders,
+                                weights);
+  });
   return {pcms::detail::StrideOffsets(binding.NumPoints(), stride), holders,
           weights};
 }

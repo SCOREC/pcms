@@ -126,20 +126,13 @@ Kokkos::View<const LO*, DeviceMemorySpace> ElementGuesses(
 GridPointSearchVariant MakeGridSearch(Omega_h::Mesh& mesh,
                                       const SearchOptions& options)
 {
-  if (mesh.dim() == 2) {
+  return detail::VisitMeshDimension(mesh, [&]<int Dim>() {
     const LO n = options.divisions > 0
                    ? options.divisions
-                   : pcms::detail::DivisionsPerAxisForMesh<2>(mesh.nelems());
-    return CreateGridPointSearch(mesh, {n, n}, options.tolerance);
-  }
-  if (mesh.dim() == 3) {
-    const LO n = options.divisions > 0
-                   ? options.divisions
-                   : pcms::detail::DivisionsPerAxisForMesh<3>(mesh.nelems());
-    return CreateGridPointSearch(mesh, {n, n, n}, options.tolerance);
-  }
-  throw std::invalid_argument(
-    "MakeGridSearch: only 2D and 3D meshes are supported");
+                   : pcms::detail::DivisionsPerAxisForMesh<Dim>(mesh.nelems());
+    return CreateGridPointSearch(mesh, std::vector<LO>(Dim, n),
+                                 options.tolerance);
+  });
 }
 
 OmegaHGeometry::OmegaHGeometry(Omega_h::Mesh& mesh,
@@ -266,6 +259,7 @@ namespace
 template <int Dim>
 CellJacobians SimplexJacobians(Omega_h::Mesh& mesh)
 {
+  static_assert(Dim == 2 || Dim == 3, "Omega_h meshes are 2D or 3D");
   const LO nelems = mesh.nelems();
   Kokkos::View<Real***, DeviceMemorySpace> jacobian("omega_h_jacobian", nelems,
                                                     Dim, Dim);
@@ -296,8 +290,8 @@ CellJacobians SimplexJacobians(Omega_h::Mesh& mesh)
 CellJacobians OmegaHGeometry::CellJacobian() const
 {
   std::call_once(jacobian_once_, [this] {
-    cell_jacobians_ = mesh_.dim() == 2 ? SimplexJacobians<2>(mesh_)
-                                       : SimplexJacobians<3>(mesh_);
+    cell_jacobians_ = detail::VisitMeshDimension(
+      mesh_, [&]<int Dim>() { return SimplexJacobians<Dim>(mesh_); });
   });
   return cell_jacobians_;
 }

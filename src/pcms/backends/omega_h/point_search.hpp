@@ -3,6 +3,7 @@
 
 #include <cassert>
 
+#include <string>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -14,6 +15,7 @@
 #include <Omega_h_shape.hpp>
 
 #include "pcms/localization/point_search.hpp"
+#include "pcms/utility/assert.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
@@ -38,6 +40,20 @@ template <int Dim>
     }
   }
   return simplex;
+}
+
+/// @brief Calls `f.template operator()<Dim>()` with the dimension of `mesh`
+/// @throws pcms_error if the mesh is not 2D or 3D
+template <typename F>
+decltype(auto) VisitMeshDimension(const Omega_h::Mesh& mesh, F&& f)
+{
+  switch (mesh.dim()) {
+    case 2: return f.template operator()<2>();
+    case 3: return f.template operator()<3>();
+    default:
+      throw pcms_error("Omega_h meshes must be 2D or 3D, not " +
+                       std::to_string(mesh.dim()) + "D");
+  }
 }
 
 } // namespace detail

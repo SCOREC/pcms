@@ -180,6 +180,7 @@ IntersectionResults intersectTargetsImpl(const OmegaHGeometry& source,
                                          Omega_h::Mesh& target_mesh,
                                          bool use_prefilter)
 {
+  static_assert(Dim == 2 || Dim == 3, "Omega_h meshes are 2D or 3D");
   FindIntersections intersect(source.GetMesh(), target_mesh);
 
   auto nelems_target = target_mesh.nelems();
@@ -223,9 +224,8 @@ IntersectionResults intersectTargets(const OmegaHGeometry& source,
     throw pcms_error("intersectTargets: the source geometry's mesh and the "
                      "target mesh differ in dimension");
   }
-  if (target_mesh.dim() == 3) {
-    return intersectTargetsImpl<3>(source, target_mesh, use_prefilter);
-  }
-  return intersectTargetsImpl<2>(source, target_mesh, use_prefilter);
+  return detail::VisitMeshDimension(target_mesh, [&]<int Dim>() {
+    return intersectTargetsImpl<Dim>(source, target_mesh, use_prefilter);
+  });
 }
 } // namespace pcms::omega_h

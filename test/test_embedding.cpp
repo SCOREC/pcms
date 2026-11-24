@@ -1188,8 +1188,9 @@ struct Torus
   std::shared_ptr<const pcms::Geometry> xi_grid =
     MakeGrid(pcms::csys::CreateParameterSystem("Xi", 3, {{2, 0, 2 * Pi}}),
              {0.5, 0, 0}, {0.5, 2 * Pi, 2 * Pi}, {4, 64, 8});
-  std::shared_ptr<const pcms::CoordinateMap> shear = pcms::CreateCoordinateMap(
-    xi_grid->GetCoordinateSystem(), u->GetParameterSystem(), Shear{});
+  std::shared_ptr<const pcms::CoordinateMap> shear =
+    pcms::CreateCoordinateMap<3, 3>(xi_grid->GetCoordinateSystem(),
+                                    u->GetParameterSystem(), Shear{});
   std::shared_ptr<const pcms::EmbeddedGeometry> xi =
     pcms::CreateEmbeddedGeometry(xi_grid, shear, u);
 
@@ -1333,7 +1334,7 @@ TEST_CASE("A chained embedded geometry binds physical points through its "
           "[embedding][embedded_geometry][chain]")
 {
   const Torus t;
-  const auto unshear = pcms::CreateCoordinateMap(
+  const auto unshear = pcms::CreateCoordinateMap<3, 3>(
     t.u->GetParameterSystem(), t.xi->GetParameterSystem(), Unshear{});
   const auto inverted =
     pcms::CreateEmbeddedGeometry(t.xi_grid, t.shear, t.u, {.inverse = unshear});
@@ -1374,7 +1375,8 @@ TEST_CASE("Three chained embedded geometries compose",
   const auto box = pcms::csys::CreateParameterSystem("T", 3);
   const auto tube = pcms::CreateEmbeddedGeometry(
     MakeGrid(box, {0, 0, 0}, {1, 1, 1}, {2, 16, 2}),
-    pcms::CreateCoordinateMap(box, t.xi->GetParameterSystem(), Box{}), t.xi);
+    pcms::CreateCoordinateMap<3, 3>(box, t.xi->GetParameterSystem(), Box{}),
+    t.xi);
   CHECK(tube->GetCoordinateSystem() == t.u->GetCoordinateSystem());
   // 2 pi (R0 (r1^2 - r0^2) / 2 (theta1 - theta0) + (r1^3 - r0^3) / 3
   // (sin theta1 - sin theta0)) over 0.6 < r < 0.8, 1 < theta < 3

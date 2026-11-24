@@ -216,9 +216,9 @@ TEST_CASE("CreateControlVariateProjection through a coordinate map maps the "
   auto projection = pcms::CreateControlVariateProjection(
     source_space, target_space,
     {.samples_per_element = 4,
-     .to_source =
-       pcms::CreateCoordinateMap(pcms::csys::CreateCartesian(2),
-                                 pcms::csys::CreateCartesian(2), SwapXY{})});
+     .to_source = pcms::CreateCoordinateMap<2, 2>(
+       pcms::csys::CreateCartesian(2), pcms::csys::CreateCartesian(2),
+       SwapXY{})});
   projection->Apply(source_field, target_field);
 
   const auto values = pcms::detail::FlattenToRank1View(

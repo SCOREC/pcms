@@ -171,16 +171,16 @@ std::unique_ptr<BoundCoordinateMap> CoordinateMap::Bind(
 
 std::shared_ptr<const CoordinateMap> CreateCartesianToCylindrical()
 {
-  return CreateCoordinateMap(csys::CreateCartesian(3),
-                             csys::CreateCylindricalRThetaZ(),
-                             CartesianToCylindricalKernel{});
+  return CreateCoordinateMap<3, 3>(csys::CreateCartesian(3),
+                                   csys::CreateCylindricalRThetaZ(),
+                                   CartesianToCylindricalKernel{});
 }
 
 std::shared_ptr<const CoordinateMap> CreateCylindricalToCartesian()
 {
-  return CreateCoordinateMap(csys::CreateCylindricalRThetaZ(),
-                             csys::CreateCartesian(3),
-                             CylindricalToCartesianKernel{});
+  return CreateCoordinateMap<3, 3>(csys::CreateCylindricalRThetaZ(),
+                                   csys::CreateCartesian(3),
+                                   CylindricalToCartesianKernel{});
 }
 
 std::shared_ptr<const CoordinateMap> CreateCoordinateEmbedding(
@@ -198,11 +198,11 @@ std::shared_ptr<const CoordinateMap> CreateCoordinateEmbedding(
                      "axis must be one of its coordinates");
   }
   if (dim == 1) {
-    return CreateCoordinateMap(std::move(source), std::move(target),
-                               InsertionKernel<1>{axis, value});
+    return CreateCoordinateMap<1, 2>(std::move(source), std::move(target),
+                                     InsertionKernel<1>{axis, value});
   }
-  return CreateCoordinateMap(std::move(source), std::move(target),
-                             InsertionKernel<2>{axis, value});
+  return CreateCoordinateMap<2, 3>(std::move(source), std::move(target),
+                                   InsertionKernel<2>{axis, value});
 }
 
 } // namespace pcms

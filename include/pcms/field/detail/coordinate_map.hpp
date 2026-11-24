@@ -7,37 +7,12 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/memory_spaces.hpp"
 #include <Kokkos_Core.hpp>
-#include <array>
 #include <memory>
 #include <string>
-#include <type_traits>
 #include <utility>
 
 namespace pcms::detail
 {
-
-/// The largest dimension of the systems of a kernel map.
-inline constexpr int MaxKernelMapDimension = 3;
-
-/// @return {S, T, matches}: the source and target dimensions S, T <= 3 whose
-///         typed arrays `Kernel` takes, and how many pairs it takes
-template <typename Kernel, int Index = 0>
-constexpr std::array<int, 3> KernelDimensions()
-{
-  if constexpr (Index == MaxKernelMapDimension * MaxKernelMapDimension) {
-    return {0, 0, 0};
-  } else {
-    constexpr int S = Index / MaxKernelMapDimension + 1;
-    constexpr int T = Index % MaxKernelMapDimension + 1;
-    auto dims = KernelDimensions<Kernel, Index + 1>();
-    if constexpr (std::is_invocable_v<
-                    const Kernel&, const Kokkos::Array<Real, S>&,
-                    Kokkos::Array<Real, T>&, Kokkos::Array<Real, T * S>&>) {
-      dims = {S, T, dims[2] + 1};
-    }
-    return dims;
-  }
-}
 
 /// A bound map that holds its mapped points and its Jacobian.
 class BoundJacobianMap final : public BoundCoordinateMap
@@ -79,7 +54,7 @@ void EvaluateKernelMap(const Kernel& kernel,
     KOKKOS_LAMBDA(const LO p) {
       Kokkos::Array<Real, S> x = {};
       Kokkos::Array<Real, T> out = {};
-      Kokkos::Array<Real, T * S> jac = {};
+      Kokkos::Array<Real, static_cast<std::size_t>(T) * S> jac = {};
       for (int i = 0; i < S; ++i) {
         x[i] = in(p, i);
       }

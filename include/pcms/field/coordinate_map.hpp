@@ -9,6 +9,7 @@
 #include "pcms/utility/memory_spaces.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
+#include <type_traits>
 #include <optional>
 #include <vector>
 
@@ -123,14 +124,14 @@ private:
 ///        and the Jacobian there: the way to write a closed-form map between
 ///        coordinate systems.
 ///
-/// `kernel` is a copyable functor with, for one source dimension S and target
-/// dimension T (at most 3),
+/// `kernel` is a copyable functor with
 /// `KOKKOS_FUNCTION void operator()(const Kokkos::Array<Real, S>& x,
 /// Kokkos::Array<Real, T>& out, Kokkos::Array<Real, T * S>& jacobian) const`,
 /// with jacobian[S * j + i] = d out_j / d x_i.
-/// @throws pcms_error if a system is null or its dimension is not the
-///         kernel's
-template <typename Kernel>
+/// @tparam S the dimension of `source`
+/// @tparam T the dimension of `target`
+/// @throws pcms_error if a system is null or its dimension is not S or T
+template <int S, int T, typename Kernel>
 [[nodiscard]] std::shared_ptr<const CoordinateMap> CreateCoordinateMap(
   std::shared_ptr<const CoordinateSystem> source,
   std::shared_ptr<const CoordinateSystem> target, Kernel kernel);
@@ -165,17 +166,20 @@ CreateCylindricalToCartesian();
 namespace pcms
 {
 
-template <typename Kernel>
+template <int S, int T, typename Kernel>
 std::shared_ptr<const CoordinateMap> CreateCoordinateMap(
   std::shared_ptr<const CoordinateSystem> source,
   std::shared_ptr<const CoordinateSystem> target, Kernel kernel)
 {
-  constexpr auto dims = detail::KernelDimensions<Kernel>();
-  static_assert(dims[2] == 1,
-                "CreateCoordinateMap: the kernel must take (const "
-                "Kokkos::Array<Real, S>&, Kokkos::Array<Real, T>&, "
-                "Kokkos::Array<Real, T * S>&) for one S and T in 1..3");
-  return std::make_shared<const detail::KernelMap<Kernel, dims[0], dims[1]>>(
+  static_assert(S > 0 && T > 0, "CreateCoordinateMap: S and T must be > 0");
+  static_assert(
+    std::is_invocable_v<const Kernel&, const Kokkos::Array<Real, S>&,
+                        Kokkos::Array<Real, T>&,
+                        Kokkos::Array<Real, static_cast<std::size_t>(T) * S>&>,
+    "CreateCoordinateMap<S, T>: the kernel must take (const "
+    "Kokkos::Array<Real, S>&, Kokkos::Array<Real, T>&, "
+    "Kokkos::Array<Real, T * S>&)");
+  return std::make_shared<const detail::KernelMap<Kernel, S, T>>(
     std::move(source), std::move(target), std::move(kernel));
 }
 

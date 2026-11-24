@@ -17,6 +17,7 @@ set(
         ../../../include/pcms/utility/detail/memory_spaces.hpp
         ../../../include/pcms/utility/detail/periodic.hpp
         ../../../include/pcms/utility/detail/print.hpp
+        ../../../include/pcms/utility/detail/random.hpp
         ../../../include/pcms/utility/detail/types.hpp
         ../../../include/pcms/utility/detail/uniform_grid.hpp
         ../../../include/pcms/utility/entity_types.hpp

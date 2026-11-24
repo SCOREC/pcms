@@ -126,6 +126,8 @@ TEST_CASE("CreateQuadrature: Monte Carlo weights sum to the area and the "
   CHECK(Integrate(first, square) == Integrate(second, square));
   const auto third = pcms::CreateMonteCarloQuadrature(geometry, 8, 8);
   CHECK(Integrate(first, square) != Integrate(third, square));
+  // the rule of a seed does not change between builds
+  CHECK(Integrate(first, square) == 0.32930288482711945);
 }
 
 TEST_CASE("CreateQuadrature: unsupported rules throw", "[quadrature]")

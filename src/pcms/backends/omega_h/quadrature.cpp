@@ -4,6 +4,7 @@
 #include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/random.hpp"
 #include <Kokkos_Random.hpp>
 #include <Omega_h_for.hpp>
 #include <Omega_h_map.hpp>
@@ -19,17 +20,6 @@ namespace
 {
 
 using Generator = Kokkos::Random_XorShift64<DefaultExecutionSpace>;
-
-// The state of the generator of the cell with global id `gid` (splitmix64)
-KOKKOS_INLINE_FUNCTION std::uint64_t CellState(std::uint64_t seed,
-                                               Omega_h::GO gid)
-{
-  std::uint64_t z = seed + 0x9E3779B97F4A7C15ULL * (gid + 1);
-  z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
-  z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
-  z ^= z >> 31;
-  return z != 0 ? z : 1;
-}
 
 // The global id of each element, from the geometry's global id tag.
 Omega_h::GOs ElementGlobalIds(Omega_h::Mesh& mesh, const std::string& name)
@@ -128,7 +118,7 @@ Quadrature CreateSimplexQuadrature(const OmegaHGeometry& geometry, int order,
         }
       };
       if (random) {
-        Generator gen(CellState(seed, gids[e]));
+        auto gen = pcms::detail::EntityGenerator(seed, gids[e]);
         for (int q = 0; q < per_cell; ++q) {
           fill(q, UniformBarycentric<Dim>(gen), ReferenceMeasure / per_cell);
         }

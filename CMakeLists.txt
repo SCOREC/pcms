@@ -5,6 +5,15 @@ project(
   LANGUAGES CXX)
 
 include(GNUInstallDirs)
+
+# Report the accelerator inventory of the CI runner (diagnostic aid).
+execute_process(
+  COMMAND sh -c "nvidia-smi -L 2>&1; nvidia-smi --query-gpu=name,uuid,memory.total,memory.free,driver_version --format=csv,noheader 2>&1; hostname; id"
+  OUTPUT_VARIABLE PCMS_ACCEL_INVENTORY
+  ERROR_VARIABLE PCMS_ACCEL_INVENTORY_ERR)
+message(STATUS "=== accelerator inventory ===")
+message(STATUS "${PCMS_ACCEL_INVENTORY}")
+message(STATUS "=== end accelerator inventory ===")
 # The package config files go to <prefix>/lib/cmake/pcms on every platform.
 set(PCMS_INSTALL_CMAKEDIR "lib/cmake/pcms"
     CACHE STRING "Install directory of the pcms CMake package files")

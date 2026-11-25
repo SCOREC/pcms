@@ -50,6 +50,16 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
     mpi_test(test_distributed_coupling_2p 2
              $<TARGET_FILE:test_distributed_coupling>)
   endif()
+  add_exe(test_distributed_evaluate)
+  target_link_libraries(test_distributed_evaluate pcms::transfer)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_evaluate_2p 2
+             $<TARGET_FILE:test_distributed_evaluate>)
+  endif()
+  if(HOST_NPROC GREATER_EQUAL 4)
+    mpi_test(test_distributed_evaluate_4p 4
+             $<TARGET_FILE:test_distributed_evaluate>)
+  endif()
   add_exe(test_distributed_search)
   if(HOST_NPROC GREATER_EQUAL 2)
     mpi_test(test_distributed_search_2p 2
@@ -64,7 +74,8 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
   if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
     # distributed_test_utils.hpp includes the (private) MeshFields field data
     foreach(t test_distributed_layout test_distributed_field
-              test_distributed_coupling test_distributed_search)
+              test_distributed_coupling test_distributed_evaluate
+              test_distributed_search)
       target_link_libraries(${t} meshfields::meshfields)
     endforeach()
   endif()

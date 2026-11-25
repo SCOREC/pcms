@@ -4,6 +4,7 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/value_view.hpp
         element_dispatch.hpp
         gid_permutation.hpp
+        ../../../include/pcms/field/distributed_evaluator.hpp
         ../../../include/pcms/field/field_layout.hpp
         layout/empty.hpp
         ../../../include/pcms/field/out_of_bounds_policy.hpp
@@ -33,6 +34,7 @@ set(PCMS_FIELD_SOURCES
         gradient_source.cpp
         query_points.cpp
         gid_permutation.cpp
+        distributed_point_evaluator.cpp
         layout/empty.cpp
         function_space/lagrange.cpp
         function_space/spline.cpp
@@ -56,6 +58,8 @@ target_sources(pcms_field
   PRIVATE ${PCMS_FIELD_HEADERS_PRIVATE})
 add_library(pcms::field ALIAS pcms_field)
 target_compile_features(pcms_field PUBLIC cxx_std_20)
+# the distributed evaluator exchanges values over MPI
+target_link_libraries(pcms_field PRIVATE MPI::MPI_CXX)
 
 target_link_libraries(pcms_field PUBLIC
         pcms::utility

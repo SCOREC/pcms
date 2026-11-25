@@ -46,16 +46,27 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
              $<TARGET_FILE:test_distributed_field>)
   endif()
   add_exe(test_distributed_coupling)
-  if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
-    # distributed_test_utils.hpp includes the (private) MeshFields field data
-    foreach(t test_distributed_layout test_distributed_field
-              test_distributed_coupling)
-      target_link_libraries(${t} meshfields::meshfields)
-    endforeach()
-  endif()
   if(HOST_NPROC GREATER_EQUAL 2)
     mpi_test(test_distributed_coupling_2p 2
              $<TARGET_FILE:test_distributed_coupling>)
+  endif()
+  add_exe(test_distributed_search)
+  if(HOST_NPROC GREATER_EQUAL 2)
+    mpi_test(test_distributed_search_2p 2
+             $<TARGET_FILE:test_distributed_search>)
+  endif()
+  # Omega_h::build_box partitions by recursive bisection, which needs a
+  # power-of-two rank count, so the distributed tests skip 3 ranks.
+  if(HOST_NPROC GREATER_EQUAL 4)
+    mpi_test(test_distributed_search_4p 4
+             $<TARGET_FILE:test_distributed_search>)
+  endif()
+  if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
+    # distributed_test_utils.hpp includes the (private) MeshFields field data
+    foreach(t test_distributed_layout test_distributed_field
+              test_distributed_coupling test_distributed_search)
+      target_link_libraries(${t} meshfields::meshfields)
+    endforeach()
   endif()
   add_exe(test_ohClassPtn_appRibPtn)
   set(cyclone2p ${PCMS_TEST_DATA_DIR}/cyclone/23elements/2p.osh/)

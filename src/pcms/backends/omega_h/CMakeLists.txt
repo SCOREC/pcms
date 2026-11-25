@@ -4,8 +4,10 @@ if(PCMS_ENABLE_OMEGA_H)
   # the grid search over the mesh's elements and the mesh-adjacency
   # neighbourhood: part of pcms::localization
   target_sources(
-    pcms_localization PRIVATE point_search.cpp adj_search.cpp point_search.hpp
-                              adj_search.hpp queue_visited.hpp)
+    pcms_localization
+    PRIVATE point_search.cpp adj_search.cpp distributed_point_search.cpp
+            point_search.hpp adj_search.hpp queue_visited.hpp
+            candidate_rank_table.hpp distributed_point_search.hpp)
 
   # layouts, field data, Lagrange evaluator, the geometry, the uniform-grid
   # binary field and the public entry points: part of pcms::field

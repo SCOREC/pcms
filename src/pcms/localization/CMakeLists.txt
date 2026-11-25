@@ -14,6 +14,7 @@ set(
         mls_support_helpers.hpp
         point_search.hpp
         candidate_map_reference.hpp
+        candidate_rank_table.hpp
 )
 
 set(

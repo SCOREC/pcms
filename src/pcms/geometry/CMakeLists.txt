@@ -3,6 +3,7 @@ set(
         ../../../include/pcms/geometry/geometry.hpp
         ../../../include/pcms/geometry/bound_points.hpp
         ../../../include/pcms/geometry/supports.hpp
+        ../../../include/pcms/geometry/distributed_geometry.hpp
         ../../../include/pcms/geometry/detail/bound_points.hpp
         ../../../include/pcms/geometry/detail/geometry.hpp
 )
@@ -11,6 +12,9 @@ set(
         PCMS_GEOMETRY_SOURCES
         geometry.cpp
         bound_points.cpp
+        distributed_geometry.cpp
+        distributed_binding.hpp
+        distributed_routing_plan.hpp
         # Geometry::Bind binds coordinate maps; the map sits below the geometry
         # (its header stays in pcms/field), so it is compiled here
         ../field/coordinate_map.cpp
@@ -35,6 +39,8 @@ target_link_libraries(
         Kokkos::kokkos
         pcms::utility
 )
+# the distributed geometry exchanges points over MPI
+target_link_libraries(pcms_geometry PUBLIC MPI::MPI_CXX)
 # Omega_h is used by the implementation only (no public header includes it)
 if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms_geometry PRIVATE Omega_h::omega_h)

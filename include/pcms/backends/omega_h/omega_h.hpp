@@ -6,6 +6,7 @@
 
 #include "pcms/backends/omega_h/geometry.hpp"
 #include "pcms/field/field.hpp"
+#include "pcms/geometry/distributed_geometry.hpp"
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
@@ -47,6 +48,26 @@ namespace pcms::omega_h
   std::shared_ptr<Omega_h::Library> library,
   std::shared_ptr<const CoordinateSystem> system,
   OmegaHGeometryOptions options = {});
+
+/**
+ * The geometry of an Omega_h mesh partitioned over ranks, on the geometry of
+ * this rank's part. Binds query points anywhere in the decomposition; see
+ * CreateDistributedEvaluator. Collective.
+ * \param local an Omega_h geometry (from CreateGeometry)
+ * \param grid_divisions cells per axis of the grid routing points to ranks;
+ *        0 derives it from the global element count. The same on every rank.
+ * \throws pcms_error if `local` is not an Omega_h geometry
+ */
+[[nodiscard]] std::shared_ptr<const DistributedGeometry>
+CreateDistributedGeometry(std::shared_ptr<const Geometry> local,
+                          LO grid_divisions = 0);
+
+/** As above, on a new geometry of `mesh` (see CreateGeometry). Collective. */
+[[nodiscard]] std::shared_ptr<const DistributedGeometry>
+CreateDistributedGeometry(Omega_h::Mesh& mesh,
+                          std::shared_ptr<const CoordinateSystem> system,
+                          OmegaHGeometryOptions options = {},
+                          LO grid_divisions = 0);
 
 /// A point-cloud geometry whose sites are the vertices (`entity_dim` 0) or the
 /// element centroids (the mesh dimension) of the mesh of an Omega_h geometry;

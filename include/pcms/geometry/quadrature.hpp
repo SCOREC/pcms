@@ -26,6 +26,9 @@ struct Quadrature
   Kokkos::View<const Real*, DeviceMemorySpace> weights;
   /// cells of a second geometry the points lie in; empty if there is none
   OwnerHints other;
+  /// the polynomial degree the rule integrates exactly; -1 if unknown or not
+  /// polynomial-exact
+  int degree = -1;
 };
 
 /// @brief The Gauss rule of each cell of `geometry` (on simplices, the

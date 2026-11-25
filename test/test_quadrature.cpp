@@ -60,6 +60,7 @@ void CheckPolynomialExactness(Omega_h::Mesh& mesh, Make make)
   const auto quadrature = make(geometry, max_order);
   CHECK(quadrature.points->GetGeometry() == geometry);
   CHECK(quadrature.points->MissingPoints().extent(0) == 0);
+  CHECK(quadrature.degree == max_order);
   CHECK(WeightSum(quadrature) == Catch::Approx(1.0).margin(1e-12));
   for (int a = 0; a <= max_order; ++a) {
     for (int b = 0; a + b <= max_order; ++b) {
@@ -113,6 +114,7 @@ TEST_CASE("CreateQuadrature: Monte Carlo weights sum to the area and the "
     const auto quadrature = pcms::CreateMonteCarloQuadrature(geometry, samples);
     CAPTURE(samples);
     REQUIRE(quadrature.points->NumPoints() == mesh.nelems() * samples);
+    CHECK(quadrature.degree == -1);
     CHECK(quadrature.points->MissingPoints().extent(0) == 0);
     CHECK(WeightSum(quadrature) == Catch::Approx(1.0).margin(1e-12));
     const double error = std::abs(Integrate(quadrature, square) - 1.0 / 3.0);
@@ -163,6 +165,7 @@ TEST_CASE("CreateIntersectionQuadrature: weights sum to the domain, the rule "
   CHECK(quadrature.points->GetGeometry() == target);
   CHECK(quadrature.points->MissingPoints().extent(0) == 0);
   CHECK(quadrature.other.geometry == source);
+  CHECK(quadrature.degree == order);
   CHECK(quadrature.other.entities.extent(0) ==
         static_cast<std::size_t>(quadrature.points->NumPoints()));
   CHECK(WeightSum(quadrature) == Catch::Approx(1.0).margin(1e-12));

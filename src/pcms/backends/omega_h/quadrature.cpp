@@ -130,11 +130,13 @@ Quadrature CreateSimplexQuadrature(const OmegaHGeometry& geometry, int order,
         }
       }
     });
-  return pcms::detail::BindQuadrature(
+  auto quadrature = pcms::detail::BindQuadrature(
     geometry,
     CoordinateView<DeviceMemorySpace>(geometry.GetCoordinateSystem(),
                                       MakeConstRank2View(coords)),
     weights, OwnerHints{geometry.shared_from_this(), Dim, elements});
+  quadrature.degree = random ? -1 : order;
+  return quadrature;
 }
 
 } // namespace

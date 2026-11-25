@@ -84,6 +84,7 @@ Quadrature CreateIntersectionQuadratureImpl(
                                       MakeConstRank2View(coords)),
     weights, OwnerHints{target, Dim, target_elements});
   quadrature.other = OwnerHints{std::move(source), Dim, source_elements};
+  quadrature.degree = order;
   return quadrature;
 }
 

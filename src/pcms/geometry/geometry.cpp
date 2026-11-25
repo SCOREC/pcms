@@ -185,6 +185,17 @@ void detail::ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
   Kokkos::fence("ScaleByVolumeFactor");
 }
 
+Quadrature detail::BindQuadrature(
+  const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& points,
+  Kokkos::View<Real*, DeviceMemorySpace> weights, const OwnerHints& owners)
+{
+  auto bound = geometry.Bind(points, owners);
+  if (geometry.GetCoordinateSystem()->HasMetric()) {
+    ScaleByVolumeFactor(weights, *bound);
+  }
+  return Quadrature{std::move(bound), weights, {}};
+}
+
 void detail::CheckEntityIds(Kokkos::View<const LO*, DeviceMemorySpace> ids,
                             LO num_entities, const std::string& caller,
                             const std::string& entity)

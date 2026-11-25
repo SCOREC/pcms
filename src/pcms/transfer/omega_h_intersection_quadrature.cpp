@@ -78,13 +78,13 @@ Quadrature CreateIntersectionQuadratureImpl(
           }
         });
     });
-  auto bound =
-    target->Bind(CoordinateView<DeviceMemorySpace>(
-                   target->GetCoordinateSystem(), MakeConstRank2View(coords)),
-                 OwnerHints{target, Dim, target_elements});
-  pcms::detail::ScaleByVolumeFactor(weights, *bound);
-  return Quadrature{std::move(bound), weights,
-                    OwnerHints{std::move(source), Dim, source_elements}};
+  auto quadrature = pcms::detail::BindQuadrature(
+    *target,
+    CoordinateView<DeviceMemorySpace>(target->GetCoordinateSystem(),
+                                      MakeConstRank2View(coords)),
+    weights, OwnerHints{target, Dim, target_elements});
+  quadrature.other = OwnerHints{std::move(source), Dim, source_elements};
+  return quadrature;
 }
 
 } // namespace

@@ -134,6 +134,26 @@ public:
   // Fills the tag's ghost entries with their owners' values. Collective.
   void Synchronize() override { mesh_->sync_tag(tag_dim_, tag_name_); }
 
+  // Sets the values from one entry per entity and component, of which only
+  // the owners' entries are read, and fills the ghosts. Collective.
+  void SetFromOwners(Omega_h::Read<tag_value_type> values)
+  {
+    const int nc = layout_->GetNumComponents();
+    const auto synced = mesh_->sync_array(tag_dim_, values, nc);
+    mesh_->set_tag(tag_dim_, tag_name_, synced);
+    const auto owned = layout_->GetOwnedIndices();
+    const auto data = device_data_;
+    Kokkos::parallel_for(
+      "pcms::OmegaHFieldData::SetFromOwners",
+      Kokkos::MDRangePolicy<DeviceMemorySpace::execution_space,
+                            Kokkos::Rank<2>>(
+        {0, 0},
+        {static_cast<int64_t>(data.extent(0)), static_cast<int64_t>(nc)}),
+      KOKKOS_LAMBDA(const int64_t o, const int64_t c) {
+        data(o, c) = static_cast<T>(synced[owned(o) * nc + c]);
+      });
+  }
+
   // Name of the Omega_h tag holding the values of every DOF holder, owned and
   // ghost, on entity dimension layout.GetDOFHolderEntityDim() (one value per
   // component per entity). Its owned entries

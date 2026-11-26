@@ -23,7 +23,8 @@ void Divide(const Field<Real>& numerator, const Field<Real>& denominator,
 /// jointly, on the vector operations of the fields (field_ops.hpp) and the
 /// form's Apply; the pairings are Apply(functional, function). Without the
 /// diagonal (an evaluator with no matrix) the preconditioner is the identity.
-/// Assembled: a PETSc matrix from the form's COO entries and a KSP, serial.
+/// Assembled: a PETSc matrix from the form's COO entries and a KSP, serial;
+/// without PCMS_ENABLE_PETSC the constructor throws.
 class LinearSolver
 {
 public:
@@ -50,7 +51,6 @@ private:
   // MatrixFree scratch
   mutable std::optional<Function<Real>> diagonal_;
   std::unique_ptr<CgScratch> cg_;
-  mutable Kokkos::View<Real**, DeviceMemorySpace> zeros_;
 };
 
 } // namespace pcms::transfer::detail

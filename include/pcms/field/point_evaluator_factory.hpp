@@ -34,6 +34,9 @@ public:
   [[nodiscard]] virtual bool Supports(
     DifferentialOperator op) const noexcept = 0;
 
+  /// @return whether a DOF is the value of the function at its DOF holder
+  [[nodiscard]] virtual bool HasNodalDOFs() const noexcept { return false; }
+
   /// @brief Creates an evaluator at the points of a BoundPoints.
   ///
   /// If the bind had a coordinate map, the evaluator evaluates at the mapped

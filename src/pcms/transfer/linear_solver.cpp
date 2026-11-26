@@ -1,9 +1,12 @@
 #include "pcms/transfer/linear_solver.hpp"
+#include "pcms/configuration.hpp"
 #include "pcms/field/field_ops.hpp"
-#include "pcms/transfer/petsc_utils.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
+#ifdef PCMS_ENABLE_PETSC
+#include "pcms/transfer/petsc_utils.hpp"
 #include <petscksp.h>
+#endif
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -15,6 +18,7 @@ namespace pcms::transfer::detail
 namespace
 {
 
+#ifdef PCMS_ENABLE_PETSC
 // Owns a PETSc object and destroys it.
 template <typename Handle, PetscErrorCode (*Destroy)(Handle*)>
 class PetscOwner
@@ -39,39 +43,23 @@ private:
 using OwnedMat = PetscOwner<Mat, MatDestroy>;
 using OwnedVec = PetscOwner<Vec, VecDestroy>;
 using OwnedKsp = PetscOwner<KSP, KSPDestroy>;
-
-void CopyOwned(const Field<Real>& from, Field<Real>& to)
-{
-  to.SetDOFHolderDataUnchecked(from.GetDOFHolderData().GetValues());
-  to.Synchronize();
-}
+#endif
 
 } // namespace
 
 void Divide(const Field<Real>& numerator, const Field<Real>& denominator,
             Field<Real>& out)
 {
-  const auto n = numerator.GetDOFHolderData().GetValues();
-  const auto d = denominator.GetDOFHolderData().GetValues();
-  Kokkos::View<Real**, DeviceMemorySpace> quotient(
-    Kokkos::view_alloc(Kokkos::WithoutInitializing, "pcms::transfer::Divide"),
-    n.extent(0), n.extent(1));
-  const auto num_components = static_cast<int>(n.extent(1));
-  Kokkos::parallel_for(
-    "pcms::transfer::Divide",
-    Kokkos::RangePolicy<DefaultExecutionSpace>(
-      0, static_cast<int>(n.extent(0)) * num_components),
-    KOKKOS_LAMBDA(const int k) {
-      quotient(k / num_components, k % num_components) =
-        n(k / num_components, k % num_components) /
-        d(k / num_components, k % num_components);
-    });
-  out.SetDOFHolderDataUnchecked(MakeConstRank2View(quotient));
+  out.SetDOFHolderDataUnchecked(MakeConstRank2View(pcms::detail::MapOwned<Real>(
+    numerator.GetDOFHolderData().GetValues(),
+    denominator.GetDOFHolderData().GetValues(),
+    KOKKOS_LAMBDA(const Real n, const Real d) { return n / d; })));
   out.Synchronize();
 }
 
 struct LinearSolver::Petsc
 {
+#ifdef PCMS_ENABLE_PETSC
   OwnedMat matrix;
   OwnedKsp ksp;
   OwnedVec rhs;
@@ -79,6 +67,7 @@ struct LinearSolver::Petsc
   PetscInt size = 0;
   // the row of the matrix of each owned DOF holder
   std::vector<PetscInt> row_of_owned;
+#endif
 };
 
 LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
@@ -91,9 +80,6 @@ LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
     cg_ = std::make_unique<CgScratch>(
       CgScratch{space->CreateFunction<Real>(), space->CreateFunction<Real>(),
                 space->CreateFunction<Real>(), space->CreateFunction<Real>()});
-    zeros_ = Kokkos::View<Real**, DeviceMemorySpace>("linear_solver_zeros",
-                                                     layout.GetNumDofHolder(),
-                                                     layout.GetNumComponents());
     if (form_.SupportsMatrix() && !layout.IsDistributed()) {
       form_.AssembleDiagonal(*diagonal_);
     } else {
@@ -102,6 +88,11 @@ LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
     return;
   }
 
+#ifndef PCMS_ENABLE_PETSC
+  throw pcms_error("LinearSolver: the assembled solve needs PETSc; configure "
+                   "PCMS with -DPCMS_ENABLE_PETSC=ON or use the MatrixFree "
+                   "method");
+#else
   if (layout.IsDistributed()) {
     throw pcms_error("LinearSolver: the assembled solve is serial; the "
                      "layout is distributed");
@@ -174,6 +165,7 @@ LinearSolver::LinearSolver(const BilinearForm& form, LinearSolveOptions options)
   CHKERRABORT(PETSC_COMM_SELF, ierr);
   ierr = KSPSetUp(petsc_->ksp);
   CHKERRABORT(PETSC_COMM_SELF, ierr);
+#endif
 }
 
 LinearSolver::~LinearSolver() = default;
@@ -185,6 +177,7 @@ int LinearSolver::Solve(const Field<Real>& functional,
     throw pcms_error("LinearSolver::Solve: the functional and the solution "
                      "must have the same layout");
   }
+#ifdef PCMS_ENABLE_PETSC
   if (petsc_ != nullptr) {
     // one KSP solve per component
     const auto b = functional.GetDOFHolderDataHost().GetValues();
@@ -214,6 +207,7 @@ int LinearSolver::Solve(const Field<Real>& functional,
     solution.Synchronize();
     return 0;
   }
+#endif
 
   // Preconditioned conjugate gradients, all components jointly.
   auto& r = cg_->residual;
@@ -224,18 +218,17 @@ int LinearSolver::Solve(const Field<Real>& functional,
     if (diagonal_) {
       Divide(r, *diagonal_, z);
     } else {
-      CopyOwned(r, z);
+      pcms::detail::CopyValues(r, z);
     }
   };
-  solution.SetDOFHolderDataUnchecked(MakeConstRank2View(zeros_));
-  solution.Synchronize();
-  CopyOwned(functional, r);
+  pcms::detail::SetZero(solution);
+  pcms::detail::CopyValues(functional, r);
   const Real target = options_.relative_tolerance * Norm2(functional);
   if (Norm2(r) <= target) {
     return 0;
   }
   precondition();
-  CopyOwned(z, p);
+  pcms::detail::CopyValues(z, p);
   Real rz = Apply(r, z);
   const int max_iterations =
     options_.max_iterations > 0

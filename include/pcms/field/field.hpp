@@ -3,10 +3,12 @@
 
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_layout.hpp"
+#include "pcms/field/field_metadata.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -17,6 +19,9 @@ namespace pcms
 {
 
 class FunctionSpace;
+
+template <typename>
+class TransferOperator;
 
 // Field<T> is the (layout + data) bundle: it pairs coefficient data with the
 // FieldLayout that gives the DOF-holder ordering its meaning. It is the
@@ -44,7 +49,16 @@ public:
     return layout_;
   }
 
-  [[nodiscard]] const std::string& GetName() const noexcept { return name_; }
+  [[nodiscard]] const std::string& GetName() const noexcept
+  {
+    return metadata_.name;
+  }
+
+  /// @return the metadata given at creation, plus what transfers learned
+  [[nodiscard]] const FieldMetadata& GetMetadata() const noexcept
+  {
+    return metadata_;
+  }
 
   // The DOF-holder accessors below read and write the values of the DOF
   // holders this rank owns, shaped [GetNumDofHolder()][component] in owned
@@ -101,9 +115,11 @@ public:
   void Synchronize() { data_->Synchronize(); }
 
 protected:
-  Field(std::string name, std::shared_ptr<const FieldLayout> layout,
+  Field(FieldMetadata metadata, std::shared_ptr<const FieldLayout> layout,
         std::unique_ptr<FieldData<T>> data)
-    : name_(std::move(name)), layout_(std::move(layout)), data_(std::move(data))
+    : metadata_(std::move(metadata)),
+      layout_(std::move(layout)),
+      data_(std::move(data))
   {
   }
 
@@ -134,7 +150,7 @@ protected:
   {
     const auto* access = data_->GetDOFAccess();
     if (access == nullptr) {
-      throw pcms_error("Field '" + name_ +
+      throw pcms_error("Field '" + metadata_.name +
                        "': its values are not accessible through PCMS (the "
                        "field data provides no DOFAccess)");
     }
@@ -179,14 +195,11 @@ protected:
     }
   }
 
-  // FieldFactory constructs Fields (via WrapField); FunctionSpace constructs
-  // Fields the same way and moves a Field's name, layout and data out to build
-  // a Function (via CreateFunction). Both stamp the field name.
   friend class FieldFactory;
   friend class FunctionSpace;
 
 private:
-  std::string name_;
+  FieldMetadata metadata_;
   std::shared_ptr<const FieldLayout> layout_;
   std::unique_ptr<FieldData<T>> data_;
   // Host copy backing GetDOFHolderDataHost when device memory is not host
@@ -217,10 +230,10 @@ public:
   }
 
 protected:
-  Function(std::string name, std::shared_ptr<const FieldLayout> layout,
+  Function(FieldMetadata metadata, std::shared_ptr<const FieldLayout> layout,
            std::unique_ptr<FieldData<T>> data,
            std::shared_ptr<const FunctionSpace> space)
-    : Field<T>(std::move(name), std::move(layout), std::move(data)),
+    : Field<T>(std::move(metadata), std::move(layout), std::move(data)),
       space_(std::move(space))
   {
   }

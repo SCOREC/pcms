@@ -2,6 +2,7 @@
 #define PCMS_TRANSFER_DETAIL_INTERPOLATOR_HPP
 
 #include "pcms/field/field.hpp"
+#include "pcms/field/detail/field_ops.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
@@ -26,6 +27,11 @@ namespace pcms::detail
 /// @return true if it was
 bool SameDOFHolderSites(const BoundPoints& bound, const FieldLayout& layout);
 
+/// @return `target_space`, an interpolator's target
+/// @throws pcms_error if `target_space` has no nodal DOFs
+std::shared_ptr<const FunctionSpace> RequireNodalTarget(
+  std::shared_ptr<const FunctionSpace> target_space);
+
 // Interpolator<T> separates the expensive localization step from the cheap
 // repeated evaluation step, making it efficient to use in a coupling loop.
 // Create it with CreateInterpolator (pcms/transfer/interpolator.hpp).
@@ -42,8 +48,9 @@ public:
   /// @param source factory evaluated at the target's DOF-holder coordinates
   /// @param target_space space whose DOF holders receive the values
   /// @param policy out-of-bounds policy for the evaluation
-  /// @throws pcms_error if the source or the target space is null, or the
-  ///         source has no geometry
+  /// @throws pcms_error if the source or the target space is null, the source
+  ///         has no geometry, or the target's DOFs are not values at its DOF
+  ///         holders
   Interpolator(std::shared_ptr<const PointEvaluatorFactory> source,
                std::shared_ptr<const FunctionSpace> target_space,
                OutOfBoundsPolicy policy = {})
@@ -59,12 +66,14 @@ public:
   /// @param bound result of binding the source's geometry to the DOF-holder
   ///        coordinates of `target_space` or of a space with the same
   ///        DOF-holder coordinates
-  /// @throws pcms_error if the source or the target space is null
+  /// @throws pcms_error if the source or the target space is null, or the
+  ///         target's DOFs are not values at its DOF holders
   Interpolator(std::shared_ptr<const PointEvaluatorFactory> source,
                std::shared_ptr<const FunctionSpace> target_space,
                std::shared_ptr<const BoundPoints> bound)
     : source_(Require(std::move(source), "source")),
-      target_space_(Require(std::move(target_space), "target space")),
+      target_space_(
+        RequireNodalTarget(Require(std::move(target_space), "target space"))),
       num_points_(static_cast<LO>(target_space_->GetLayout()
                                     ->GetDOFHolderCoordinates()
                                     .GetValues()
@@ -75,7 +84,13 @@ public:
   {
   }
 
-  void Apply(const Field<T>& source, Field<T>& target) const override
+  [[nodiscard]] bool SupportsTranspose() const noexcept override
+  {
+    return evaluator_->SupportsTranspose();
+  }
+
+private:
+  void ApplyImpl(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
     const auto& sd = source.GetData();
@@ -92,7 +107,25 @@ public:
     target.Synchronize();
   }
 
-private:
+  /// The source evaluator's EvaluateTranspose: `source` holds data at the
+  /// target's DOF holders (loads), `target` is a functional of the source
+  /// space's layout. The totals of the loads are preserved when the
+  /// interpolation reproduces constants.
+  void ApplyTransposeImpl(const Field<T>& source,
+                          Field<T>& target) const override
+  {
+    PCMS_FUNCTION_TIMER;
+    if (&source.GetLayout() != target_space_->GetLayout().get()) {
+      throw pcms_error("Interpolator::ApplyTranspose: the source must be a "
+                       "field of the target space's layout");
+    }
+    detail::SetZero(target);
+    evaluator_->EvaluateTranspose(ValueView<const T, DeviceMemorySpace>(
+                                    target.GetData().GetValueBasis(),
+                                    source.GetDOFHolderData().GetValues()),
+                                  target);
+  }
+
   template <typename P>
   static P Require(P p, const char* what)
   {

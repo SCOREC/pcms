@@ -18,6 +18,26 @@ void CheckSameLayout(const Field<T>& a, const Field<T>& b, const char* what)
   }
 }
 
+/// @brief op(x, y) elementwise over values of the same shape
+template <typename T, typename Op>
+Kokkos::View<T**, DeviceMemorySpace> MapOwned(
+  Rank2View<const T, DeviceMemorySpace> x,
+  Rank2View<const T, DeviceMemorySpace> y, Op op)
+{
+  Kokkos::View<T**, DeviceMemorySpace> out(
+    Kokkos::view_alloc(Kokkos::WithoutInitializing, "pcms::MapOwned"),
+    x.extent(0), x.extent(1));
+  const auto nc = static_cast<int>(x.extent(1));
+  Kokkos::parallel_for(
+    "pcms::MapOwned",
+    Kokkos::RangePolicy<DefaultExecutionSpace>(
+      0, static_cast<int>(x.extent(0)) * nc),
+    KOKKOS_LAMBDA(const int k) {
+      out(k / nc, k % nc) = op(x(k / nc, k % nc), y(k / nc, k % nc));
+    });
+  return out;
+}
+
 /// @brief field += addend over the owned values, then synchronizes the field.
 /// @param field the field to add to
 /// @param addend shaped [owned DOF holders][components]; overwritten with
@@ -36,6 +56,26 @@ void AddToField(Field<T>& field,
       addend(i, c) += current(i, c);
     });
   field.SetDOFHolderDataUnchecked(MakeConstRank2View(addend));
+  field.Synchronize();
+}
+
+/// @brief y = x over the owned values, whatever their value bases
+template <typename T>
+void CopyValues(const Field<T>& x, Field<T>& y)
+{
+  CheckSameLayout(x, y, "Copy");
+  y.SetDOFHolderDataUnchecked(x.GetDOFHolderData().GetValues());
+  y.Synchronize();
+}
+
+/// @brief Sets every owned value of the field to zero.
+template <typename T>
+void SetZero(Field<T>& field)
+{
+  Kokkos::View<T**, DeviceMemorySpace> zeros(
+    "pcms::SetZero", field.GetLayout().GetNumDofHolder(),
+    field.GetLayout().GetNumComponents());
+  field.SetDOFHolderDataUnchecked(MakeConstRank2View(zeros));
   field.Synchronize();
 }
 

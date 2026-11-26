@@ -1,4 +1,6 @@
 #include "pcms/transfer/forms.hpp"
+#include "pcms/field/detail/field_ops.hpp"
+#include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
@@ -249,11 +251,7 @@ void LinearForm::Assemble(ValueView<const Real, DeviceMemorySpace> samples,
     throw pcms_error("LinearForm: the evaluator of the space does not "
                      "support the transpose");
   }
-  const auto& layout = functional.GetLayout();
-  functional.SetDOFHolderDataUnchecked(MakeConstRank2View(
-    Kokkos::View<Real**, DeviceMemorySpace>("linear_form_zeros",
-                                            layout.GetNumDofHolder(),
-                                            layout.GetNumComponents())));
+  pcms::detail::SetZero(functional);
   evaluator_->EvaluateTranspose(Weight(samples), functional);
 }
 

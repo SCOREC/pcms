@@ -196,7 +196,7 @@ jobs:
                   -DCMAKE_Fortran_COMPILER=mpifort \
                   -DPCMS_ENABLE_OMEGA_H=ON \
                   -DPCMS_ENABLE_OMEGA_H_MESHFIELDS=ON \
-                  -DPCMS_ENABLE_CONSERVATIVE_PROJECTION=ON \
+                  -DPCMS_ENABLE_PETSC=ON \
                   -DPCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION=ON \
                   -DPCMS_ENABLE_XGC=ON \
                   -DPCMS_ENABLE_COUPLER=ON \

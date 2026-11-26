@@ -41,6 +41,17 @@ bool SameDOFHolderSites(const BoundPoints& bound, const FieldLayout& layout)
   return num_different == 0;
 }
 
+std::shared_ptr<const FunctionSpace> RequireNodalTarget(
+  std::shared_ptr<const FunctionSpace> target_space)
+{
+  if (!target_space->HasNodalDOFs()) {
+    throw pcms_error("Interpolator: the target's DOFs are not values at "
+                     "points (coefficients, modes or weights); use "
+                     "CreateProjection");
+  }
+  return target_space;
+}
+
 } // namespace detail
 
 } // namespace pcms

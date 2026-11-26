@@ -2282,7 +2282,7 @@ INCLUDE_FILE_PATTERNS  =
 
 PREDEFINED             = PCMS_ENABLE_OMEGA_H \
                          PCMS_ENABLE_OMEGA_H_MESHFIELDS \
-                         PCMS_ENABLE_CONSERVATIVE_PROJECTION \
+                         PCMS_ENABLE_PETSC \
                          PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION \
                          PCMS_ENABLE_XGC \
                          PCMS_ENABLE_MFEM \

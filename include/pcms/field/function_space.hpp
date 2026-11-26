@@ -12,6 +12,7 @@
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/geometry/geometry.hpp"
+#include "pcms/geometry/quadrature.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
@@ -27,14 +28,6 @@ namespace pcms
 // A FunctionSpace is an evaluatable field space: the layout of its fields, the
 // evaluator source that evaluates them at points, and the coordinate
 // interpretation. It produces Functions (a Field bound to this space).
-//
-// It is concrete: backends differ in the components they hand to its
-// constructor, and the Create* factories (CreateLagrangeSpace, ...) assemble
-// them. A kind with behaviour that is not a component derives from it and
-// overrides the virtuals: the creation of its field data and the validation of
-// wrapped field data. A Function co-owns its space via shared_ptr (obtained
-// through enable_shared_from_this), so spaces are always shared-owned:
-// CreateFunction throws for a space that is not.
 class FunctionSpace
   : public PointEvaluatorFactory
   , public std::enable_shared_from_this<FunctionSpace>
@@ -51,10 +44,9 @@ public:
   ///        when there is one
   /// @throws pcms_error if `geometry` is null or is not the evaluator
   ///         source's geometry
-  explicit FunctionSpace(
-    std::shared_ptr<const FieldLayout> layout,
-    std::shared_ptr<const PointEvaluatorFactory> evaluator,
-    std::shared_ptr<const Geometry> geometry)
+  explicit FunctionSpace(std::shared_ptr<const FieldLayout> layout,
+                         std::shared_ptr<const PointEvaluatorFactory> evaluator,
+                         std::shared_ptr<const Geometry> geometry)
     : layout_(std::move(layout)),
       evaluator_(std::move(evaluator)),
       geometry_(std::move(geometry))
@@ -87,8 +79,18 @@ public:
     return geometry_->GetCoordinateSystem();
   }
 
-  /// @return whether the space's evaluator source supports `op`; for a space
-  ///         without one, whether `op` is Value
+  /// @brief The space's natural quadrature on its geometry, which
+  ///        should be exact for the product of two functions in this space
+  /// @throws pcms_error if the space has none
+  [[nodiscard]] const Quadrature& GetQuadrature() const
+  {
+    if (!quadrature_) {
+      quadrature_ = CreateQuadrature();
+    }
+    return *quadrature_;
+  }
+
+  /// @return whether the space's evaluator source supports `op`
   [[nodiscard]] bool Supports(DifferentialOperator op) const noexcept override;
 
   ~FunctionSpace() noexcept override = default;
@@ -115,19 +117,20 @@ public:
     std::string name, std::unique_ptr<FieldData<T>> data) const;
 
 protected:
+  /// @brief The space's natural quadrature (GetQuadrature).
+  /// @throws pcms_error unless the kind overrides it
+  [[nodiscard]] virtual Quadrature CreateQuadrature() const
+  {
+    throw pcms_error("FunctionSpace::GetQuadrature: this space has no "
+                     "quadrature");
+  }
+
   /// @brief Creates the data of a field of this space.
-  /// The default holds the values of the layout's DOF holders in a
-  /// SimpleFieldData; kinds with their own storage override it.
-  /// @throws pcms_error for a type the space has no fields of (a space whose
-  ///         fields hold no values in PCMS throws)
+  /// @throws pcms_error for an invalid storage_type
   [[nodiscard]] virtual FieldDataVariant CreateFieldData(
     Type storage_type, ValueBasis basis) const;
 
-  /// @brief Checks wrapped field data (CreateFunction(name, data)) before it
-  ///        becomes a field of this space. The default checks the size of the
-  ///        data's DOF values against the layout (data without DOFAccess has
-  ///        none); kinds with their own storage also check the data's type
-  ///        and call the default.
+  /// @brief Checks wrapped field data based on backend requirements
   /// @throws pcms_error if the data is not a field data of this space
   virtual void ValidateFieldData(const FieldDataVariant& data) const;
 
@@ -165,6 +168,7 @@ private:
   std::shared_ptr<const FieldLayout> layout_;
   std::shared_ptr<const PointEvaluatorFactory> evaluator_;
   std::shared_ptr<const Geometry> geometry_;
+  mutable std::optional<Quadrature> quadrature_;
 };
 
 template <typename T>

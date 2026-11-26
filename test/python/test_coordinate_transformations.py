@@ -81,6 +81,19 @@ class TestCoordinateSystem:
             assert system.kind() == kind
             assert system.dimension() == dim
 
+    def test_parameter_system(self):
+        for dim in range(1, 7):
+            system = pcms.csys.create_parameter_system("phase", dim)
+            assert system.kind() == "phase"
+            assert system.dimension() == dim
+        phase = pcms.csys.create_parameter_system("phase", 3)
+        assert phase != pcms.csys.create_cartesian(3)
+        assert phase == phase
+        assert phase != pcms.csys.create_parameter_system("phase", 3)
+        for bad in (0, 7):
+            with pytest.raises(Exception):
+                pcms.csys.create_parameter_system("phase", bad)
+
     def test_properties(self):
         cyl = pcms.csys.create_cylindrical_r_theta_z()
         assert cyl.kind() == "cylindrical_rthetaz"

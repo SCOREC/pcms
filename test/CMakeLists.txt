@@ -41,6 +41,7 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
              $<TARGET_FILE:test_distributed_layout>)
   endif()
   add_exe(test_distributed_field)
+  target_link_libraries(test_distributed_field pcms::transfer)
   if(HOST_NPROC GREATER_EQUAL 2)
     mpi_test(test_distributed_field_2p 2
              $<TARGET_FILE:test_distributed_field>)
@@ -60,10 +61,8 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
   if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
     # the Gauss rules on Omega_h meshes need MeshFields
     add_exe(test_distributed_evaluation)
-    target_link_libraries(test_distributed_evaluation meshfields::meshfields)
-    if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-      target_link_libraries(test_distributed_evaluation pcms::transfer)
-    endif()
+    target_link_libraries(test_distributed_evaluation meshfields::meshfields
+                          pcms::transfer)
     if(HOST_NPROC GREATER_EQUAL 2)
       mpi_test(test_distributed_evaluation_2p 2
                $<TARGET_FILE:test_distributed_evaluation>)
@@ -72,18 +71,16 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
       mpi_test(test_distributed_evaluation_4p 4
                $<TARGET_FILE:test_distributed_evaluation>)
     endif()
-    if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-      add_exe(test_distributed_forms)
-      target_link_libraries(test_distributed_forms meshfields::meshfields
-                            pcms::transfer)
-      if(HOST_NPROC GREATER_EQUAL 2)
-        mpi_test(test_distributed_forms_2p 2
-                 $<TARGET_FILE:test_distributed_forms>)
-      endif()
-      if(HOST_NPROC GREATER_EQUAL 4)
-        mpi_test(test_distributed_forms_4p 4
-                 $<TARGET_FILE:test_distributed_forms>)
-      endif()
+    add_exe(test_distributed_forms)
+    target_link_libraries(test_distributed_forms meshfields::meshfields
+                          pcms::transfer)
+    if(HOST_NPROC GREATER_EQUAL 2)
+      mpi_test(test_distributed_forms_2p 2
+               $<TARGET_FILE:test_distributed_forms>)
+    endif()
+    if(HOST_NPROC GREATER_EQUAL 4)
+      mpi_test(test_distributed_forms_4p 4
+               $<TARGET_FILE:test_distributed_forms>)
     endif()
   endif()
   add_exe(test_ohClassPtn_appRibPtn)
@@ -452,7 +449,9 @@ if(Catch2_FOUND)
   message(
     STATUS "Found Catch2: ${Catch2_DIR} (found version ${Catch2_VERSION})")
   # unit tests of the core (no Omega_h): splines and differential operators on
-  # uniform grids
+  # uniform grids, coordinate systems and maps, embedded and periodic
+  # geometries and their spaces, and the projections with the matrix-free
+  # solve
   set(PCMS_UNIT_TEST_SOURCES
       unit_test_main.cpp
       test_bounding_box.cpp
@@ -461,7 +460,9 @@ if(Catch2_FOUND)
       test_error_handling.cpp
       test_spline_interpolator.cpp
       test_derivatives.cpp
-      test_uniform_grid_1d.cpp)
+      test_uniform_grid_1d.cpp
+      test_coordinate_transformation.cpp
+      test_coordinate_metric.cpp)
   if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
     list(APPEND PCMS_UNIT_TEST_SOURCES
          test_polynomial_reconstruction_mls_evaluation.cpp
@@ -488,8 +489,6 @@ if(Catch2_FOUND)
     list(
       APPEND
       PCMS_UNIT_TEST_SOURCES
-      test_coordinate_transformation.cpp
-      test_coordinate_metric.cpp
             test_eqdsk.cpp
       test_uniform_grid.cpp
       test_field_evaluation.cpp
@@ -518,19 +517,18 @@ if(Catch2_FOUND)
       test_polynomial_reconstruction_function_space.cpp)
   endif()
 
+  # the reference rules of Omega_h meshes and the mesh-intersection quadrature
+  # are MeshFields'
   if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
     list(APPEND PCMS_UNIT_TEST_SOURCES
-      test_omega_h_form_integrator_utils.cpp)
-  endif()
-
-  if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-    list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_omega_h_form_integrator_utils.cpp
       test_quadrature.cpp
       test_galerkin_projection.cpp
+      test_field_metadata.cpp
       test_bilinear_form.cpp
-      test_omega_h_intersection_rhs_integrator.cpp
-      test_omega_h_mass_integrator.cpp
-      test_omega_h_mc_rhs_integrator.cpp
+      test_l2_inner_product.cpp
+      test_fourier_space.cpp
+      test_monte_carlo_projection.cpp
       test_mesh_intersection_field_transfer.cpp
       test_mesh_intersection_prefilter.cpp
       test_omega_h_3d_conservative_projection.cpp
@@ -560,7 +558,7 @@ if(Catch2_FOUND)
   endif()
   target_include_directories(unit_tests PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-  if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+  if(PCMS_ENABLE_PETSC)
     target_link_libraries(unit_tests PRIVATE PETSc::PETSc)
   endif()
 

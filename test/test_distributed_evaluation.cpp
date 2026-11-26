@@ -10,9 +10,7 @@
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/geometry/quadrature.hpp"
 #include "pcms/utility/arrays.hpp"
-#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
 #include "pcms/transfer/omega_h_intersection_quadrature.hpp"
-#endif
 
 #include <array>
 #include <cmath>
@@ -61,16 +59,6 @@ long long SumOverRanks(long long local)
   long long global = 0;
   MPI_Allreduce(&local, &global, 1, MPI_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
   return global;
-}
-
-// Linear in the coordinates, a different function per component.
-Real Linear(const Real* x, int dim, int c)
-{
-  Real value = 1.0 + c;
-  for (int d = 0; d < dim; ++d) {
-    value += (d + 1.0 + 0.5 * c) * x[d];
-  }
-  return value;
 }
 
 // A DOF value that depends only on the holder's global id, so that every rank
@@ -181,21 +169,6 @@ Host2D Evaluate(const pcms::PointEvaluator<Real>& evaluator,
   return ToHost(values);
 }
 
-Host2D OwnedHolderCoordinates(const pcms::FieldLayout& layout, int dim)
-{
-  const auto coords = layout.GetDOFHolderCoordinates().GetValues();
-  Device2D device("holder_coordinates", layout.GetNumDofHolder(), dim);
-  Kokkos::parallel_for(
-    "OwnedHolderCoordinates",
-    Kokkos::MDRangePolicy<pcms::DefaultExecutionSpace, Kokkos::Rank<2>>(
-      {0, 0},
-      {static_cast<int64_t>(device.extent(0)), static_cast<int64_t>(dim)}),
-    KOKKOS_LAMBDA(const int64_t i, const int64_t d) {
-      device(i, d) = coords(i, d);
-    });
-  return ToHost(device);
-}
-
 std::string Case(bool ghosted, int dim, int order, int nc)
 {
   return std::string(ghosted ? "ghosted" : "element-based") + " dim " +
@@ -210,22 +183,14 @@ void CheckEvaluate(const pcms::FunctionSpace& space,
 {
   const auto& layout = *space.GetLayout();
   const int nc = layout.GetNumComponents();
-  const auto holders = OwnedHolderCoordinates(layout, dim);
-  Host2D owned("owned", layout.GetNumDofHolder(), nc);
-  for (LO h = 0; h < layout.GetNumDofHolder(); ++h) {
-    for (int c = 0; c < nc; ++c) {
-      owned(h, c) = Linear(&holders(h, 0), dim, c);
-    }
-  }
-  auto field = space.CreateFunction<Real>();
-  SetOwned(field, owned);
+  const auto field = distributed_test::LinearField(space);
   const auto evaluator = space.CreatePointEvaluator<Real>(bound.bound);
   const auto values = Evaluate(*evaluator, field, nc);
   int wrong = 0;
   for (LO p = 0; p < evaluator->NumPoints(); ++p) {
     for (int c = 0; c < nc; ++c) {
-      const Real expected =
-        Linear(&points[static_cast<std::size_t>(p) * dim], dim, c);
+      const Real expected = distributed_test::Linear(
+        &points[static_cast<std::size_t>(p) * dim], dim, c);
       if (std::abs(values(p, c) - expected) > 1e-12) {
         if (wrong == 0) {
           std::fprintf(stderr, "[rank %d] %s: point %d comp %d: %g != %g\n",
@@ -419,16 +384,11 @@ void RunCases(Omega_h::Library& library, int dim, bool ghosted)
                   Case(ghosted, dim, 1, 1) + ": CreateGaussQuadrature");
   CheckQuadrature(pcms::CreateMonteCarloQuadrature(geometry, 3), mesh, 3,
                   Case(ghosted, dim, 1, 1) + ": CreateMonteCarloQuadrature");
-#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
   // the intersection of the mesh with itself; a 3D element may be cut into
   // several sub-simplices
-  const auto omega_h_geometry =
-    std::dynamic_pointer_cast<const pcms::omega_h::OmegaHGeometry>(geometry);
-  CheckQuadrature(pcms::omega_h::CreateIntersectionQuadrature(
-                    omega_h_geometry, omega_h_geometry, 2),
-                  mesh, 0,
-                  Case(ghosted, dim, 1, 1) + ": CreateIntersectionQuadrature");
-#endif
+  CheckQuadrature(
+    pcms::omega_h::CreateIntersectionQuadrature(geometry, geometry, 2), mesh, 0,
+    Case(ghosted, dim, 1, 1) + ": CreateIntersectionQuadrature");
 }
 
 } // namespace

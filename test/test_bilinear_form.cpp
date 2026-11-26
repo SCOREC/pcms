@@ -12,6 +12,7 @@
 #include <pcms/backends/omega_h/omega_h.hpp>
 #include <pcms/transfer/forms.hpp>
 #include <pcms/transfer/linear_solver.hpp>
+#include <pcms/configuration.hpp>
 #include "field_test_utils.hpp"
 #include "forms_test_utils.hpp"
 #include <cmath>
@@ -20,6 +21,7 @@
 #include <vector>
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
+#include <pcms/transfer/detail/projection.hpp>
 
 namespace pcms
 {
@@ -303,7 +305,8 @@ TEST_CASE("CreateLinearSolver: a target without coefficient operations throws",
   const pcms::transfer::detail::BilinearForm form(space);
   CHECK_THROWS_WITH(
     pcms::transfer::detail::CreateLinearSolver(
-      form, pcms::MassMatrixType::Consistent, pcms::LinearSolveOptions{}),
+      form, pcms::MassMatrixType::Consistent,
+      pcms::detail::LinearSolveOptions{}),
     Catch::Matchers::ContainsSubstring("no coefficient operations"));
 }
 
@@ -323,18 +326,28 @@ TEST_CASE("CreateLinearSolver: the assembled and matrix-free solves recover "
   auto bu = space->CreateFunction<pcms::Real>();
   form.Apply(u, bu);
   const auto u_host = u.GetDOFHolderDataHost().GetValues();
-  // the default picks the assembled solve for a serial form with rows
-  CHECK(dynamic_cast<const pcms::transfer::detail::CgSolver*>(
-          pcms::transfer::detail::CreateLinearSolver(
-            form, pcms::MassMatrixType::Consistent, {})
-            .get()) == nullptr);
-  for (const auto method : {pcms::LinearSolveOptions::Method::MatrixFree,
-                            pcms::LinearSolveOptions::Method::Assembled,
-                            pcms::LinearSolveOptions::Method::Automatic}) {
+  // the default is the assembled solve for a serial form with rows when PCMS
+  // has PETSc, the matrix-free one otherwise
+  const bool matrix_free_default =
+    dynamic_cast<const pcms::transfer::detail::CgSolver*>(
+      pcms::transfer::detail::CreateLinearSolver(
+        form, pcms::MassMatrixType::Consistent, {})
+        .get()) != nullptr;
+#ifdef PCMS_ENABLE_PETSC
+  CHECK_FALSE(matrix_free_default);
+#else
+  CHECK(matrix_free_default);
+#endif
+  for (const auto method :
+       {pcms::detail::LinearSolveOptions::Method::MatrixFree,
+#ifdef PCMS_ENABLE_PETSC
+        pcms::detail::LinearSolveOptions::Method::Assembled,
+#endif
+        pcms::detail::LinearSolveOptions::Method::Automatic}) {
     auto x = space->CreateFunction<pcms::Real>();
     pcms::transfer::detail::CreateLinearSolver(
       form, pcms::MassMatrixType::Consistent,
-      pcms::LinearSolveOptions{.method = method})
+      pcms::detail::LinearSolveOptions{.method = method})
       ->Solve(bu, x);
     const auto x_host = x.GetDOFHolderDataHost().GetValues();
     for (std::size_t h = 0; h < x_host.extent(0); ++h) {
@@ -345,7 +358,7 @@ TEST_CASE("CreateLinearSolver: the assembled and matrix-free solves recover "
   Lump(form, lumped);
   auto x = space->CreateFunction<pcms::Real>();
   pcms::transfer::detail::CreateLinearSolver(form, pcms::MassMatrixType::Lumped,
-                                             pcms::LinearSolveOptions{})
+                                             pcms::detail::LinearSolveOptions{})
     ->Solve(bu, x);
   const auto x_host = x.GetDOFHolderDataHost().GetValues();
   const auto b_host = bu.GetDOFHolderDataHost().GetValues();

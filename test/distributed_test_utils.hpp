@@ -18,12 +18,14 @@
 #include "pcms/backends/omega_h_meshfields/field_data.hpp"
 #endif
 #include "pcms/field/field.hpp"
+#include "pcms/field/function_space.hpp"
 #include "pcms/field/value_view.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <stdexcept>
 #include <type_traits>
+#include <vector>
 
 namespace distributed_test
 {
@@ -142,6 +144,55 @@ Kokkos::View<T**, pcms::HostMemorySpace> ValuesWithGhostsHost(
   }
 #endif
   throw std::runtime_error("ValuesWithGhostsHost: unsupported field data type");
+}
+
+/// @return a function linear in the coordinates, a different one per
+///         component
+inline Real Linear(const Real* x, int dim, int c)
+{
+  Real value = 1.0 + c;
+  for (int d = 0; d < dim; ++d) {
+    value += (d + 1.0 + 0.5 * c) * x[d];
+  }
+  return value;
+}
+
+/// @return a function of `space` set at its owned DOF holders to Linear,
+///         synchronized
+inline pcms::Function<Real> LinearField(const pcms::FunctionSpace& space)
+{
+  const auto& layout = *space.GetLayout();
+  const auto coords = layout.GetDOFHolderCoordinates().GetValues();
+  const int dim = static_cast<int>(coords.extent(1));
+  Kokkos::View<Real**, pcms::DeviceMemorySpace> device(
+    "holder_coordinates", layout.GetNumDofHolder(), dim);
+  Kokkos::parallel_for(
+    "distributed_test::LinearField",
+    Kokkos::MDRangePolicy<pcms::DefaultExecutionSpace, Kokkos::Rank<2>>(
+      {0, 0},
+      {static_cast<int64_t>(device.extent(0)), static_cast<int64_t>(dim)}),
+    KOKKOS_LAMBDA(const int64_t i, const int64_t d) {
+      device(i, d) = coords(i, d);
+    });
+  const auto holders =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, device);
+  const int nc = layout.GetNumComponents();
+  Kokkos::View<Real**, Kokkos::LayoutRight, pcms::HostMemorySpace> values(
+    "linear_values", holders.extent(0), nc);
+  std::vector<Real> x(static_cast<std::size_t>(dim));
+  for (std::size_t h = 0; h < holders.extent(0); ++h) {
+    for (int d = 0; d < dim; ++d) {
+      x[static_cast<std::size_t>(d)] = holders(h, d);
+    }
+    for (int c = 0; c < nc; ++c) {
+      values(h, c) = Linear(x.data(), dim, c);
+    }
+  }
+  auto field = space.CreateFunction<Real>();
+  field.SetDOFHolderDataHost(pcms::ValueView<const Real, pcms::HostMemorySpace>(
+    field.GetData().GetValueBasis(), pcms::MakeConstRank2View(values)));
+  field.Synchronize();
+  return field;
 }
 
 } // namespace distributed_test

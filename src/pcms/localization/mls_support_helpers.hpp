@@ -2,6 +2,8 @@
 #define PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP
 
 #include "pcms/geometry/supports.hpp"
+#include "pcms/utility/coordinate_system.hpp"
+#include "pcms/utility/detail/periodic.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 
@@ -9,6 +11,27 @@
 
 namespace pcms::detail
 {
+
+/// @brief The periods of the axes of a coordinate system, for point-cloud
+///        distances.
+struct AxisPeriods
+{
+  static constexpr int MaxDim = 6;
+  Real period[MaxDim] = {};
+
+  /// @return to - from along axis `d`, with `to` at the periodic image
+  ///         nearest `from`
+  KOKKOS_INLINE_FUNCTION Real Offset(Real from, Real to, int d) const
+  {
+    return NearestImage(to - from, period[d]);
+  }
+};
+
+/// @brief The axis periods of `system`, whose distances are coordinate
+///        differences.
+/// @throws pcms_error if the system has more than 6 dimensions or a metric
+///         that is not the identity
+[[nodiscard]] AxisPeriods MakeAxisPeriods(const CoordinateSystem& system);
 
 // Returns true when both the minimum and maximum support counts fall within
 // the requested range.
@@ -38,7 +61,7 @@ SupportResults BuildPointCloudSupports(
   Kokkos::View<const Real*, DeviceMemorySpace> source_coords,
   Kokkos::View<const Real*, DeviceMemorySpace> target_coords, int dim,
   double radius, unsigned min_req_supports, bool adapt_radius,
-  unsigned max_iterations = 100);
+  unsigned max_iterations = 100, const AxisPeriods& periods = {});
 
 } // namespace pcms::detail
 #endif // PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP

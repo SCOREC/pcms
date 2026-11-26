@@ -3,6 +3,8 @@
 
 #include "pcms/geometry/geometry.hpp"
 #include <string>
+#include <vector>
+#include <vector>
 
 namespace pcms::detail
 {
@@ -45,6 +47,13 @@ void ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
   const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& points,
   Kokkos::View<Real*, DeviceMemorySpace> weights,
   const OwnerHints& owners = {});
+
+/// @brief The Gauss-Legendre rule on [-1, 1] exact for polynomials of degree
+///        `order`: order / 2 + 1 nodes.
+/// @param nodes the nodes, ascending
+/// @param weights the weights of the nodes
+void GaussLegendre(int order, std::vector<Real>& nodes,
+                   std::vector<Real>& weights);
 
 } // namespace pcms::detail
 

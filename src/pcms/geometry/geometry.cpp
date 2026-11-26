@@ -2,7 +2,10 @@
 #include "pcms/field/coordinate_map.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/memory_spaces.hpp"
+#include <cmath>
+#include <numbers>
 #include <string>
+#include <vector>
 
 namespace pcms
 {
@@ -147,6 +150,35 @@ Quadrature CreateMonteCarloQuadrature(
     *geometry, detail::MonteCarloRule{samples_per_cell, seed});
 }
 
+void detail::GaussLegendre(int order, std::vector<Real>& nodes,
+                           std::vector<Real>& weights)
+{
+  const int n = order / 2 + 1;
+  nodes.assign(n, 0);
+  weights.assign(n, 0);
+  for (int i = 0; i < n; ++i) {
+    Real x = std::cos(std::numbers::pi_v<Real> * (i + 0.75) / (n + 0.5));
+    Real dp = 1;
+    for (int it = 0; it < 100; ++it) {
+      Real p0 = 1;
+      Real p1 = x;
+      for (int k = 2; k <= n; ++k) {
+        const Real p2 = ((2 * k - 1) * x * p1 - (k - 1) * p0) / k;
+        p0 = p1;
+        p1 = p2;
+      }
+      dp = n * (x * p1 - p0) / (x * x - 1);
+      const Real dx = p1 / dp;
+      x -= dx;
+      if (std::abs(dx) < 1e-16) {
+        break;
+      }
+    }
+    nodes[n - 1 - i] = x;
+    weights[n - 1 - i] = 2 / ((1 - x * x) * dp * dp);
+  }
+}
+
 void detail::CheckNeighbourhoodArguments(
   const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& coords,
   const NeighbourhoodOptions& options, const std::string& caller)
@@ -157,14 +189,6 @@ void detail::CheckNeighbourhoodArguments(
                      std::string(coords.GetCoordinateSystem()->Kind()) +
                      "' is not the geometry's coordinate system '" +
                      std::string(geometry.GetCoordinateSystem()->Kind()) + "'");
-  }
-  // the searches measure Euclidean distances
-  if (!geometry.GetCoordinateSystem()->IsOrthonormal()) {
-    throw pcms_error(
-      caller +
-      ": requires a coordinate system whose metric is the "
-      "identity (orthogonal basis and unit scale factors); got '" +
-      std::string(geometry.GetCoordinateSystem()->Kind()) + "'");
   }
   if (options.max_supports != 0 &&
       options.max_supports != 3 * options.min_supports) {

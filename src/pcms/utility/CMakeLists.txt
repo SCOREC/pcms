@@ -15,6 +15,7 @@ set(
         ../../../include/pcms/utility/detail/bounding_box.hpp
         ../../../include/pcms/utility/detail/coordinate_system.hpp
         ../../../include/pcms/utility/detail/memory_spaces.hpp
+        ../../../include/pcms/utility/detail/periodic.hpp
         ../../../include/pcms/utility/detail/print.hpp
         ../../../include/pcms/utility/detail/types.hpp
         ../../../include/pcms/utility/detail/uniform_grid.hpp

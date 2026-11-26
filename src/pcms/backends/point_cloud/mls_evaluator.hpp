@@ -62,18 +62,20 @@ public:
   /// @param site_dim the site dimension and
   /// @param options the options `supports` were found with; a rebind finds
   ///        the supports of its points with the geometry's Neighbourhood
+  /// @param axes the periods of the axes
   MLSBinding(std::shared_ptr<const Geometry> geometry,
              const BindRequest& request,
              Kokkos::View<const Real*, DeviceMemorySpace> source_coords,
              SupportResults supports, int site_dim,
-             NeighbourhoodOptions options)
+             NeighbourhoodOptions options, AxisPeriods axes)
     : BoundPoints(std::move(geometry), request),
       source_coords_(std::move(source_coords)),
       target_coords_(
         detail::FlattenRows(LocatedPointValues(), "mls_target_coords")),
       supports_(std::move(supports)),
       site_dim_(site_dim),
-      options_(options)
+      options_(options),
+      axes_(axes)
   {
     SetFoundFromSupports();
   }
@@ -99,6 +101,9 @@ public:
     return supports_;
   }
 
+  /// @brief The periods of the axes.
+  [[nodiscard]] const AxisPeriods& Axes() const noexcept { return axes_; }
+
 protected:
   // the arrays are reassigned, not written, so the default UnsharedImpl holds
   void RebindImpl() override
@@ -122,6 +127,7 @@ private:
   SupportResults supports_;
   int site_dim_;
   NeighbourhoodOptions options_;
+  AxisPeriods axes_;
 };
 
 } // namespace pcms::detail

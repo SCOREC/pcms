@@ -215,12 +215,12 @@ Kokkos::View<Real*, DeviceMemorySpace> mls_coefficients(
   Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
   Kokkos::View<const Real*, DeviceMemorySpace> target_coordinates,
   const SupportResults& support, LO dim, LO degree, RadialBasisFunction bf,
-  double lambda, double tol, double decay_factor)
+  double lambda, double tol, double decay_factor, const AxisPeriods& periods)
 {
   return WithRadialBasis(bf, decay_factor, [&](auto rbf) {
     return field::detail::mls_coefficients(source_coordinates,
                                            target_coordinates, support, dim,
-                                           degree, rbf, lambda, tol);
+                                           degree, rbf, lambda, tol, periods);
   });
 }
 

@@ -408,7 +408,7 @@ void mls_coefficients(RealConstDefaultRank1View source_coordinates,
                       const SupportResults& support, const LO& dim,
                       const LO& degree, Func rbf_func,
                       RealDefaultRank1View coefficients, double lambda,
-                      double tol)
+                      double tol, const pcms::detail::AxisPeriods& periods)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -489,14 +489,14 @@ void mls_coefficients(RealConstDefaultRank1View source_coordinates,
         count++;
         auto index = support.supports_idx[j];
         for (int i = 0; i < dim; ++i) {
-          local_source_points(count, i) = source_coordinates[index * dim + i];
+          // relative to the target: nearest periodic image
+          local_source_points(count, i) =
+            periods.Offset(target_coordinates[league_rank * dim + i],
+                           source_coordinates[index * dim + i], i);
         }
       }
 
       double target_point[MAX_DIM] = {};
-      for (int i = 0; i < dim; ++i) {
-        target_point[i] = target_coordinates[league_rank * dim + i];
-      }
 
       /** phi(nsupports) is the array of rbf functions evaluated at the
        * source supports In the actual implementation, Phi(nsupports,
@@ -579,7 +579,7 @@ Kokkos::View<Real*, DeviceMemorySpace> mls_coefficients(
   Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
   Kokkos::View<const Real*, DeviceMemorySpace> target_coordinates,
   const SupportResults& support, LO dim, LO degree, Func rbf_func,
-  double lambda, double tol)
+  double lambda, double tol, const pcms::detail::AxisPeriods& periods = {})
 {
   Kokkos::View<Real*, DeviceMemorySpace> coefficients(
     "mls_coefficients", support.supports_idx.extent(0));
@@ -589,8 +589,8 @@ Kokkos::View<Real*, DeviceMemorySpace> mls_coefficients(
     RealConstDefaultRank1View(target_coordinates.data(),
                               target_coordinates.size()),
     support, dim, degree, rbf_func,
-    RealDefaultRank1View(coefficients.data(), coefficients.size()), lambda,
-    tol);
+    RealDefaultRank1View(coefficients.data(), coefficients.size()), lambda, tol,
+    periods);
   return coefficients;
 }
 

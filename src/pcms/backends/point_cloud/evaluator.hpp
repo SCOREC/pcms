@@ -29,7 +29,7 @@ inline std::shared_ptr<const PointEvaluatorFactory> CreateMLSEvaluatorFactory(
         pcms::detail::mls_coefficients(
           bound.SourceCoordinates(), bound.TargetCoordinates(), supports, dim,
           static_cast<LO>(options.degree), options.basis, options.lambda,
-          options.tol, options.decay_factor)};
+          options.tol, options.decay_factor, bound.Axes())};
     },
     true);
 }

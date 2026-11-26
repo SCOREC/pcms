@@ -23,12 +23,11 @@ if(PCMS_ENABLE_OMEGA_H)
   target_link_libraries(pcms PRIVATE Omega_h::omega_h)
 endif()
 
-# The conservative/Monte Carlo projection bindings include transfer headers
-# that transitively pull in PETSc (petscvec.h). PETSc is linked PRIVATE into
-# pcms_transfer, so its include directories do not propagate; link it here so
-# the bindings compile when conservative projection is enabled.
-if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-  target_link_libraries(pcms PRIVATE PETSc::PETSc meshfields::meshfields)
+# The module initializes and finalizes PETSc (bind_runtime.cpp). PETSc is
+# linked PRIVATE into pcms_transfer, so its include directories do not
+# propagate; link it here.
+if(PCMS_ENABLE_PETSC)
+  target_link_libraries(pcms PRIVATE PETSc::PETSc)
 endif()
 
 # if we are building as a python package from the pyproject.toml

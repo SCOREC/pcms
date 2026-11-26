@@ -82,9 +82,8 @@ PYBIND11_MODULE(pcms, m)
   // are the submodule of the same name.
   py::dict features;
   for (const char* name :
-       {"omega_h", "omega_h_meshfields", "conservative_projection",
-        "polynomial_reconstruction", "xgc", "mfem", "coupler", "c",
-        "fortran"}) {
+       {"omega_h", "omega_h_meshfields", "petsc", "polynomial_reconstruction",
+        "xgc", "mfem", "coupler", "c", "fortran"}) {
     features[name] = false;
   }
 #ifdef PCMS_ENABLE_OMEGA_H
@@ -93,8 +92,8 @@ PYBIND11_MODULE(pcms, m)
 #ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
   features["omega_h_meshfields"] = true;
 #endif
-#ifdef PCMS_ENABLE_CONSERVATIVE_PROJECTION
-  features["conservative_projection"] = true;
+#ifdef PCMS_ENABLE_PETSC
+  features["petsc"] = true;
 #endif
 #ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
   features["polynomial_reconstruction"] = true;

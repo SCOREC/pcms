@@ -81,9 +81,9 @@ PYBIND11_MODULE(pcms, m)
   // PCMS_ENABLE_* flags without the prefix, in lowercase; a backend's bindings
   // are the submodule of the same name.
   py::dict features;
-  for (const char* name :
-       {"omega_h", "omega_h_meshfields", "petsc", "polynomial_reconstruction",
-        "xgc", "mfem", "coupler", "c", "fortran"}) {
+  for (const char* name : {"omega_h", "omega_h_meshfields", "petsc", "units",
+                           "polynomial_reconstruction", "xgc", "mfem",
+                           "coupler", "c", "fortran"}) {
     features[name] = false;
   }
 #ifdef PCMS_ENABLE_OMEGA_H
@@ -94,6 +94,9 @@ PYBIND11_MODULE(pcms, m)
 #endif
 #ifdef PCMS_ENABLE_PETSC
   features["petsc"] = true;
+#endif
+#ifdef PCMS_ENABLE_UNITS
+  features["units"] = true;
 #endif
 #ifdef PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION
   features["polynomial_reconstruction"] = true;

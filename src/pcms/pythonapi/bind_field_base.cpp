@@ -456,23 +456,27 @@ void bind_create_field_module(py::module& m)
     .def(
       "create_function",
       [](const Immutable<FunctionSpace>& self, std::string name,
-         VarianceSignature variance,
+         std::optional<VarianceSignature> variance,
          const std::optional<Immutable<CoordinateSystem>>& system,
-         std::optional<ComponentScaling> scaling, ValueKind kind) {
-        auto basis = pcms::detail::MakeValueBasis(
-          self.ptr->GetCoordinateSystem(), variance,
-          system ? system->ptr : nullptr, scaling);
-        basis.kind = kind;
-        return self.ptr->CreateFunction<Real>(std::move(name),
-                                              std::move(basis));
+         std::optional<ComponentScaling> scaling,
+         std::optional<ValueKind> kind) {
+        if (!variance && !system && !scaling && !kind) {
+          return self.ptr->CreateFunction<Real>(std::move(name));
+        }
+        return self.ptr->CreateFunction<Real>(
+          std::move(name), {.system = system ? system->ptr : nullptr,
+                            .scaling = scaling,
+                            .variance = variance.value_or(values::Scalar),
+                            .kind = kind.value_or(ValueKind::Tensor)});
       },
-      py::arg("name") = "", py::arg("variance") = values::Scalar,
+      py::arg("name") = "", py::arg("variance") = py::none(),
       py::arg("system") = py::none(), py::arg("scaling") = py::none(),
-      py::arg("kind") = ValueKind::Tensor,
+      py::arg("kind") = py::none(),
       "Create a Function in this space. Vector and tensor values are in "
       "`system`'s basis (default: this space's coordinate system), with "
-      "`scaling` required when that system admits both scalings; a space "
-      "with several independent components takes kind=ValueKind.Array.")
+      "`scaling` required when that system admits both scalings; without a "
+      "basis, a space with several components gets independent components "
+      "(ValueKind.Array).")
     .def("get_layout",
          [](const Immutable<FunctionSpace>& self) {
            return Immutable<FieldLayout>{self.ptr->GetLayout()};

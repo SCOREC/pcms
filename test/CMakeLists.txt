@@ -440,7 +440,9 @@ if(Catch2_FOUND)
       test_coordinate_metric.cpp
       test_embedding.cpp
       test_uniform_grid_adjoint.cpp
-      test_point_rows.cpp)
+      test_point_rows.cpp
+      test_field_metadata.cpp
+      test_units.cpp)
   if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)
     list(APPEND PCMS_UNIT_TEST_SOURCES
          test_polynomial_reconstruction_mls_evaluation.cpp
@@ -504,7 +506,6 @@ if(Catch2_FOUND)
       test_omega_h_form_integrator_utils.cpp
       test_quadrature.cpp
       test_galerkin_projection.cpp
-      test_field_metadata.cpp
       test_bilinear_form.cpp
       test_l2_inner_product.cpp
       test_fourier_space.cpp

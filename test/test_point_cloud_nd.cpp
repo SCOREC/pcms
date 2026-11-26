@@ -142,7 +142,7 @@ public:
   int GetNumComponents() const override { return 1; }
   LO GetNumDofHolder() const override { return n_; }
   pcms::GO GetNumGlobalDofHolder() const override { return n_; }
-  bool IsDistributed() const override { return false; }
+  MPI_Comm GetCommunicator() const override { return MPI_COMM_SELF; }
   pcms::Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override
   {
     return pcms::Rank1View<const bool, HostMemorySpace>(owned_.get(), n_);

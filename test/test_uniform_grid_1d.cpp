@@ -206,8 +206,8 @@ TEST_CASE("1D spaces interpolate between grids")
   const auto value_space = pcms::CreateLagrangeSpace(target_geometry, 1, 1);
   const auto gradient_space = pcms::CreateLagrangeSpace(target_geometry, 1, 1);
   auto value = value_space->CreateFunction<Real>("f");
-  auto gradient =
-    gradient_space->CreateFunction<Real>("df", pcms::values::Covector);
+  auto gradient = gradient_space->CreateFunction<Real>(
+    "df", {.variance = pcms::values::Covector});
   pcms::CreateInterpolator<Real>(source, value_space)->Apply(f, value);
   pcms::CreateInterpolator<Real>(pcms::Gradient(source), gradient_space)
     ->Apply(f, gradient);

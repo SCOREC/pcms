@@ -102,6 +102,18 @@ TEST_CASE("Coordinates pass through value transforms", "[embedding]")
     pcms::ValueBasis::Coordinates(pcms::csys::CreateCylindricalRZ())));
 }
 
+TEST_CASE("A function of several components defaults to independent "
+          "components",
+          "[embedding]")
+{
+  const auto space =
+    pcms::CreateLagrangeSpace(pcms::test::MakeUnitSquareGrid(2), 1, 2);
+  CHECK(space->CreateFunction<Real>().GetData().GetValueBasis().kind ==
+        pcms::ValueKind::Array);
+  CHECK_THROWS_WITH(space->CreateFunction<Real>("x", pcms::ValueBasis{}),
+                    ContainsSubstring("a scalar has one component"));
+}
+
 TEST_CASE("The coordinate map of a position refuses what it cannot do",
           "[embedding]")
 {

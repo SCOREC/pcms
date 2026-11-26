@@ -144,8 +144,8 @@ TEST_CASE("Bind with a map: vector evaluation rotates into the target basis")
   Omega_h::Mesh src_mesh(&lib), tgt_mesh(&lib);
   auto src = BuildCylindricalSource(lib, src_mesh, 3);
   auto tgt = BuildCartesianTarget(lib, tgt_mesh, 3);
-  auto b =
-    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
+  auto b = src->CreateFunction<Real>(
+    "b", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
   pcms::test::SetFieldComponents(b, [](Real r, Real, Real z, Real* out) {
     out[0] = r;
     out[1] = 0.0;
@@ -183,8 +183,8 @@ TEST_CASE("Bind with a map: vector evaluation rotates into the target basis")
 
   SECTION("evaluate gates the field's stored basis and the output tag")
   {
-    auto natural =
-      src->CreateFunction<Real>("c", values::Vector, ComponentScaling::Natural);
+    auto natural = src->CreateFunction<Real>(
+      "c", {.scaling = ComponentScaling::Natural, .variance = values::Vector});
     Kokkos::View<Real**, DeviceMemorySpace> out("out", n, 3);
     // natural components pass through the map's Jacobian
     REQUIRE_NOTHROW(evaluator->Evaluate(
@@ -213,8 +213,8 @@ TEST_CASE("Bind with a map: FILL rows survive the rotation untouched")
   Omega_h::Mesh src_mesh(&lib), tgt_mesh(&lib);
   auto src = BuildCylindricalSource(lib, src_mesh, 3);
   auto tgt = BuildCartesianTarget(lib, tgt_mesh, 3, 3.0);
-  auto b =
-    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
+  auto b = src->CreateFunction<Real>(
+    "b", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
   pcms::test::SetFieldComponents(b, [](Real r, Real, Real z, Real* out) {
     out[0] = r;
     out[1] = 0.0;
@@ -257,8 +257,8 @@ TEST_CASE("Bind with a map: in-bounds values equal to the fill value are "
   auto src = BuildCylindricalSource(lib, src_mesh, 3);
   auto tgt = BuildCartesianTarget(lib, tgt_mesh, 3, 3.0);
   const Real fill = 1.0;
-  auto b =
-    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
+  auto b = src->CreateFunction<Real>(
+    "b", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
   pcms::test::SetFieldComponents(b, [fill](Real, Real, Real, Real* out) {
     out[0] = fill;
     out[1] = fill;
@@ -421,10 +421,10 @@ TEST_CASE("Bind with a map: one map serves many fields, spaces and targets")
   auto src = BuildCylindricalSource(lib, src_mesh, 3);
   auto tgt_a = BuildCartesianTarget(lib, tgt_a_mesh, 3);
   auto tgt_b = BuildCartesianTarget(lib, tgt_b_mesh, 3, 0.8);
-  auto b =
-    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
-  auto e =
-    src->CreateFunction<Real>("e", values::Vector, ComponentScaling::Physical);
+  auto b = src->CreateFunction<Real>(
+    "b", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
+  auto e = src->CreateFunction<Real>(
+    "e", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
   pcms::test::SetFieldComponents(b, [](Real r, Real, Real z, Real* out) {
     out[0] = r;
     out[1] = 0.0;
@@ -444,9 +444,9 @@ TEST_CASE("Bind with a map: one map serves many fields, spaces and targets")
   const auto to_b = pcms::CreateInterpolator<Real>(
     src, tgt_b, BindTargetSites(*src, *tgt_b, map));
 
-  auto b_a = tgt_a->CreateFunction<Real>("b", values::Vector);
-  auto e_a = tgt_a->CreateFunction<Real>("e", values::Vector);
-  auto b_b = tgt_b->CreateFunction<Real>("b", values::Vector);
+  auto b_a = tgt_a->CreateFunction<Real>("b", {.variance = values::Vector});
+  auto e_a = tgt_a->CreateFunction<Real>("e", {.variance = values::Vector});
+  auto b_b = tgt_b->CreateFunction<Real>("b", {.variance = values::Vector});
   to_a->Apply(b, b_a);
   to_a->Apply(e, e_a);
   to_b->Apply(b, b_b);
@@ -494,8 +494,8 @@ TEST_CASE("Bind with a map: maps compose as separate binds")
   auto lib = Omega_h::Library{};
   Omega_h::Mesh src_mesh(&lib);
   auto src = BuildCylindricalSource(lib, src_mesh, 3);
-  auto b =
-    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
+  auto b = src->CreateFunction<Real>(
+    "b", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
   pcms::test::SetFieldComponents(b, [](Real r, Real, Real z, Real* out) {
     out[0] = r;
     out[1] = 0.0;
@@ -539,9 +539,9 @@ TEST_CASE("Interpolator over a mapped bind transfers across systems")
   Omega_h::Mesh src_mesh(&lib), tgt_mesh(&lib);
   auto src = BuildCylindricalSource(lib, src_mesh, 3);
   auto tgt = BuildCartesianTarget(lib, tgt_mesh, 3);
-  auto b_src =
-    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
-  auto b_tgt = tgt->CreateFunction<Real>("b", values::Vector);
+  auto b_src = src->CreateFunction<Real>(
+    "b", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
+  auto b_tgt = tgt->CreateFunction<Real>("b", {.variance = values::Vector});
   pcms::test::SetFieldComponents(b_src, [](Real r, Real, Real z, Real* out) {
     out[0] = r;
     out[1] = 0.0;
@@ -566,8 +566,9 @@ TEST_CASE("Interpolator over a mapped bind transfers across systems")
   SECTION("the target must declare the basis the evaluator writes")
   {
     auto wrong = tgt->CreateFunction<Real>(
-      "w", values::Vector, pcms::csys::CreateCylindricalRThetaZ(),
-      ComponentScaling::Physical);
+      "w", {.system = pcms::csys::CreateCylindricalRThetaZ(),
+            .scaling = ComponentScaling::Physical,
+            .variance = values::Vector});
     REQUIRE_THROWS_WITH(op->Apply(b_src, wrong),
                         ContainsSubstring("target's declared basis"));
   }
@@ -600,9 +601,10 @@ TEST_CASE("Interpolator over a mapped bind passes through values already in "
   auto tgt = BuildCartesianTarget(lib, tgt_mesh, 3);
   // Cartesian components on a cylindrical space; linear in (r, theta, z) so
   // the interpolation is exact and any stray rotation would show.
-  auto b_src = src->CreateFunction<Real>("b", values::Vector,
-                                         pcms::csys::CreateCartesian(3));
-  auto b_tgt = tgt->CreateFunction<Real>("b", values::Vector);
+  auto b_src =
+    src->CreateFunction<Real>("b", {.system = pcms::csys::CreateCartesian(3),
+                                    .variance = values::Vector});
+  auto b_tgt = tgt->CreateFunction<Real>("b", {.variance = values::Vector});
   pcms::test::SetFieldComponents(b_src,
                                  [](Real r, Real theta, Real z, Real* out) {
                                    out[0] = r;

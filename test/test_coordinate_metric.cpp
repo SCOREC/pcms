@@ -252,7 +252,8 @@ TEST_CASE("Gradients in cylindrical coordinates are natural components; "
   const auto geometry = std::make_shared<Everywhere>();
   const auto space = std::make_shared<PartialsSpace>(
     layout, std::make_shared<PartialsFactory>(geometry, layout), geometry);
-  const auto f = space->CreateFunction<Real>("f", std::make_unique<Data>());
+  const auto f =
+    space->CreateFunction<Real>({.name = "f"}, std::make_unique<Data>());
   const auto bound =
     pcms::test::Bind(*geometry, {2.0, 0.3, 1.0, 4.0, -1.0, 0.0});
   const auto evaluator = space->CreatePointEvaluator<Real>(

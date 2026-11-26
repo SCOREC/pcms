@@ -217,9 +217,11 @@ TEST_CASE("MLS evaluator: the transpose is the adjoint and the matrix is the "
       field.GetData().GetValueBasis(), pcms::MakeConstRank2View(y_device)),
     functional);
   double lhs = 0, scale = 0;
-  for (std::size_t i = 0; i < y.size(); ++i) {
-    lhs += e_x_host.data()[i] * y.data()[i];
-    scale += std::abs(e_x_host.data()[i] * y.data()[i]);
+  for (int i = 0; i < num_points; ++i) {
+    for (int c = 0; c < components; ++c) {
+      lhs += e_x_host(i, c) * y(i, c);
+      scale += std::abs(e_x_host(i, c) * y(i, c));
+    }
   }
   CHECK(std::abs(pcms::Apply(functional, field) - lhs) <=
         1e-12 * std::max(1.0, scale));

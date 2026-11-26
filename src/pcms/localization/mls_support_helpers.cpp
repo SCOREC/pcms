@@ -58,19 +58,43 @@ void adapt_radii(unsigned min_req_supports, unsigned max_allowed_supports,
   Kokkos::fence();
 }
 
+void CheckPointCloudSystem(const CoordinateSystem& system)
+{
+  const int dim = system.Dimension();
+  if (dim > 6) {
+    throw pcms_error("point cloud: at most 6 coordinates, got " +
+                     std::to_string(dim));
+  }
+  if (system.HasMetric() && !system.IsOrthonormal()) {
+    throw pcms_error("point cloud: needs a coordinate system whose metric is "
+                     "the identity, or none; got '" +
+                     std::string(system.Kind()) + "'");
+  }
+  for (int d = 0; d < dim; ++d) {
+    if (system.Period(d).has_value()) {
+      throw pcms_error("point cloud: periodic axes are not supported; got '" +
+                       std::string(system.Kind()) + "'");
+    }
+  }
+}
+
 // ---- point-cloud N² support search helpers --------------------------------
 
 namespace
 {
 
 KOKKOS_INLINE_FUNCTION
-Kokkos::Array<Real, 3> load_point(
-  const Kokkos::View<const Real*, DeviceMemorySpace>& coords, int id, int dim)
+Real distance2(const Kokkos::View<const Real*, DeviceMemorySpace>& a_coords,
+               int a,
+               const Kokkos::View<const Real*, DeviceMemorySpace>& b_coords,
+               int b, int dim)
 {
-  Kokkos::Array<Real, 3> p{0, 0, 0};
-  for (int d = 0; d < dim; ++d)
-    p[d] = coords[id * dim + d];
-  return p;
+  Real dist2 = 0;
+  for (int d = 0; d < dim; ++d) {
+    const Real diff = b_coords[b * dim + d] - a_coords[a * dim + d];
+    dist2 += diff * diff;
+  }
+  return dist2;
 }
 
 struct NSquareCountFunctor
@@ -85,17 +109,10 @@ struct NSquareCountFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(const int target_id) const
   {
-    auto tgt = load_point(target_coords, target_id, dim);
     auto r2 = radii2[target_id];
     int count = 0;
     for (int s = 0; s < n_sources; ++s) {
-      auto src = load_point(source_coords, s, dim);
-      double dist2 = 0;
-      for (int d = 0; d < dim; ++d) {
-        double diff = tgt[d] - src[d];
-        dist2 += diff * diff;
-      }
-      if (dist2 <= r2)
+      if (distance2(target_coords, target_id, source_coords, s, dim) <= r2)
         ++count;
     }
     num_supports[target_id] = count;
@@ -129,18 +146,11 @@ struct FillSupportIdxFunctor
   KOKKOS_INLINE_FUNCTION
   void operator()(const int target_id) const
   {
-    auto tgt = load_point(target_coords, target_id, dim);
     auto r2 = radii2[target_id];
     auto pos = support_ptr[target_id];
     const auto end = support_ptr[target_id + 1];
     for (int s = 0; s < n_sources; ++s) {
-      auto src = load_point(source_coords, s, dim);
-      double dist2 = 0;
-      for (int d = 0; d < dim; ++d) {
-        double diff = tgt[d] - src[d];
-        dist2 += diff * diff;
-      }
-      if (dist2 <= r2) {
+      if (distance2(target_coords, target_id, source_coords, s, dim) <= r2) {
         PCMS_CHECK_PRINTF(pos < end,
                           "Support index out of bounds: pos %d end %d "
                           "target_id %d\n",

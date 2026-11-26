@@ -31,7 +31,6 @@ using omega_h::OmegaHGeometry;
 using omega_h::OmegaHLagrangeEvaluatorFactory;
 using omega_h::OmegaHLagrangeLayout;
 #endif
-using uniform_grid::UniformGridEvaluatorFactory;
 using uniform_grid::UniformGridFieldLayout;
 using uniform_grid::UniformGridGeometry;
 using uniform_grid::VisitUniformGrid;
@@ -43,16 +42,14 @@ namespace pcms
 namespace
 {
 
-#ifdef PCMS_ENABLE_OMEGA_H
-/// A Lagrange space of an Omega_h geometry, whose quadrature is the
-/// geometry's rule of degree 2p for order p.
-class OmegaHLagrangeFunctionSpace : public FunctionSpace
+/// @brief A Lagrange space of order p; its quadrature defaults to the
+///        geometry's rule of degree max(1, 2p).
+class LagrangeFunctionSpace : public FunctionSpace
 {
 public:
-  OmegaHLagrangeFunctionSpace(
-    std::shared_ptr<const FieldLayout> layout,
-    std::shared_ptr<const PointEvaluatorFactory> evaluator,
-    std::shared_ptr<const Geometry> geometry, int order)
+  LagrangeFunctionSpace(std::shared_ptr<const FieldLayout> layout,
+                        std::shared_ptr<const PointEvaluatorFactory> evaluator,
+                        std::shared_ptr<const Geometry> geometry, int order)
     : FunctionSpace(std::move(layout), std::move(evaluator),
                     std::move(geometry)),
       order_(order)
@@ -68,6 +65,7 @@ private:
   int order_;
 };
 
+#ifdef PCMS_ENABLE_OMEGA_H
 /// Throws unless every alternative of `data` is a `Data<T>`.
 template <template <typename> class Data>
 void CheckFieldDataType(const FieldDataVariant& data, const char* message)
@@ -84,15 +82,15 @@ void CheckFieldDataType(const FieldDataVariant& data, const char* message)
 
 #ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
 /// The MeshFields flavour of the space: its fields are MeshFieldsFieldData.
-class MeshFieldsLagrangeFunctionSpace final : public OmegaHLagrangeFunctionSpace
+class MeshFieldsLagrangeFunctionSpace final : public LagrangeFunctionSpace
 {
 public:
   MeshFieldsLagrangeFunctionSpace(
     std::shared_ptr<const omega_h_meshfields::MeshFieldsAdapterLayout> layout,
     std::shared_ptr<const PointEvaluatorFactory> evaluator,
     std::shared_ptr<const Geometry> geometry, int order)
-    : OmegaHLagrangeFunctionSpace(layout, std::move(evaluator),
-                                  std::move(geometry), order),
+    : LagrangeFunctionSpace(layout, std::move(evaluator), std::move(geometry),
+                            order),
       layout_(std::move(layout))
   {
   }
@@ -132,16 +130,15 @@ private:
 #endif
 
 /// The native flavour of the space: its fields are OmegaHFieldData.
-class NativeOmegaHLagrangeFunctionSpace final
-  : public OmegaHLagrangeFunctionSpace
+class NativeOmegaHLagrangeFunctionSpace final : public LagrangeFunctionSpace
 {
 public:
   NativeOmegaHLagrangeFunctionSpace(
     std::shared_ptr<const OmegaHLagrangeLayout> layout,
     std::shared_ptr<const PointEvaluatorFactory> evaluator,
     std::shared_ptr<const Geometry> geometry, int order)
-    : OmegaHLagrangeFunctionSpace(layout, std::move(evaluator),
-                                  std::move(geometry), order),
+    : LagrangeFunctionSpace(layout, std::move(evaluator), std::move(geometry),
+                            order),
       layout_(std::move(layout))
   {
   }
@@ -251,10 +248,10 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridLagrangeSpace(
   }
   auto ug_layout = std::make_shared<UniformGridFieldLayout<Dim>>(
     geometry, num_components, order, options.layout_name);
-  auto eval_factory = std::make_shared<UniformGridEvaluatorFactory<Dim>>(
+  auto eval_factory = uniform_grid::CreateLagrangeEvaluatorFactory<Dim>(
     std::move(geometry), ug_layout);
-  return std::make_shared<FunctionSpace>(ug_layout, eval_factory,
-                                         eval_factory->GetGeometry());
+  return std::make_shared<LagrangeFunctionSpace>(
+    ug_layout, eval_factory, eval_factory->GetGeometry(), order);
 }
 
 } // namespace

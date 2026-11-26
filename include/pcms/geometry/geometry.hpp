@@ -155,9 +155,9 @@ public:
 
   /// @brief Support sets of query points among this geometry's sites, for
   ///        reconstruction spaces.
-  /// @throws pcms_error unless the kind overrides it, or if the coordinate
-  ///         system does not have the identity metric (the distances are
-  ///         Euclidean), or `options.max_supports` is neither 0 nor
+  /// @throws pcms_error unless the kind overrides it, or if the kind cannot
+  ///         measure distances in the coordinate system, or
+  ///         `options.max_supports` is neither 0 nor
   ///         3 * `options.min_supports` (other bounds are not honoured yet)
   /// @param site_dim the dimension of the entities whose coordinates are the
   ///        sites: 0 for a mesh's vertices, its dimension for its cell

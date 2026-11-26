@@ -168,14 +168,6 @@ void detail::CheckNeighbourhoodArguments(
                      "' is not the geometry's coordinate system '" +
                      std::string(geometry.GetCoordinateSystem()->Kind()) + "'");
   }
-  // the searches measure Euclidean distances
-  if (!geometry.GetCoordinateSystem()->IsOrthonormal()) {
-    throw pcms_error(
-      caller +
-      ": requires a coordinate system whose metric is the "
-      "identity (orthogonal basis and unit scale factors); got '" +
-      std::string(geometry.GetCoordinateSystem()->Kind()) + "'");
-  }
   if (options.max_supports != 0 &&
       options.max_supports != 3 * options.min_supports) {
     throw pcms_error(caller + ": max_supports must be 0 or 3 * min_supports (" +

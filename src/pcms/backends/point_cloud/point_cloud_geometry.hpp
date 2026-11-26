@@ -33,8 +33,9 @@ namespace pcms::point_cloud
 /// point cloud, by distance. It holds only the site layout, and the layout
 /// never holds a point-cloud geometry built on it.
 /// Create it with CreateGeometry (pcms/backends/point_cloud/geometry.hpp).
-/// @throws pcms_error on construction if the sites' coordinate system does not
-///         have the identity metric
+/// @throws pcms_error on construction if the sites' coordinate system has a
+///         metric that is not the identity, a periodic axis or more than 6
+///         dimensions
 class PointCloudGeometry final : public Geometry
 {
 public:
@@ -44,15 +45,7 @@ public:
                      NeighbourhoodOptions options)
     : site_layout_(std::move(site_layout)), options_(std::move(options))
   {
-    // MLS distances are based on the unweighted Euclidean measure, which is
-    // valid only with the identity metric; this almost certainly should be
-    // generalized to take the metric for distances
-    if (!site_layout_->GetCoordinateSystem()->IsOrthonormal()) {
-      throw pcms_error(
-        "PointCloudGeometry: MLS point-cloud evaluation requires a "
-        "coordinate system whose metric is the identity; got '" +
-        std::string(site_layout_->GetCoordinateSystem()->Kind()) + "'");
-    }
+    pcms::detail::CheckPointCloudSystem(*site_layout_->GetCoordinateSystem());
   }
 
   [[nodiscard]] const std::shared_ptr<const CoordinateSystem>&

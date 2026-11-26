@@ -2,6 +2,7 @@
 #define PCMS_LOCALIZATION_MLS_SUPPORT_HELPERS_HPP
 
 #include "pcms/geometry/supports.hpp"
+#include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
 
@@ -9,6 +10,12 @@
 
 namespace pcms::detail
 {
+
+/// @brief Checks that point-cloud distances are coordinate differences in
+///        `system`.
+/// @throws pcms_error if the system has more than 6 dimensions, a metric
+///         that is not the identity or a periodic axis
+void CheckPointCloudSystem(const CoordinateSystem& system);
 
 // Returns true when both the minimum and maximum support counts fall within
 // the requested range.

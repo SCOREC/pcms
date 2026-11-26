@@ -14,9 +14,11 @@
 #include "pcms/transfer/omega_h_intersection_quadrature.hpp"
 #endif
 
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <map>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -354,6 +356,20 @@ void CheckQuadrature(const pcms::Quadrature& quadrature, Omega_h::Mesh& mesh,
 }
 
 // The points per element of the Gauss rule of `order` on a serial mesh.
+// The geometry's reductions are over the mesh's ranks.
+void CheckReductions(const pcms::Geometry& geometry, const std::string& name)
+{
+  const Real size = SumOverRanks(Real(1));
+  const auto rank = static_cast<Real>(Rank());
+  std::array<Real, 2> sums{1.0, rank};
+  pcms::detail::SumOverRanks(geometry, std::span<Real>(sums));
+  Check(sums[0] == size && sums[1] == size * (size - 1) / 2,
+        name + ": SumOverRanks");
+  std::array<Real, 1> max{rank};
+  pcms::detail::MaxOverRanks(geometry, std::span<Real>(max));
+  Check(max[0] == size - 1, name + ": MaxOverRanks");
+}
+
 int PointsPerElement(Omega_h::Library& library, int dim, int order)
 {
   auto mesh =
@@ -380,6 +396,7 @@ void RunCases(Omega_h::Library& library, int dim, bool ghosted)
   }
   auto geometry =
     pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
+  CheckReductions(*geometry, Case(ghosted, dim, 1, 1));
   for (int order : {0, 1}) {
     const auto points = LocalPoints(mesh, order);
     const auto bound = Bind(*geometry, points, dim);

@@ -72,6 +72,19 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
       mpi_test(test_distributed_evaluation_4p 4
                $<TARGET_FILE:test_distributed_evaluation>)
     endif()
+    if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+      add_exe(test_distributed_forms)
+      target_link_libraries(test_distributed_forms meshfields::meshfields
+                            pcms::transfer)
+      if(HOST_NPROC GREATER_EQUAL 2)
+        mpi_test(test_distributed_forms_2p 2
+                 $<TARGET_FILE:test_distributed_forms>)
+      endif()
+      if(HOST_NPROC GREATER_EQUAL 4)
+        mpi_test(test_distributed_forms_4p 4
+                 $<TARGET_FILE:test_distributed_forms>)
+      endif()
+    endif()
   endif()
   add_exe(test_ohClassPtn_appRibPtn)
   set(cyclone2p ${PCMS_TEST_DATA_DIR}/cyclone/23elements/2p.osh/)
@@ -514,6 +527,7 @@ if(Catch2_FOUND)
     list(APPEND PCMS_UNIT_TEST_SOURCES
       test_quadrature.cpp
       test_galerkin_projection.cpp
+      test_bilinear_form.cpp
       test_omega_h_intersection_rhs_integrator.cpp
       test_omega_h_mass_integrator.cpp
       test_omega_h_mc_rhs_integrator.cpp

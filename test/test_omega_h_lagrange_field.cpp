@@ -45,7 +45,7 @@ TEST_CASE("OmegaHLagrangeLayout order-1 properties")
   REQUIRE(layout.GetNumComponents() == 2);
   REQUIRE(layout.GetNumDofHolder() == mesh.nents(0));
   REQUIRE(layout.GetNumGlobalDofHolder() == mesh.nglobal_ents(0));
-  REQUIRE(layout.IsDistributed()); // always true for Omega_h mesh layouts
+  REQUIRE(layout.IsDistributed() == (mesh.comm()->size() > 1));
 
   // DOF holder coordinates should match vertex coordinates
   auto coords_device = layout.GetDOFHolderCoordinates().GetValues();

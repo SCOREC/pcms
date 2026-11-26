@@ -38,12 +38,8 @@ void bind_coordinate_map_module(py::module& m)
       [](const BoundCoordinateMap& self, PyValueView values) {
         ValueBasis basis = values.basis;
         WithDeviceOutput(values.values, [&](auto out) {
-          for (const auto* transform : self.ValueTransforms(values.basis)) {
-            const ValueBasis next = transform->OutputBasis(basis);
-            transform->Apply(ValueView<Real, DeviceMemorySpace>(basis, out),
-                             ValueView<Real, DeviceMemorySpace>(next, out));
-            basis = next;
-          }
+          basis = ApplyValueTransforms(
+            self, ValueView<const Real, DeviceMemorySpace>(basis, out), out);
         });
         return PyValueView{basis, values.values};
       },

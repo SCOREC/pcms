@@ -99,7 +99,7 @@ def test_spaces_on_one_geometry_share_a_bind(mesh):
     xy = scalar.get_layout().get_dof_holder_coordinates().get_values()
     scalar.set_dof_holder_data(_linear(xy[:, 0], xy[:, 1]))
     # three scalar components per vertex
-    vector = vectors.create_function()
+    vector = vectors.create_function(kind=pcms.ValueKind.Array)
     vector.set_dof_holder_data(
         np.stack([_linear(xy[:, 0], xy[:, 1])] * 3, axis=1))
     expected = [_linear(0.25, 0.5), _linear(0.75, 0.1)]

@@ -2,53 +2,40 @@
 #include "pcms/configuration.hpp"
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/detail/common.hpp"
-#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
-#include "pcms/backends/omega_h_meshfields/layout.hpp"
-#include "pcms/backends/omega_h_meshfields/field_data.hpp"
-#endif
-#ifdef PCMS_ENABLE_OMEGA_H
-#include "pcms/backends/omega_h/lagrange_layout.hpp"
-#include "pcms/backends/omega_h/field_data.hpp"
-#endif
+#include "pcms/field/detail/simple_field_data.hpp"
 
 namespace pcms
 {
 
-namespace
+FieldDataVariant FunctionSpace::CreateFieldData(Type storage_type,
+                                                ValueBasis basis) const
 {
-
-// Checks that `data` is what the backend of `layout` stores and that it has the
-// layout's size. Layouts of other backends accept any data of the right size;
-// data without DOFAccess (values that live outside PCMS) has no size to check.
-template <typename T>
-void ValidateWrappedFieldData(const FieldLayout& layout,
-                              const FieldData<T>& data)
-{
-#ifdef PCMS_ENABLE_OMEGA_H_MESHFIELDS
-  if (dynamic_cast<const omega_h_meshfields::MeshFieldsAdapterLayout*>(
-        &layout) != nullptr &&
-      dynamic_cast<const omega_h_meshfields::MeshFieldsFieldData<T>*>(&data) ==
-        nullptr) {
-    throw pcms_error("FunctionSpace::CreateField: MeshFields layout requires "
-                     "MeshFieldsFieldData");
-  }
-#endif
-#ifdef PCMS_ENABLE_OMEGA_H
-  if (dynamic_cast<const omega_h::OmegaHLagrangeLayout*>(&layout) != nullptr &&
-      dynamic_cast<const omega_h::OmegaHFieldData<T>*>(&data) == nullptr) {
-    throw pcms_error("FunctionSpace::CreateField: OmegaH layout requires "
-                     "OmegaHFieldData");
-  }
-#endif
-  if (data.GetDOFAccess() != nullptr &&
-      data.GetDOFAccess()->GetValues().size() !=
-        detail::ExpectedFlatFieldDataSize(layout)) {
-    throw pcms_error(
-      "FunctionSpace::CreateField: field data size does not match layout");
-  }
+  return detail::apply_to_type(storage_type, [&](auto tag) -> FieldDataVariant {
+    using T = typename decltype(tag)::type;
+    if constexpr (std::is_same_v<T, int8_t>) {
+      throw pcms_error("FunctionSpace::CreateField: int8_t is not a supported "
+                       "field type");
+    } else {
+      return std::make_unique<detail::SimpleFieldData<T>>(layout_,
+                                                          std::move(basis));
+    }
+  });
 }
 
-} // namespace
+void FunctionSpace::ValidateFieldData(const FieldDataVariant& data) const
+{
+  std::visit(
+    [this](const auto& fd) {
+      PCMS_ALWAYS_ASSERT(fd != nullptr);
+      if (fd->GetDOFAccess() != nullptr &&
+          fd->GetDOFAccess()->GetValues().size() !=
+            detail::ExpectedFlatFieldDataSize(*layout_)) {
+        throw pcms_error("FunctionSpace::CreateField: field data size does "
+                         "not match layout");
+      }
+    },
+    data);
+}
 
 bool FunctionSpace::Supports(DifferentialOperator op) const noexcept
 {
@@ -84,7 +71,7 @@ PointEvaluatorVariant FunctionSpace::CreatePointEvaluatorImpl(
 FieldVariant FunctionSpace::CreateFieldImpl(Type storage_type,
                                             ValueBasis basis) const
 {
-  auto field_data = create_field_data_(storage_type, std::move(basis));
+  auto field_data = CreateFieldData(storage_type, std::move(basis));
   return std::visit(
     [this](auto&& fd) -> FieldVariant {
       using FD = std::decay_t<decltype(fd)>;
@@ -96,6 +83,7 @@ FieldVariant FunctionSpace::CreateFieldImpl(Type storage_type,
 
 FieldVariant FunctionSpace::CreateFieldImpl(FieldDataVariant data) const
 {
+  ValidateFieldData(data);
   return std::visit(
     [this](auto&& fd) -> FieldVariant {
       using FD = std::decay_t<decltype(fd)>;
@@ -105,7 +93,6 @@ FieldVariant FunctionSpace::CreateFieldImpl(FieldDataVariant data) const
         throw pcms_error(
           "FunctionSpace::CreateField: int8_t is not a supported field type");
       } else {
-        ValidateWrappedFieldData(*layout_, *fd);
         return WrapField<T>(layout_, std::forward<decltype(fd)>(fd));
       }
     },

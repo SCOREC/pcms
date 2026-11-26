@@ -29,21 +29,8 @@ std::shared_ptr<const FunctionSpace> CreateUniformGridSplineSpace(
   auto evaluator_factory =
     std::make_shared<UniformGridSplineEvaluatorFactory<Dim>>(
       std::move(grid_geometry), layout);
-  return std::make_shared<FunctionSpace>(
-    layout,
-    [layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
-        using T = typename decltype(tag)::type;
-        if constexpr (!std::is_same_v<T, double>) {
-          throw pcms_error("CreateSplineSpace: only double (Real) is "
-                           "supported");
-        } else {
-          return std::make_unique<pcms::detail::SimpleFieldData<double>>(
-            layout, std::move(basis));
-        }
-      });
-    },
-    evaluator_factory, evaluator_factory->GetGeometry());
+  return std::make_shared<FunctionSpace>(layout, evaluator_factory,
+                                         evaluator_factory->GetGeometry());
 }
 
 } // namespace

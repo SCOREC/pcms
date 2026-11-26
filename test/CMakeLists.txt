@@ -57,6 +57,22 @@ if(PCMS_ENABLE_OMEGA_H AND TARGET pcms::coupler)
     mpi_test(test_distributed_coupling_2p 2
              $<TARGET_FILE:test_distributed_coupling>)
   endif()
+  if(PCMS_ENABLE_OMEGA_H_MESHFIELDS)
+    # the Gauss rules on Omega_h meshes need MeshFields
+    add_exe(test_distributed_evaluation)
+    target_link_libraries(test_distributed_evaluation meshfields::meshfields)
+    if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
+      target_link_libraries(test_distributed_evaluation pcms::transfer)
+    endif()
+    if(HOST_NPROC GREATER_EQUAL 2)
+      mpi_test(test_distributed_evaluation_2p 2
+               $<TARGET_FILE:test_distributed_evaluation>)
+    endif()
+    if(HOST_NPROC GREATER_EQUAL 4)
+      mpi_test(test_distributed_evaluation_4p 4
+               $<TARGET_FILE:test_distributed_evaluation>)
+    endif()
+  endif()
   add_exe(test_ohClassPtn_appRibPtn)
   set(cyclone2p ${PCMS_TEST_DATA_DIR}/cyclone/23elements/2p.osh/)
   if(HOST_NPROC GREATER_EQUAL 4)

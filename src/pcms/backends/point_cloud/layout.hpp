@@ -12,7 +12,8 @@ public:
   /// A bare point cloud: no geometry (GetGeometry() is null), its points are
   /// vertices.
   PointCloudLayout(int dim, Kokkos::View<Real**> coords,
-                   std::shared_ptr<const CoordinateSystem> coordinate_system);
+                   std::shared_ptr<const CoordinateSystem> coordinate_system,
+                   int num_components = 1);
 
   int GetNumComponents() const override;
   // nodes for standard lagrange FEM

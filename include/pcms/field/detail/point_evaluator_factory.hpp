@@ -37,10 +37,10 @@ protected:
   ///        included
   explicit TypedPointEvaluatorFactory(
     std::shared_ptr<const Geometry> geometry,
-    std::initializer_list<DifferentialOperator> supported = {})
-    : geometry_(std::move(geometry)), supported_{DifferentialOperator::Value}
+    std::set<DifferentialOperator> supported = {})
+    : geometry_(std::move(geometry)), supported_(std::move(supported))
   {
-    supported_.insert(supported.begin(), supported.end());
+    supported_.insert(DifferentialOperator::Value);
   }
 
   /// @brief Creates an evaluator from a BoundPoints of the geometry.

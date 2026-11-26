@@ -3,6 +3,7 @@
 
 #include "pcms/backends/uniform_grid/uniform_grid_geometry.hpp"
 #include "pcms/backends/uniform_grid/layout.hpp"
+#include "pcms/field/point_rows.hpp"
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include "pcms/field/point_evaluator_factory.hpp"
@@ -15,7 +16,7 @@
 #include "pcms/backends/uniform_grid/multidimarray.hpp"
 
 #include <memory>
-#include <utility>
+#include <set>
 
 namespace pcms::uniform_grid
 {

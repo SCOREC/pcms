@@ -2,6 +2,7 @@
 #define PCMS_UTILITY_DETAIL_ARRAYS_HPP
 
 #include "pcms/utility/arrays.hpp"
+#include <type_traits>
 
 namespace pcms::detail
 {
@@ -118,6 +119,26 @@ void CopyHostRank1ViewToDeviceView(Kokkos::View<T*, DeviceMemorySpace> dest,
     src_tmp(i) = src(i);
   }
   Kokkos::deep_copy(dest, src_tmp);
+}
+
+/// A rank-2 host view as a device view in the device's own layout (the layout
+/// of a default Kokkos::View<T**, DeviceMemorySpace>: LayoutLeft on a GPU),
+/// which the pcms views of the device require. (create_mirror_view_and_copy
+/// would keep the host view's layout.)
+template <typename T, typename... Properties>
+Kokkos::View<std::remove_const_t<T>**, DeviceMemorySpace> ToDeviceView(
+  const Kokkos::View<T**, Properties...>& host)
+{
+  Kokkos::View<std::remove_const_t<T>**, DeviceMemorySpace> device(
+    "device_copy", host.extent(0), host.extent(1));
+  const auto mirror = Kokkos::create_mirror_view(device);
+  for (std::size_t i = 0; i < host.extent(0); ++i) {
+    for (std::size_t j = 0; j < host.extent(1); ++j) {
+      mirror(i, j) = host(i, j);
+    }
+  }
+  Kokkos::deep_copy(device, mirror);
+  return device;
 }
 
 // Copy a [dof][comp] device Rank2View into a flat node-major device View.

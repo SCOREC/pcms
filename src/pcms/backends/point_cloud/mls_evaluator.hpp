@@ -1,13 +1,10 @@
 #ifndef PCMS_BACKENDS_POINT_CLOUD_MLS_EVALUATOR_HPP
 #define PCMS_BACKENDS_POINT_CLOUD_MLS_EVALUATOR_HPP
 
-#include "pcms/field/field.hpp"
-#include "pcms/field/point_evaluator.hpp"
-#include "pcms/field/field_data.hpp"
-#include "pcms/field/mls_options.hpp"
 #include "pcms/backends/point_cloud/mls_interpolation.hpp"
-#include "pcms/utility/assert.hpp"
-#include "pcms/utility/memory_spaces.hpp"
+#include "pcms/geometry/bound_points.hpp"
+#include "pcms/geometry/geometry.hpp"
+#include "pcms/utility/detail/memory_spaces.hpp"
 
 #include <Kokkos_Core.hpp>
 
@@ -125,71 +122,6 @@ private:
   SupportResults supports_;
   int site_dim_;
   NeighbourhoodOptions options_;
-};
-
-/// @brief Evaluates a scalar point-cloud field at the bound points by MLS.
-template <typename LayoutPolicy =
-            pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
-class MLSPointEvaluator : public PointEvaluator<Real, LayoutPolicy>
-{
-public:
-  /// @param binding MLS supports of the query points
-  /// @param dim spatial dimension
-  /// @param options MLS options
-  /// @param layout layout of the evaluated fields
-  MLSPointEvaluator(std::shared_ptr<const MLSBinding> binding, int dim,
-                    MLSOptions options,
-                    std::shared_ptr<const FieldLayout> layout)
-    : PointEvaluator<Real, LayoutPolicy>(binding, DifferentialOperator::Value,
-                                         std::move(layout)),
-      binding_(std::move(binding)),
-      dim_(dim),
-      options_(options)
-  {
-  }
-
-  // Public because CUDA forbids extended lambdas in non-public member
-  // functions. User call Evaluate.
-  // TODO: add passkey or other mechanism to protect this
-  void EvaluateImpl(
-    const Field<Real>& field,
-    ValueView<Real, DeviceMemorySpace, LayoutPolicy> out) const override
-  {
-    const auto values = out.GetValues();
-    if (values.extent(1) != 1) {
-      throw pcms_error(
-        "MLSPointEvaluator: only scalar (num_components==1) evaluation is "
-        "supported in this phase");
-    }
-
-    const auto device_data = field.GetDOFHolderData().GetValues();
-    const int n_sources = static_cast<int>(device_data.size());
-
-    Kokkos::View<Real*, DeviceMemorySpace> source_values(
-      Kokkos::view_alloc(Kokkos::WithoutInitializing, "mls_source_values"),
-      n_sources);
-    Kokkos::parallel_for(
-      "CopyDeviceDataToSourceValues",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_sources),
-      KOKKOS_LAMBDA(int i) { source_values(i) = device_data(i, 0); });
-
-    auto result = pcms::detail::mls_interpolation(
-      source_values, binding_->SourceCoordinates(),
-      binding_->TargetCoordinates(), binding_->Supports(), dim_,
-      static_cast<LO>(options_.degree), options_.basis, options_.lambda,
-      options_.tol, options_.decay_factor);
-
-    const int n_targets = static_cast<int>(result.size());
-    Kokkos::parallel_for(
-      "CopyMLSResultToValues",
-      Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0, n_targets),
-      KOKKOS_LAMBDA(int i) { values(i, 0) = result(i); });
-  }
-
-private:
-  std::shared_ptr<const MLSBinding> binding_;
-  int dim_;
-  MLSOptions options_;
 };
 
 } // namespace pcms::detail

@@ -12,52 +12,10 @@
 namespace pcms::transfer::detail
 {
 
-// Maps the global id of a DOF holder this rank owns to the holder: a binary
-// search in the sorted gids; -1 for another gid.
-struct HolderOfGid
-{
-  Kokkos::View<GO*, DeviceMemorySpace> sorted;
-  Kokkos::View<LO*, DeviceMemorySpace> holders;
-
-  KOKKOS_INLINE_FUNCTION LO operator()(GO gid) const
-  {
-    LO lo = 0;
-    LO hi = static_cast<LO>(sorted.extent(0));
-    while (lo < hi) {
-      const LO mid = lo + (hi - lo) / 2;
-      if (sorted(mid) < gid) {
-        lo = mid + 1;
-      } else {
-        hi = mid;
-      }
-    }
-    return lo < static_cast<LO>(sorted.extent(0)) && sorted(lo) == gid
-             ? holders(lo)
-             : -1;
-  }
-};
-
 namespace
 {
 
 constexpr Real RowSumTolerance = 1e-12;
-
-HolderOfGid MakeHolderOfGid(const FieldLayout& layout)
-{
-  const auto gids = layout.GetGidsHost();
-  std::vector<LO> order(gids.extent(0));
-  std::iota(order.begin(), order.end(), 0);
-  std::sort(order.begin(), order.end(),
-            [&](LO a, LO b) { return gids(a) < gids(b); });
-  Kokkos::View<GO*, HostMemorySpace> sorted("sorted_gids", order.size());
-  Kokkos::View<LO*, HostMemorySpace> holders("sorted_holders", order.size());
-  for (std::size_t i = 0; i < order.size(); ++i) {
-    sorted(i) = gids(order[i]);
-    holders(i) = order[i];
-  }
-  return {Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, sorted),
-          Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, holders)};
-}
 
 // whether every value exceeds a round-off fraction of the largest magnitude
 bool AllPositive(const Rank2View<const Real, DeviceMemorySpace>& values)
@@ -112,30 +70,39 @@ Real WeightedDot(const Kokkos::View<const Real*, DeviceMemorySpace>& weights,
   return sum;
 }
 
-// the diagonal of E^T W E at the owned DOF holders
+// the diagonal of E^T W E over the DOF holders with ghosts, read back at the
+// owned ones
 Kokkos::View<Real**, DeviceMemorySpace> Diagonal(
   const PointMatrix<Real>& matrix,
   const Kokkos::View<const Real*, DeviceMemorySpace>& weights,
   const FieldLayout& layout)
 {
-  const auto holder_of = MakeHolderOfGid(layout);
   const int num_components = layout.GetNumComponents();
-  Kokkos::View<Real**, DeviceMemorySpace> diagonal(
-    "bilinear_form_diagonal", layout.GetNumDofHolder(), num_components);
+  const bool ghosted = layout.HasGhosts();
+  const auto owned = layout.GetOwnedIndices();
+  const LO num_holders = ghosted
+                           ? static_cast<LO>(layout.GetOwnedHost().extent(0))
+                           : layout.GetNumDofHolder();
+  Kokkos::View<Real*, DeviceMemorySpace> all("bilinear_form_diagonal",
+                                             num_holders);
   Kokkos::parallel_for(
     "pcms::transfer::AssembleDiagonal",
     Kokkos::RangePolicy<DefaultExecutionSpace>(
       0, static_cast<LO>(weights.extent(0))),
     KOKKOS_LAMBDA(const LO p) {
       for (LO j = matrix.row_offsets(p); j < matrix.row_offsets(p + 1); ++j) {
-        const LO holder = holder_of(matrix.columns(j));
-        if (holder < 0) {
-          continue;
-        }
-        for (int c = 0; c < num_components; ++c) {
-          Kokkos::atomic_add(&diagonal(holder, c),
-                             weights(p) * matrix.values(j) * matrix.values(j));
-        }
+        Kokkos::atomic_add(&all(matrix.holders(j)),
+                           weights(p) * matrix.values(j) * matrix.values(j));
+      }
+    });
+  Kokkos::View<Real**, DeviceMemorySpace> diagonal(
+    "bilinear_form_owned_diagonal", layout.GetNumDofHolder(), num_components);
+  Kokkos::parallel_for(
+    "pcms::transfer::OwnedDiagonal",
+    Kokkos::RangePolicy<DefaultExecutionSpace>(0, layout.GetNumDofHolder()),
+    KOKKOS_LAMBDA(const LO o) {
+      for (int c = 0; c < num_components; ++c) {
+        diagonal(o, c) = all(ghosted ? owned(o) : o);
       }
     });
   return diagonal;

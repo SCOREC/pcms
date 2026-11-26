@@ -1,13 +1,11 @@
 #include "pcms/transfer/forms.hpp"
-#include "pcms/field/detail/field_ops.hpp"
 #include "pcms/geometry/detail/geometry.hpp"
+#include "pcms/field/detail/field_ops.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>
-#include <algorithm>
-#include <numeric>
+#include <string>
 #include <utility>
-#include <vector>
 
 namespace pcms::transfer::detail
 {
@@ -262,6 +260,39 @@ BilinearForm BilinearForm::WithTrial(
   return BilinearForm(test_, std::move(trial), std::move(options));
 }
 
+const pcms::detail::TransformChain& BilinearForm::G(
+  const ValueBasis& basis) const
+{
+  for (const auto& g : g_) {
+    if (g->chain.InputBasis() == basis) {
+      return g->chain;
+    }
+  }
+  auto g = std::make_unique<Operator>();
+  std::vector<const ValueTransform*> transforms;
+  if (options_.metric && basis.Rank() == 1 && !basis.system->IsOrthonormal()) {
+    const auto& points = *GetQuadrature().points;
+    const auto& geometry = *points.GetGeometry();
+    BoundCoordinateSystem::MetricView metric;
+    if (pcms::detail::SameCoordinateSystem(basis.system,
+                                           geometry.GetCoordinateSystem())) {
+      if (metric_ == nullptr) {
+        metric_ = basis.system->Bind(points.LocatedPoints().GetValues());
+      }
+      metric = metric_->Metric();
+    } else {
+      throw pcms_error("BilinearForm: the metric of values in '" +
+                       std::string(basis.system->Kind()) +
+                       "' is not known at the points");
+    }
+    g->lower = pcms::detail::LowerIndex(basis.system, metric, basis.scaling);
+    transforms.push_back(&*g->lower);
+  }
+  g->chain.Reset(basis, std::move(transforms));
+  g_.push_back(std::move(g));
+  return g_.back()->chain;
+}
+
 ValueView<const Real, DeviceMemorySpace> BilinearForm::EvaluateTest(
   const Field<Real>& v) const
 {
@@ -289,7 +320,14 @@ ValueView<const Real, DeviceMemorySpace> BilinearForm::EvaluateTrial(
 Real BilinearForm::Contract(ValueView<const Real, DeviceMemorySpace> a,
                             ValueView<const Real, DeviceMemorySpace> b) const
 {
-  return WeightedDot(GetQuadrature().weights, a.GetValues(), b.GetValues());
+  const auto& g = G(b.GetBasis());
+  auto gb = b.GetValues();
+  if (!g.Empty()) {
+    auto& out = Shaped(g_values_, gb.extent(0), gb.extent(1));
+    g.Apply(gb, MakeRank2View(out));
+    gb = MakeConstRank2View(out);
+  }
+  return WeightedDot(GetQuadrature().weights, a.GetValues(), gb);
 }
 
 Real BilinearForm::Pair(const Field<Real>& v, const Field<Real>& u) const
@@ -303,7 +341,17 @@ void BilinearForm::Apply(const Field<Real>& u, Field<Real>& functional) const
     throw pcms_error("BilinearForm::Apply: the test space's evaluator does "
                      "not support the transpose");
   }
-  test_->Assemble(EvaluateTrial(u), functional);
+  const auto samples = EvaluateTrial(u);
+  const auto& g = G(samples.GetBasis());
+  auto values = samples.GetValues();
+  if (!g.Empty()) {
+    auto& out = Shaped(g_values_, values.extent(0), values.extent(1));
+    g.Apply(values, MakeRank2View(out));
+    values = MakeConstRank2View(out);
+  }
+  test_->Assemble(
+    ValueView<const Real, DeviceMemorySpace>(g.OutputBasis(), values),
+    functional);
 }
 
 void BilinearForm::ApplyTranspose(const Field<Real>& v,
@@ -314,15 +362,20 @@ void BilinearForm::ApplyTranspose(const Field<Real>& v,
                      "does not support the transpose");
   }
   const ValueBasis written = TrialBasis(functional.GetData().GetValueBasis());
+  const auto& g = G(written);
   const auto samples = EvaluateTest(v);
   pcms::detail::CheckWrittenValueBasis("BilinearForm::ApplyTranspose",
-                                       samples.GetBasis(), written);
-  TrialEvaluator().EvaluateTranspose(test_->Weight(samples), functional);
+                                       samples.GetBasis(), g.OutputBasis());
+  const auto weighted = test_->Weight(samples).GetValues();
+  TrialEvaluator().EvaluateTranspose(ValueView<const Real, DeviceMemorySpace>(
+                                       written, g.ApplyTranspose(weighted)),
+                                     functional);
 }
 
 bool BilinearForm::SupportsMatrix() const noexcept
 {
-  return trial_evaluator_ == nullptr && test_->Evaluator().SupportsMatrix();
+  return trial_evaluator_ == nullptr && !options_.metric &&
+         test_->Evaluator().SupportsMatrix();
 }
 
 void BilinearForm::AssembleLumped(Field<Real>& lumped) const

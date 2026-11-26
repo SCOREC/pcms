@@ -212,13 +212,18 @@ private:
                        "this evaluator was created from");
     }
     const auto num_points = static_cast<size_t>(NumPoints());
-    // the field's components times the dimension per index OutputBasis adds
-    // for the evaluator's operator
+    // per block of the field's components (one per component of a scalar
+    // field, one for a vector or tensor), the components of the basis
+    // OutputBasis writes: the operator adds indices, a map can change the
+    // dimension
     const ValueBasis stored = field.GetData().GetValueBasis();
     const ValueBasis written = OutputBasis(stored);
     auto num_components =
       static_cast<size_t>(field.GetLayout().GetNumComponents());
-    for (int i = stored.Rank(); i < written.Rank(); ++i) {
+    for (int i = 0; i < stored.Rank(); ++i) {
+      num_components /= static_cast<size_t>(stored.system->Dimension());
+    }
+    for (int i = 0; i < written.Rank(); ++i) {
       num_components *= static_cast<size_t>(written.system->Dimension());
     }
     if (values.extent(0) != num_points || values.extent(1) != num_components) {

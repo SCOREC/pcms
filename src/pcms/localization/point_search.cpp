@@ -41,7 +41,7 @@ KOKKOS_INLINE_FUNCTION BarycentricWithScales<Dim> ComputeBarycentricWithScales(
   // rows of the inverse basis are the gradients of lambda_1..lambda_Dim; the
   // matrices are stored by column, so row j is inv[k][j] over k
   const auto inv =
-    pcms::detail::Invert(pcms::detail::SimplexBasis<Dim>(vertex_coords));
+    pcms::detail::Invert<Dim>(pcms::detail::SimplexBasis<Dim>(vertex_coords));
   Kokkos::Array<pcms::Real, Dim> r;
   for (int d = 0; d < Dim; ++d) {
     r[d] = point[d] - vertex_coords[0][d];
@@ -192,7 +192,7 @@ KOKKOS_INLINE_FUNCTION bool ClassifyInElement(
   }
   const auto b =
     ComputeBarycentricWithScales<Dim>(simplices(elem).vertices, point);
-  if (b.SignedPlaneDistance() < -tau) {
+  if (!(b.SignedPlaneDistance() >= -tau)) {
     return false;
   }
   unsigned mask;
@@ -262,7 +262,7 @@ void GridSearch(
         const auto b =
           ComputeBarycentricWithScales<Dim>(simplices(elem).vertices, point);
         const auto dist = b.SignedPlaneDistance();
-        if (dist < -tau) {
+        if (!(dist >= -tau)) {
           if (nearest_elem < 0 || dist > nearest_dist ||
               (dist == nearest_dist && elem < nearest_elem)) {
             nearest_elem = elem;

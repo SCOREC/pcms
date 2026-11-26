@@ -31,10 +31,9 @@ enum class Variance : std::uint8_t
   Covariant
 };
 
-// How the components are scaled relative to the coordinate-induced basis.
-//
-// each component physical coordinates all have the same units
-// the natural coordinates are the standard, unscaled coordinate bases
+/// @brief How the components are scaled: Natural on the coordinate basis,
+///        Physical on its unit vectors (natural times sqrt(g_ii) per
+///        contravariant index, times sqrt(g^ii) per covariant index)
 enum class ComponentScaling : std::uint8_t
 {
   Physical,
@@ -154,7 +153,8 @@ public:
             Rank2View<ElementType, MemorySpace, LayoutPolicy> values)
     : basis_(std::move(basis)), values_(values)
   {
-    detail::ValidateValueSemantics(basis_, static_cast<int>(values_.extent(1)));
+    detail::ValidateValueSemantics(basis_, static_cast<int>(values_.extent(1)),
+                                   /*blocks=*/true);
   }
 
   template <typename OtherElement,

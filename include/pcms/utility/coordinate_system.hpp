@@ -69,19 +69,9 @@ public:
 
   [[nodiscard]] virtual int Dimension() const noexcept = 0;
 
-  /// @return whether the coordinate basis is orthogonal everywhere (the
-  ///         metric is diagonal)
-  [[nodiscard]] virtual bool IsOrthogonal() const noexcept = 0;
-
-  /// @return whether every scale factor is 1 (g_ii = 1 everywhere)
-  [[nodiscard]] virtual bool IsNormalized() const noexcept = 0;
-
   /// @return whether the metric is the identity everywhere, so that
   ///         physical and natural components coincide
-  [[nodiscard]] bool IsOrthonormal() const noexcept
-  {
-    return IsOrthogonal() && IsNormalized();
-  }
+  [[nodiscard]] virtual bool IsOrthonormal() const noexcept = 0;
 
   /// @return the period of coordinate `axis` if the system is periodic along
   ///         it (a point and its image a period away are the same point)

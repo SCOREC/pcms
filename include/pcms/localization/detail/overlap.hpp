@@ -7,6 +7,7 @@
 
 #include "pcms/localization/shapes.hpp"
 #include "pcms/utility/bounding_box.hpp"
+#include "pcms/utility/detail/small_matrix.hpp"
 #include "pcms/utility/types.hpp"
 
 namespace pcms::detail
@@ -15,18 +16,6 @@ namespace pcms::detail
 // The vertices of a simplex, vertices[k][d] the coordinate d of vertex k.
 template <int Dim>
 using SimplexVertices = Kokkos::Array<Kokkos::Array<Real, Dim>, Dim + 1>;
-
-// A Dim x Dim matrix stored as its columns, m[j][i] the entry in row i of
-// column j, as Omega_h::Matrix.
-template <int Dim>
-using SquareMatrix = Kokkos::Array<Kokkos::Array<Real, Dim>, Dim>;
-
-[[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, 3> Cross(
-  const Kokkos::Array<Real, 3>& u, const Kokkos::Array<Real, 3>& v)
-{
-  return {u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2],
-          u[0] * v[1] - u[1] * v[0]};
-}
 
 // The edge vectors p[k + 1] - p[0] of a simplex, as the columns of a matrix.
 template <int Dim>
@@ -40,83 +29,6 @@ template <int Dim>
     }
   }
   return b;
-}
-
-[[nodiscard]] KOKKOS_INLINE_FUNCTION Real Determinant(const SquareMatrix<2>& m)
-{
-  const Real a = m[0][0];
-  const Real b = m[1][0];
-  const Real c = m[0][1];
-  const Real d = m[1][1];
-  return a * d - b * c;
-}
-
-[[nodiscard]] KOKKOS_INLINE_FUNCTION Real Determinant(const SquareMatrix<3>& m)
-{
-  const Real a = m[0][0];
-  const Real b = m[1][0];
-  const Real c = m[2][0];
-  const Real d = m[0][1];
-  const Real e = m[1][1];
-  const Real f = m[2][1];
-  const Real g = m[0][2];
-  const Real h = m[1][2];
-  const Real i = m[2][2];
-  return (a * e * i) + (b * f * g) + (c * d * h) - (c * e * g) - (b * d * i) -
-         (a * f * h);
-}
-
-// The inverses of 1x1 to 3x3 matrices, as Omega_h::invert.
-[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<1> Invert(
-  const SquareMatrix<1>& m)
-{
-  return {{{1.0 / m[0][0]}}};
-}
-
-[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<2> Invert(
-  const SquareMatrix<2>& m)
-{
-  const Real a = m[0][0];
-  const Real b = m[1][0];
-  const Real c = m[0][1];
-  const Real d = m[1][1];
-  const Real det = Determinant(m);
-  // columns of [[d, -b], [-c, a]] / det
-  return {{{d / det, -c / det}, {-b / det, a / det}}};
-}
-
-[[nodiscard]] KOKKOS_INLINE_FUNCTION SquareMatrix<3> Invert(
-  const SquareMatrix<3>& m)
-{
-  // row k of the inverse is the cross product of the other two columns, over
-  // the determinant
-  const SquareMatrix<3> rows{Cross(m[1], m[2]), Cross(m[2], m[0]),
-                             Cross(m[0], m[1])};
-  const Real det = Determinant(m);
-  SquareMatrix<3> inverse;
-  for (int i = 0; i < 3; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      inverse[j][i] = rows[i][j] / det;
-    }
-  }
-  return inverse;
-}
-
-// m * v, accumulated column by column.
-template <int Dim>
-[[nodiscard]] KOKKOS_INLINE_FUNCTION Kokkos::Array<Real, Dim> Multiply(
-  const SquareMatrix<Dim>& m, const Kokkos::Array<Real, Dim>& v)
-{
-  Kokkos::Array<Real, Dim> out;
-  for (int i = 0; i < Dim; ++i) {
-    out[i] = m[0][i] * v[0];
-  }
-  for (int j = 1; j < Dim; ++j) {
-    for (int i = 0; i < Dim; ++i) {
-      out[i] = out[i] + m[j][i] * v[j];
-    }
-  }
-  return out;
 }
 
 // The barycentric coordinates from the last Dim of them: the first is 1 minus
@@ -146,7 +58,7 @@ BarycentricFromGlobal(const Kokkos::Array<Real, Dim>& x,
   for (int d = 0; d < Dim; ++d) {
     r[d] = x[d] - p[0][d];
   }
-  const auto inverse_basis = Invert(SimplexBasis<Dim>(p));
+  const auto inverse_basis = Invert<Dim>(SimplexBasis<Dim>(p));
   return FormBarycentric<Dim>(Multiply<Dim>(inverse_basis, r));
 }
 

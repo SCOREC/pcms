@@ -2,15 +2,18 @@
 #define PCMS_TRANSFER_FORMS_HPP
 
 #include "pcms/field/coordinate_map.hpp"
+#include "pcms/field/detail/transform_chain.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/function_space.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
+#include "pcms/field/value_transform.hpp"
 #include "pcms/geometry/quadrature.hpp"
 #include "pcms/utility/types.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
 #include <optional>
+#include <vector>
 
 namespace pcms::transfer::detail
 {
@@ -20,7 +23,7 @@ namespace pcms::transfer::detail
 // they know nothing of the kind of the space. Their interfaces are meant to
 // be published later.
 
-/// @brief The quadrature of a BilinearForm and the map to its trial.
+/// @brief The quadrature and the pointwise operator G of a BilinearForm.
 struct FormOptions
 {
   /// the quadrature, on the test space's geometry; unset: the test space's
@@ -28,6 +31,9 @@ struct FormOptions
   std::optional<Quadrature> quadrature;
   /// map from the test space's geometry to the trial's, or null
   std::shared_ptr<const CoordinateMap> to_trial;
+  /// whether vectors and covectors pair through the metric of their
+  /// coordinate system
+  bool metric = false;
 };
 
 /// @brief The linear form E^T W of a space: samples at the points of a
@@ -70,8 +76,9 @@ private:
   mutable Kokkos::View<Real**, DeviceMemorySpace> weighted_;
 };
 
-/// @brief B = E_test^T W E_trial: the trial at the points of a quadrature,
-///        the weights, then the transpose of the test evaluation.
+/// @brief B = E_test^T W G E_trial: the trial at the points of a quadrature,
+///        a pointwise operator G, the weights, then the transpose of the test
+///        evaluation.
 class BilinearForm
 {
 public:
@@ -114,8 +121,8 @@ public:
   /// @return v^T B u
   [[nodiscard]] Real Pair(const Field<Real>& v, const Field<Real>& u) const;
 
-  /// @return whether the form is square and its evaluator gives the matrix E
-  ///         (the diagonal and the COO assembly need it)
+  /// @return whether the form is square with G = I and its evaluator gives
+  ///         the matrix E (the diagonal and the COO assembly need it)
   [[nodiscard]] bool SupportsMatrix() const noexcept;
 
   /// @brief diagonal = the diagonal of a square form at the owned DOF
@@ -165,7 +172,7 @@ private:
   [[nodiscard]] ValueView<const Real, DeviceMemorySpace> EvaluateTrial(
     const Field<Real>& u) const;
 
-  /// @return the sum over the points of w a . b
+  /// @return the sum over the points of w a . (G b)
   [[nodiscard]] Real Contract(ValueView<const Real, DeviceMemorySpace> a,
                               ValueView<const Real, DeviceMemorySpace> b) const;
 
@@ -201,13 +208,26 @@ private:
     return trial_evaluator_ != nullptr ? *trial_evaluator_ : test_->Evaluator();
   }
 
+  /// @return G for trial values in `basis`
+  [[nodiscard]] const pcms::detail::TransformChain& G(
+    const ValueBasis& basis) const;
+
   std::shared_ptr<const LinearForm> test_;
   std::shared_ptr<const PointEvaluatorFactory> trial_;
   FormOptions options_;
   // null when the trial is the test space without a map
   std::unique_ptr<PointEvaluator<Real>> trial_evaluator_;
+  /// G for the trial values of one basis
+  struct Operator
+  {
+    std::optional<ValueTransform> lower;
+    pcms::detail::TransformChain chain;
+  };
+  mutable std::vector<std::unique_ptr<Operator>> g_;
+  mutable std::unique_ptr<BoundCoordinateSystem> metric_;
   mutable Kokkos::View<Real**, DeviceMemorySpace> test_values_;
   mutable Kokkos::View<Real**, DeviceMemorySpace> trial_values_;
+  mutable Kokkos::View<Real**, DeviceMemorySpace> g_values_;
 };
 
 } // namespace pcms::transfer::detail

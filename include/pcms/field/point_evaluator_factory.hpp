@@ -1,6 +1,7 @@
 #ifndef PCMS_FIELD_POINT_EVALUATOR_FACTORY_HPP
 #define PCMS_FIELD_POINT_EVALUATOR_FACTORY_HPP
 
+#include "pcms/field/coordinate_map.hpp"
 #include "pcms/field/differential_operator.hpp"
 #include "pcms/field/field_factory.hpp"
 #include "pcms/field/point_evaluator.hpp"
@@ -14,6 +15,7 @@
 #include <set>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace pcms
 {
@@ -40,8 +42,8 @@ public:
   /// @brief Creates an evaluator at the points of a BoundPoints.
   ///
   /// If the bind had a coordinate map, the evaluator evaluates at the mapped
-  /// points and re-expresses the values through the bound map
-  /// (TransformedPointEvaluator).
+  /// points and re-expresses the values through the bound map's value
+  /// transform (TransformedPointEvaluator).
   /// @tparam T field value type
   /// @param bound a BoundPoints of this source's geometry (a result of
   ///        GetGeometry()->Bind); BoundPoints of other geometries are
@@ -120,11 +122,15 @@ std::unique_ptr<PointEvaluator<T>> PointEvaluatorFactory::CreatePointEvaluator(
   std::shared_ptr<const BoundPoints> bound, DifferentialOperator op) const
 {
   auto evaluator = CreateUntransformedPointEvaluator<T>(*this, bound, op);
-  if (bound->GetBoundMap() == nullptr) {
+  auto map = bound->GetBoundMap();
+  if (map == nullptr) {
     return evaluator;
   }
   return std::make_unique<detail::TransformedPointEvaluator<T>>(
-    std::move(bound), std::move(evaluator));
+    std::move(bound), std::move(evaluator),
+    [map = std::move(map)](const ValueBasis& basis) {
+      return map->ValueTransforms(basis);
+    });
 }
 
 } // namespace pcms

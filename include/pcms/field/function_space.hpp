@@ -128,6 +128,13 @@ public:
   /// @throws pcms_error if the space is not owned by a std::shared_ptr
   template <typename T>
   [[nodiscard]] Function<T> CreateFunction(FieldMetadata metadata) const;
+  /// @brief Creates a Function whose values are in `basis`; an unset system
+  ///        is the space's.
+  /// @throws pcms_error if the space is not owned by a std::shared_ptr, or
+  ///         the basis does not fit the space's number of components
+  template <typename T>
+  [[nodiscard]] Function<T> CreateFunction(std::string name,
+                                           ValueBasis basis) const;
 
   // Expert API: wrap externally constructed field data into a Function for this
   // space. The space validates backend-specific field-data type and storage
@@ -239,6 +246,24 @@ Function<T> FunctionSpace::CreateFunction(FieldMetadata metadata) const
     CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
   return WrapFunction<T>(std::move(metadata), std::move(field.layout_),
                          std::move(field.data_), std::move(owner));
+}
+
+template <typename T>
+Function<T> FunctionSpace::CreateFunction(std::string name,
+                                          ValueBasis basis) const
+{
+  static_assert(detail::is_supported_field_type_v<T>,
+                "T is not a supported field type");
+  auto owner = Owner();
+  if (basis.Rank() > 0 && basis.system == nullptr) {
+    basis.system = GetCoordinateSystem();
+  }
+  detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
+  Field<T> field = std::get<Field<T>>(
+    CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
+  return WrapFunction<T>(FieldMetadata{.name = std::move(name)},
+                         std::move(field.layout_), std::move(field.data_),
+                         std::move(owner));
 }
 
 template <typename T>

@@ -114,8 +114,14 @@ void CaseA()
   // Values run opposite to points: this map re-expresses cylindrical
   // components as Cartesian ones, in place. Here, e_theta at each point.
   auto v = ToDevice({0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0}, 3);
-  auto v_cart = bound->TransformValues(
-    ValueView<Real, DeviceMemorySpace>(CylindricalVector(), MakeRank2View(v)));
+  ValueBasis cartesian = CylindricalVector();
+  for (const auto* transform : bound->ValueTransforms(CylindricalVector())) {
+    const ValueBasis in = cartesian;
+    cartesian = transform->OutputBasis(in);
+    transform->Apply(
+      ValueView<Real, DeviceMemorySpace>(in, MakeRank2View(v)),
+      ValueView<Real, DeviceMemorySpace>(cartesian, MakeRank2View(v)));
+  }
   auto vh = ToHost(MakeConstRank2View(v));
   Real err = 0.0;
   for (int i = 0; i < 3; ++i) {
@@ -125,7 +131,7 @@ void CaseA()
                 rtz(i, 0), rtz(i, 1), rtz(i, 2), vh(i, 0), vh(i, 1), vh(i, 2));
   }
   std::printf("    output basis '%s', max |e_theta - (-sin, cos, 0)| = %.2e\n",
-              std::string(v_cart.GetBasis().system->Kind()).c_str(), err);
+              std::string(cartesian.system->Kind()).c_str(), err);
 }
 
 void CaseB(Omega_h::Library& lib)

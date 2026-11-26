@@ -14,8 +14,8 @@
 namespace pcms
 {
 
-/// @brief Integrals of the fields of a space by quadrature. The components
-///        of a vector field are paired by the Euclidean product.
+/// @brief Integrals of the fields of a space by quadrature. Vectors and
+///        covectors are paired by the metric of their coordinate system.
 class L2Integral
 {
 public:

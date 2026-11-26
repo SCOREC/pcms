@@ -3,24 +3,25 @@
 
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_view.hpp"
+#include "pcms/field/value_transform.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
+#include <optional>
+#include <vector>
 
 namespace pcms
 {
 
 // A CoordinateMap bound to one query point set. Bind performs every per-point
-// computation the map needs: the mapped coordinates and the state that
-// re-expressing component values at those points requires. That state is the
-// map's differential, which does not depend on the value basis -- the basis
-// only selects which arithmetic is applied to it -- so one bound map serves
-// every field evaluated at that point set.
-//
-// Rank-0 values never reach OutputBasis or TransformValues: scalars are basis
-// invariant, so callers forward them without consulting the map.
+// computation the map needs: the mapped coordinates and the map's Jacobian
+// there. Values re-expressed at those points flow against the map, from the
+// target coordinate system where the points were located back to the source
+// system of the query points, through ValueTransforms(): the Pullback of the
+// Jacobian, between conversions of physical components to natural ones and
+// back. One bound map serves every field evaluated at that point set.
 class BoundCoordinateMap
 {
 public:
@@ -42,29 +43,42 @@ public:
     return static_cast<LO>(mapped_.extent(0));
   }
 
-  /// Value basis produced for rank >= 1 values stored in `stored`. Throws when
-  /// this map cannot re-express that basis.
-  [[nodiscard]] virtual ValueBasis OutputBasis(const ValueBasis& stored) const;
+  /// @return J(p, j, i) = d x_j / d xi_i, the Jacobian of the map at the
+  ///         bound points (xi: source coordinates, x: mapped coordinates),
+  ///         [points][target dimension][source dimension]
+  [[nodiscard]] virtual View<3, const Real, DeviceMemorySpace> Jacobian()
+    const = 0;
 
-  /// Re-expresses `values` in place and returns the same buffer tagged
-  /// `OutputBasis(values.GetBasis())`.
-  virtual ValueView<Real, DeviceMemorySpace> TransformValues(
-    ValueView<Real, DeviceMemorySpace> values) const;
+  /// @brief The transforms, in order, that re-express values in `in`,
+  ///        evaluated at the mapped points, in the source coordinate system
+  ///        of the query points: the Pullback of Jacobian() (covectors by J^T;
+  ///        vectors by J^-1, which needs a square J), and physical components
+  ///        converted to natural ones before it and back after it.
+  ///
+  /// The transforms are built on first use (like the lazy factors of a
+  /// BoundPoints, not thread-safe) and live as long as the bound map.
+  /// @return no transform for values that pass unchanged: scalars, and
+  ///         values in another coordinate system than the target's
+  /// @throws pcms_error for physical components on a coordinate system
+  ///         without a metric
+  [[nodiscard]] std::vector<const pcms::ValueTransform*> ValueTransforms(
+    const ValueBasis& in) const;
 
   virtual ~BoundCoordinateMap() = default;
 
   BoundCoordinateMap(const BoundCoordinateMap&) = delete;
   BoundCoordinateMap& operator=(const BoundCoordinateMap&) = delete;
 
-protected:
-  /// Throws unless `values` holds NumPoints() rows in a basis this map
-  /// re-expresses; returns the basis the transformed values are in.
-  ValueBasis ValidateTransformValues(
-    const char* who, const ValueView<Real, DeviceMemorySpace>& values) const;
-
 private:
+  friend class CoordinateMap;
+
   std::shared_ptr<const CoordinateSystem> system_;
   Kokkos::View<Real**, DeviceMemorySpace> mapped_;
+  // the source system, set by CoordinateMap::Bind
+  std::shared_ptr<const CoordinateSystem> source_;
+  mutable std::optional<pcms::ValueTransform> pullback_;
+  mutable std::optional<pcms::ValueTransform> to_natural_;
+  mutable std::optional<pcms::ValueTransform> to_physical_;
 };
 
 class CoordinateMap
@@ -82,8 +96,10 @@ public:
   }
 
   /// Performs every per-point computation for `query_points`, which must be in
-  /// this map's source coordinate system. The returned object owns its
-  /// results and is complete on return, so `query_points` may be released.
+  /// this map's source coordinate system: the mapped points and the Jacobian,
+  /// from which the value transform is built on first use. The returned
+  /// object owns its results and is complete on return, so `query_points`
+  /// may be released.
   [[nodiscard]] std::unique_ptr<BoundCoordinateMap> Bind(
     const CoordinateView<DeviceMemorySpace>& query_points) const;
 
@@ -103,9 +119,26 @@ private:
   std::shared_ptr<const CoordinateSystem> target_;
 };
 
+/// @brief A coordinate map given by a kernel that writes the image of a point
+///        and the Jacobian there: the way to write a closed-form map between
+///        coordinate systems.
+///
+/// `kernel` is a copyable functor with, for one source dimension S and target
+/// dimension T (at most 3),
+/// `KOKKOS_FUNCTION void operator()(const Kokkos::Array<Real, S>& x,
+/// Kokkos::Array<Real, T>& out, Kokkos::Array<Real, T * S>& jacobian) const`,
+/// with jacobian[S * j + i] = d out_j / d x_i.
+/// @throws pcms_error if a system is null or its dimension is not the
+///         kernel's
+template <typename Kernel>
+[[nodiscard]] std::shared_ptr<const CoordinateMap> CreateCoordinateMap(
+  std::shared_ptr<const CoordinateSystem> source,
+  std::shared_ptr<const CoordinateSystem> target, Kernel kernel);
+
 /// Map from Cartesian (x, y, z) to cylindrical (R, theta, Z) points, so values
 /// run the other way: a field stored in cylindrical components is re-expressed
-/// in Cartesian ones.
+/// in Cartesian ones. On the axis (R = 0) theta is atan2(0, 0) and the
+/// components are those of the frame of that angle.
 [[nodiscard]] std::shared_ptr<const CoordinateMap>
 CreateCartesianToCylindrical();
 
@@ -113,14 +146,38 @@ CreateCartesianToCylindrical();
 [[nodiscard]] std::shared_ptr<const CoordinateMap>
 CreateCylindricalToCartesian();
 
-/// Places points of a poloidal (R, Z) plane at a fixed toroidal angle:
-/// (R, Z) -> (R, theta0, Z). This lets a 2D cylindrical (R, Z) target query a
-/// 3D cylindrical (R, theta, Z) source: pass it as the map of the source
-/// geometry's Bind. Only scalar values (including multi-component scalars) are
-/// currently supported.
-/// @param theta0 toroidal angle of the plane, in radians
-[[nodiscard]] std::shared_ptr<const CoordinateMap> CreatePoloidalPlaneEmbedding(
-  Real theta0);
+/// @brief The map that inserts coordinate `axis` of `target`, fixed at
+///        `value`, among the coordinates of `source`, e.g. (R, Z) ->
+///        (R, theta0, Z) from CylindricalRZ to CylindricalRThetaZ with axis 1.
+///
+/// Scalars and covectors pass (covectors by J^T); vectors would need the
+/// inverse of its rectangular Jacobian and are refused.
+/// @throws pcms_error if a system is null, dim(target) != dim(source) + 1,
+///         dim(target) > 3, or `axis` is not a coordinate of `target`
+[[nodiscard]] std::shared_ptr<const CoordinateMap> CreateCoordinateEmbedding(
+  std::shared_ptr<const CoordinateSystem> source,
+  std::shared_ptr<const CoordinateSystem> target, int axis, Real value);
+
+} // namespace pcms
+
+#include "pcms/field/detail/coordinate_map.hpp"
+
+namespace pcms
+{
+
+template <typename Kernel>
+std::shared_ptr<const CoordinateMap> CreateCoordinateMap(
+  std::shared_ptr<const CoordinateSystem> source,
+  std::shared_ptr<const CoordinateSystem> target, Kernel kernel)
+{
+  constexpr auto dims = detail::KernelDimensions<Kernel>();
+  static_assert(dims[2] == 1,
+                "CreateCoordinateMap: the kernel must take (const "
+                "Kokkos::Array<Real, S>&, Kokkos::Array<Real, T>&, "
+                "Kokkos::Array<Real, T * S>&) for one S and T in 1..3");
+  return std::make_shared<const detail::KernelMap<Kernel, dims[0], dims[1]>>(
+    std::move(source), std::move(target), std::move(kernel));
+}
 
 } // namespace pcms
 

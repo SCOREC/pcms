@@ -5,7 +5,6 @@
 #define PCMS_FIELD_DETAIL_VALUE_VIEW_HPP
 
 #include <memory>
-#include <optional>
 #include <string>
 
 namespace pcms::detail
@@ -23,18 +22,6 @@ namespace pcms::detail
                    std::to_string(rank));
 }
 
-[[nodiscard]] inline std::optional<ComponentScaling> DerivedComponentScaling(
-  const CoordinateSystem& system) noexcept
-{
-  if (!system.IsOrthogonal()) {
-    return ComponentScaling::Natural;
-  }
-  if (system.IsNormalized()) {
-    return ComponentScaling::Physical;
-  }
-  return std::nullopt;
-}
-
 [[nodiscard]] inline bool SameValueBasis(const ValueBasis& a,
                                          const ValueBasis& b) noexcept
 {
@@ -47,6 +34,14 @@ namespace pcms::detail
     return false;
   }
   return a.scaling == ComponentScaling::Physical || a.variance == b.variance;
+}
+
+/// @brief Whether `a` and `b` are the same basis but for their scaling
+[[nodiscard]] inline bool SameValueBasisExceptScaling(const ValueBasis& a,
+                                                      ValueBasis b) noexcept
+{
+  b.scaling = a.scaling;
+  return SameValueBasis(a, b);
 }
 
 /// Gate for a tagged write: throws pcms_error unless the basis the caller
@@ -81,17 +76,14 @@ inline void ValidateValueBasis(const ValueBasis& basis)
       "ValidateValueBasis: Vector/Tensor values require a basis coordinate "
       "system");
   }
-  if (basis.scaling == ComponentScaling::Physical &&
-      !basis.system->IsOrthogonal()) {
-    throw pcms_error(
-      "ValidateValueBasis: coordinate system '" +
-      std::string(basis.system->Kind()) +
-      "' has a non-orthogonal basis, so physical components are undefined; "
-      "use ComponentScaling::Natural, or borrow an orthogonal system's basis");
-  }
 }
 
-inline void ValidateValueSemantics(const ValueBasis& basis, int num_components)
+/// @param blocks whether the values may hold several blocks of the basis's
+///        components per point (values at points, e.g. the gradient of a
+///        field with several scalar components) rather than exactly one (a
+///        field's data)
+inline void ValidateValueSemantics(const ValueBasis& basis, int num_components,
+                                   bool blocks = false)
 {
   ValidateValueBasis(basis);
   const int rank = basis.Rank();
@@ -102,11 +94,15 @@ inline void ValidateValueSemantics(const ValueBasis& basis, int num_components)
   for (int i = 0; i < rank; ++i) {
     expected *= basis.system->Dimension();
   }
-  if (num_components != expected) {
+  const bool valid = blocks
+                       ? num_components > 0 && num_components % expected == 0
+                       : num_components == expected;
+  if (!valid) {
     throw pcms_error("ValidateValueSemantics: rank-" + std::to_string(rank) +
                      " values on coordinate system '" +
                      std::string(basis.system->Kind()) + "' (dimension " +
                      std::to_string(basis.system->Dimension()) + ") require " +
+                     (blocks ? "a multiple of " : "") +
                      std::to_string(expected) + " components, got " +
                      std::to_string(num_components));
   }
@@ -127,13 +123,14 @@ inline ValueBasis MakeValueBasis(
   ComponentScaling resolved;
   if (scaling.has_value()) {
     resolved = *scaling;
-  } else if (auto derived = detail::DerivedComponentScaling(*system)) {
-    resolved = *derived;
+  } else if (system->IsOrthonormal()) {
+    resolved = ComponentScaling::Physical;
   } else {
     throw pcms_error(
-      "CreateFunction: coordinate system '" + std::string(system->Kind()) +
-      "' admits both physical and natural components and they differ, so "
-      "the scaling must be stated (pass ComponentScaling::Physical or "
+      "CreateFunction: physical and natural components differ on coordinate "
+      "system '" +
+      std::string(system->Kind()) +
+      "', so the scaling must be stated (pass ComponentScaling::Physical or "
       "ComponentScaling::Natural)");
   }
   return ValueBasis{std::move(system), resolved, variance};
@@ -142,8 +139,8 @@ inline ValueBasis MakeValueBasis(
 /// @brief Basis of the gradient of values stored in `stored`.
 ///
 /// Component (j..., i) is the derivative along coordinate i of stored
-/// component (j...). Components are physical on orthogonal systems and
-/// natural otherwise.
+/// component (j...). Components are natural unless the system is
+/// orthonormal.
 /// @param stored basis of the differentiated values
 /// @param system coordinate system of the derivatives
 /// @return the stored basis with one covariant index appended; the parity is
@@ -158,7 +155,7 @@ inline ValueBasis MakeValueBasis(
   if (system == nullptr) {
     throw pcms_error("GradientBasis: derivatives require a coordinate system");
   }
-  const ComponentScaling scaling = system->IsOrthogonal()
+  const ComponentScaling scaling = system->IsOrthonormal()
                                      ? ComponentScaling::Physical
                                      : ComponentScaling::Natural;
   if (stored.Rank() == 0) {

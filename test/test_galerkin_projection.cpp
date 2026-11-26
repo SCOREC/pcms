@@ -78,16 +78,28 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   evaluator.EvaluateTranspose(y_view, functional);
   const auto e_x_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, e_x);
-  const auto transposed = functional.GetDOFHolderDataHost().GetValues();
-  const std::vector<double> once(transposed.data_handle(),
-                                 transposed.data_handle() + x.size());
-  double lhs = 0, rhs = 0, scale = 0;
-  for (std::size_t i = 0; i < y.size(); ++i) {
-    lhs += e_x_host.data()[i] * y.data()[i];
-    scale += std::abs(e_x_host.data()[i] * y.data()[i]);
+  const auto num_holders = static_cast<int>(x.extent(0));
+  // indexed by (row, component): the device layout may differ from the host's
+  std::vector<double> once(x.size());
+  {
+    const auto transposed = functional.GetDOFHolderDataHost().GetValues();
+    for (int h = 0; h < num_holders; ++h) {
+      for (int c = 0; c < num_components; ++c) {
+        once[h * num_components + c] = transposed(h, c);
+      }
+    }
   }
-  for (std::size_t i = 0; i < x.size(); ++i) {
-    rhs += x.data()[i] * once[i];
+  double lhs = 0, rhs = 0, scale = 0;
+  for (int p = 0; p < num_points; ++p) {
+    for (int c = 0; c < num_components; ++c) {
+      lhs += e_x_host(p, c) * y(p, c);
+      scale += std::abs(e_x_host(p, c) * y(p, c));
+    }
+  }
+  for (int h = 0; h < num_holders; ++h) {
+    for (int c = 0; c < num_components; ++c) {
+      rhs += x(h, c) * once[h * num_components + c];
+    }
   }
   CAPTURE(lhs, rhs);
   CHECK(std::abs(lhs - rhs) <= 1e-12 * std::max(1.0, scale));
@@ -95,8 +107,11 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   // accumulates: a second call doubles the result
   evaluator.EvaluateTranspose(y_view, functional);
   const auto twice = functional.GetDOFHolderDataHost().GetValues();
-  for (std::size_t i = 0; i < x.size(); ++i) {
-    CHECK(twice.data_handle()[i] == Catch::Approx(2 * once[i]).margin(1e-14));
+  for (int h = 0; h < num_holders; ++h) {
+    for (int c = 0; c < num_components; ++c) {
+      CHECK(twice(h, c) ==
+            Catch::Approx(2 * once[h * num_components + c]).margin(1e-14));
+    }
   }
 
   // the matrix form: E x from the CSR rows equals Evaluate

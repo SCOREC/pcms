@@ -207,7 +207,8 @@ TEST_CASE("One bind serves every space on a geometry")
     ContainsSubstring("not a field of the function space"));
 
   // the three components of the vector space see the same points
-  auto g = vectors->CreateFunction<Real>("g");
+  auto g =
+    vectors->CreateFunction<Real>("g", pcms::test::ComponentsBasis(*vectors));
   pcms::test::SetFieldComponents(g, [](Real x, Real y, Real* out) {
     for (int c = 0; c < 3; ++c) {
       out[c] = pcms::test::linear_f(x, y) + c;

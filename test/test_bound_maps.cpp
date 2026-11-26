@@ -627,3 +627,39 @@ TEST_CASE("Interpolator over a mapped bind passes through values already in "
     REQUIRE_THAT(result(i, 2), WithinAbs(coords(i, 2), pcms::test::EvalTol));
   }
 }
+
+TEST_CASE("ApplyValueTransforms applies a bound map's transforms in one call")
+{
+  const std::vector<Real> xyz = {1.0, 0.0, 0.5, 0.0, 2.0, -1.0, 1.0, 1.0, 0.0};
+  const auto points = pcms::test::CreateDeviceCoordinateView(
+    xyz, pcms::csys::CreateCartesian(3), 3);
+  const auto bound = CartToCyl()->Bind(points.coordinate_view);
+  Kokkos::View<Real**, DeviceMemorySpace> manual("manual", 3, 3);
+  Kokkos::deep_copy(manual, 0.5);
+  Kokkos::View<Real**, DeviceMemorySpace> helper("helper", 3, 3);
+  Kokkos::deep_copy(helper, manual);
+  ValueBasis basis = CylindricalVector();
+  for (const auto* transform : bound->ValueTransforms(basis)) {
+    const ValueBasis next = transform->OutputBasis(basis);
+    transform->Apply(
+      ValueView<Real, DeviceMemorySpace>(basis, pcms::MakeRank2View(manual)),
+      ValueView<Real, DeviceMemorySpace>(next, pcms::MakeRank2View(manual)));
+    basis = next;
+  }
+  const auto out = pcms::ApplyValueTransforms(
+    *bound,
+    ValueView<const Real, DeviceMemorySpace>(CylindricalVector(),
+                                             pcms::MakeConstRank2View(helper)),
+    pcms::MakeRank2View(helper));
+  CHECK(SameValueBasis(out, basis));
+  CHECK(SameValueBasis(out, CartesianVector()));
+  const auto manual_host =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), manual);
+  const auto helper_host =
+    Kokkos::create_mirror_view_and_copy(HostMemorySpace(), helper);
+  for (int p = 0; p < 3; ++p) {
+    for (int j = 0; j < 3; ++j) {
+      CHECK(helper_host(p, j) == manual_host(p, j));
+    }
+  }
+}

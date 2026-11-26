@@ -35,7 +35,8 @@ TEST_CASE("MLS repeated evaluation timing", "[mls][timing]")
         pcms::detail::DeferredCartesian(), view),
       pcms::NeighbourhoodOptions{.radius = 0.12, .min_supports = 12}),
     pcms::MLSOptions{.degree = 2});
-  auto field = fs->CreateFunction<pcms::Real>();
+  auto field =
+    fs->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*fs));
   pcms::test::SetField(
     field, KOKKOS_LAMBDA(pcms::Real x, pcms::Real y) {
       return Kokkos::sin(3 * x) * Kokkos::cos(2 * y) + x * y;
@@ -125,7 +126,8 @@ TEST_CASE("MLS evaluator: several components, the same rows for each",
 {
   const auto space = MakeCloudSpace(9, 3, 1);
   const auto scalar_space = MakeCloudSpace(9, 1, 1);
-  auto field = space->CreateFunction<pcms::Real>();
+  auto field =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
   pcms::test::SetFieldComponents(
     field, [](pcms::Real x, pcms::Real y, pcms::Real* out) {
       out[0] = 1 + x - 2 * y;
@@ -151,7 +153,8 @@ TEST_CASE("MLS evaluator: several components, the same rows for each",
     CHECK(host(i, 2) == Catch::Approx(-2.0).margin(1e-10));
   }
   // the scalar space's evaluator gives the first component identically
-  auto scalar = scalar_space->CreateFunction<pcms::Real>();
+  auto scalar = scalar_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*scalar_space));
   pcms::test::SetFieldComponents(
     scalar, [](pcms::Real x, pcms::Real y, pcms::Real* out) {
       out[0] = 1 + x - 2 * y;
@@ -192,7 +195,8 @@ TEST_CASE("MLS evaluator: the transpose is the adjoint and the matrix is the "
       y.data()[i] = r.data()[i % r.size()];
     }
   }
-  auto field = space->CreateFunction<pcms::Real>();
+  auto field =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
   SetDofs(field, x);
   Kokkos::View<pcms::Real**, pcms::DeviceMemorySpace> e_x("Ex", num_points,
                                                           components);
@@ -211,7 +215,8 @@ TEST_CASE("MLS evaluator: the transpose is the adjoint and the matrix is the "
     }
     Kokkos::deep_copy(y_device, y_mirror);
   }
-  auto functional = space->CreateFunction<pcms::Real>();
+  auto functional =
+    space->CreateFunction<pcms::Real>("", pcms::test::ComponentsBasis(*space));
   evaluator->EvaluateTranspose(
     pcms::ValueView<const pcms::Real, pcms::DeviceMemorySpace>(
       field.GetData().GetValueBasis(), pcms::MakeConstRank2View(y_device)),
@@ -266,22 +271,28 @@ TEST_CASE("Interpolator::ApplyTranspose with an MLS source",
   REQUIRE(interpolator->SupportsTranspose());
   CHECK_NOTHROW(
     pcms::CreateInterpolator<pcms::Real>(target_space, source_space));
-  auto a = source_space->CreateFunction<pcms::Real>();
-  auto b = target_space->CreateFunction<pcms::Real>();
+  auto a = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
+  auto b = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
   SetDofs(a, RandomDofs(*source_space->GetLayout(), 5));
   SetDofs(b, RandomDofs(*target_space->GetLayout(), 6));
-  auto pa = target_space->CreateFunction<pcms::Real>();
+  auto pa = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
   interpolator->Apply(a, pa);
-  auto ptb = source_space->CreateFunction<pcms::Real>();
+  auto ptb = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
   interpolator->ApplyTranspose(b, ptb);
   CHECK(pcms::Dot(pa, b) == Catch::Approx(pcms::Dot(a, ptb)).epsilon(1e-12));
 
   // loads: the interpolation reproduces constants, so the loads keep their sum
-  auto loads = target_space->CreateFunction<pcms::Real>();
+  auto loads = target_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*target_space));
   Host2D ones("ones", target_space->GetLayout()->GetNumDofHolder(), 1);
   Kokkos::deep_copy(ones, 1.0);
   SetDofs(loads, ones);
-  auto distributed = source_space->CreateFunction<pcms::Real>();
+  auto distributed = source_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*source_space));
   interpolator->ApplyTranspose(loads, distributed);
   const auto values = distributed.GetDOFHolderDataHost().GetValues();
   double total = 0;

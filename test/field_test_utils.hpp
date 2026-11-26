@@ -6,6 +6,7 @@
 #include "pcms/configuration.hpp"
 #include "pcms/field/field.hpp"
 #include "pcms/field/field_data.hpp"
+#include "pcms/field/function_space.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/point_evaluator.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
@@ -66,6 +67,17 @@ inline std::vector<Real> StandardEvalCoords2D()
 inline std::vector<Real> StandardOutsideCoords2D()
 {
   return {-0.5, 0.5, 1.5, 0.5, 0.5, -0.5, 0.5, 1.5};
+}
+
+// The basis of the fields of `space`: a scalar, or an array of its components
+// if it has several.
+inline ValueBasis ComponentsBasis(const FunctionSpace& space)
+{
+  ValueBasis basis;
+  if (space.GetLayout()->GetNumComponents() > 1) {
+    basis.kind = ValueKind::Array;
+  }
+  return basis;
 }
 
 #ifdef PCMS_ENABLE_OMEGA_H

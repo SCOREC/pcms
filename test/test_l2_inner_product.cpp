@@ -107,7 +107,8 @@ TEST_CASE("L2Integral of vector fields and of P0", "[l2][quadrature]")
     pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian()), 1,
     2, pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
   const pcms::L2Integral vector_integral(vector_space);
-  auto w = vector_space->CreateFunction<pcms::Real>();
+  auto w = vector_space->CreateFunction<pcms::Real>(
+    "", pcms::test::ComponentsBasis(*vector_space));
   pcms::test::SetFieldComponents(w,
                                  [](pcms::Real, pcms::Real, pcms::Real* out) {
                                    out[0] = 3.0;

@@ -172,3 +172,59 @@ TEST_CASE(
   CAPTURE(mc_err, cv_err);
   CHECK(cv_err < mc_err);
 }
+
+namespace
+{
+
+// (x, y) -> (y, x)
+struct SwapXY
+{
+  KOKKOS_FUNCTION void operator()(const Kokkos::Array<pcms::Real, 2>& x,
+                                  Kokkos::Array<pcms::Real, 2>& out,
+                                  Kokkos::Array<pcms::Real, 4>& jacobian) const
+  {
+    out[0] = x[1];
+    out[1] = x[0];
+    jacobian[0] = 0;
+    jacobian[1] = 1;
+    jacobian[2] = 1;
+    jacobian[3] = 0;
+  }
+};
+
+} // namespace
+
+TEST_CASE("CreateControlVariateProjection through a coordinate map maps the "
+          "sample points",
+          "[monte_carlo][control_variate]")
+{
+  Omega_h::Library lib;
+  auto source_mesh = pcms::test::BuildUnitSquare(lib, 1);
+  auto target_mesh = pcms::test::BuildUnitSquare(lib, 0);
+  auto source_space = pcms::test::MakeP1Space(source_mesh);
+  auto target_space = pcms::test::MakeP1Space(target_mesh);
+
+  auto source_field = source_space->CreateFunction<pcms::Real>();
+  auto target_field = target_space->CreateFunction<pcms::Real>();
+  pcms::test::SetField(
+    source_field,
+    OMEGA_H_LAMBDA(pcms::Real x, pcms::Real y) { return 3.0 * x - y + 0.25; });
+
+  auto projection = pcms::CreateControlVariateProjection(
+    source_space, target_space,
+    {.samples_per_element = 4,
+     .to_source = pcms::CreateCoordinateMap<2, 2>(
+       pcms::csys::CreateCartesian(2), pcms::csys::CreateCartesian(2),
+       SwapXY{})});
+  projection->Apply(source_field, target_field);
+
+  const auto values = pcms::detail::FlattenToRank1View(
+    target_field.GetDOFHolderDataHost().GetValues());
+  const auto coords_h = pcms::test::CopyCoordinatesToHost(
+    pcms::omega_h::MakeConstRank2View(target_mesh.coords(), 2));
+  for (Omega_h::LO i = 0; i < target_mesh.nverts(); ++i) {
+    const double expected = 3.0 * coords_h(i, 1) - coords_h(i, 0) + 0.25;
+    CAPTURE(i, expected, values[i]);
+    CHECK(values[i] == Catch::Approx(expected).margin(1e-9));
+  }
+}

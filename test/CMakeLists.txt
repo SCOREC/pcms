@@ -438,6 +438,7 @@ if(Catch2_FOUND)
       test_uniform_grid_1d.cpp
       test_coordinate_transformation.cpp
       test_coordinate_metric.cpp
+      test_embedding.cpp
       test_uniform_grid_adjoint.cpp
       test_point_rows.cpp)
   if(PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION)

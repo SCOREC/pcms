@@ -125,7 +125,8 @@ std::vector<Real> Transpose(const pcms::FunctionSpace& space,
                             const std::vector<Real>& y)
 {
   const auto evaluator = space.CreatePointEvaluator<Real>(std::move(bound));
-  auto functional = space.CreateFunction<Real>("functional");
+  auto functional = space.CreateFunction<Real>(
+    "functional", pcms::test::ComponentsBasis(space));
   const auto device_y = DeviceValues(
     y, static_cast<std::size_t>(space.GetLayout()->GetNumComponents()));
   evaluator->EvaluateTranspose(
@@ -142,7 +143,7 @@ std::vector<Real> Apply(const pcms::FunctionSpace& space,
 {
   const auto evaluator = space.CreatePointEvaluator<Real>(bound);
   const int components = space.GetLayout()->GetNumComponents();
-  auto u = space.CreateFunction<Real>("u");
+  auto u = space.CreateFunction<Real>("u", pcms::test::ComponentsBasis(space));
   const auto device_x = DeviceValues(x, components);
   u.SetDOFHolderData(pcms::ValueView<const Real, DeviceMemorySpace>(
     u.GetData().GetValueBasis(), pcms::MakeConstRank2View(device_x)));
@@ -213,7 +214,8 @@ TEST_CASE("Uniform-grid Lagrange spaces: the matrix of the gradient is that "
   REQUIRE(evaluator->SupportsMatrix());
   const auto x =
     Pseudo(static_cast<std::size_t>(space->GetLayout()->GetNumDofHolder()), 5);
-  auto u = space->CreateFunction<Real>("u");
+  auto u =
+    space->CreateFunction<Real>("u", pcms::test::ComponentsBasis(*space));
   SetDofs(u, x);
   const auto gradient = pcms::test::EvaluateAt(
     *space, u, points, pcms::DifferentialOperator::Gradient);
@@ -322,7 +324,8 @@ TEST_CASE("Conservative projection into a uniform grid keeps the integral",
     pcms::uniform_grid::CreateGeometry(grid, system), 1, 1);
   grid.divisions = {12, 8};
   const auto target_geometry = pcms::uniform_grid::CreateGeometry(grid, system);
-  auto source = source_space->CreateFunction<Real>("n");
+  auto source = source_space->CreateFunction<Real>(
+    "n", pcms::test::ComponentsBasis(*source_space));
   SetDofs(source, Pseudo(static_cast<std::size_t>(
                            source_space->GetLayout()->GetNumDofHolder()),
                          7));
@@ -337,7 +340,8 @@ TEST_CASE("Conservative projection into a uniform grid keeps the integral",
       pcms::ProjectionOptions options;
       options.mass_matrix_type = mass;
       options.solve.relative_tolerance = 1e-14;
-      auto target = target_space->CreateFunction<Real>("n");
+      auto target = target_space->CreateFunction<Real>(
+        "n", pcms::test::ComponentsBasis(*target_space));
       pcms::CreateProjection(source_space, target_space, options)
         ->Apply(source, target);
       CHECK(integral.Apply(target) == Catch::Approx(expected).epsilon(1e-12));

@@ -1,5 +1,6 @@
-include(ProcessorCount)
-ProcessorCount(HOST_NPROC)
+# using ProcessorCount gets confused by the number of threads specified by
+# OMP_NUM_THREADS. See https://cmake.org/cmake/help/latest/module/ProcessorCount.html
+cmake_host_system_information(RESULT HOST_NPROC QUERY NUMBER_OF_LOGICAL_CORES)
 message("TESTING ON SYSTEM WITH ${HOST_NPROC} CPU Cores")
 
 # helper variables for readability

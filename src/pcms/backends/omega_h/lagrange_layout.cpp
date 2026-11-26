@@ -210,7 +210,7 @@ void OmegaHLagrangeLayout::BuildOwnedViews()
 
 bool OmegaHLagrangeLayout::IsDistributed() const
 {
-  return true;
+  return mesh_.comm()->size() > 1;
 }
 
 EntOffsetsArray OmegaHLagrangeLayout::GetEntOffsets() const

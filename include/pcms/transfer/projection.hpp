@@ -14,9 +14,34 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 namespace pcms
 {
+
+/// How the mass system of a projection is solved.
+struct LinearSolveOptions
+{
+  enum class Method
+  {
+    /// Jacobi-preconditioned conjugate gradients on all components jointly,
+    /// written on the evaluation and the vector operations of the kinds: no
+    /// matrix, no host round trips
+    MatrixFree,
+    /// the matrix E^T W E is assembled from the evaluation matrix into PETSc
+    /// (serial) and solved by a KSP: a direct factorization unless the
+    /// options of `petsc_options_prefix` say otherwise. Needs a build with
+    /// PCMS_ENABLE_PETSC
+    Assembled
+  };
+  Method method = Method::MatrixFree;
+  /// MatrixFree: relative residual to stop at
+  Real relative_tolerance = 1e-12;
+  /// MatrixFree: iteration limit; 0 is the number of unknowns
+  int max_iterations = 0;
+  /// Assembled: the prefix of the PETSc options of the KSP and its PC
+  std::string petsc_options_prefix;
+};
 
 struct ConservativeProjectionOptions
 {

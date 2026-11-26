@@ -9,6 +9,7 @@
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/parameter.hpp"
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/pythonapi/numpy_view.hpp"
 #include "pcms/pythonapi/py_value_types.hpp"
@@ -106,6 +107,14 @@ void bind_coordinate_system_module(py::module& m)
     "create_cylindrical_rz",
     []() { return Immutable<CoordinateSystem>{csys::CreateCylindricalRZ()}; },
     "(R, Z) poloidal section; dimension 2");
+  csys.def(
+    "create_parameter_system",
+    [](std::string name, int dimension) {
+      return Immutable<CoordinateSystem>{
+        csys::CreateParameterSystem(std::move(name), dimension)};
+    },
+    py::arg("name"), py::arg("dimension"),
+    "Coordinates that are labels, of dimension 1..6, with no metric");
 
   py::class_<PyCoordinateView>(m, "CoordinateView",
                                "Coordinates tagged with their coordinate "

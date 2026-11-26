@@ -1,6 +1,7 @@
 #ifndef PCMS_FIELD_DETAIL_SIMPLE_FIELD_DATA_HPP
 #define PCMS_FIELD_DETAIL_SIMPLE_FIELD_DATA_HPP
 
+#include "pcms/field/detail/field_data_ops.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_layout.hpp"
 #include "pcms/utility/arrays.hpp"
@@ -52,7 +53,43 @@ public:
     detail::CopyDeviceRank2ViewToDeviceView(device_data_, values);
   }
 
+protected:
+  void LinearSum(T a, const FieldData<T>& x, T b,
+                 const FieldData<T>& y) override
+  {
+    LinearSumValues(device_data_, a, Data(x), b, Data(y));
+  }
+
+  void Scale(T c, const FieldData<T>& x) override
+  {
+    ScaleValues(device_data_, c, Data(x));
+  }
+
+  void Const(T c) override { ConstValues(device_data_, c); }
+
+  void Div(const FieldData<T>& x, const FieldData<T>& y) override
+  {
+    DivValues(device_data_, Data(x), Data(y));
+  }
+
+  [[nodiscard]] T DotProdLocal(const FieldData<T>& x) const override
+  {
+    return DotProdValues(device_data_, Data(x));
+  }
+
+  [[nodiscard]] T MinLocal() const override { return MinValues(device_data_); }
+
+  [[nodiscard]] T MaxNormLocal() const override
+  {
+    return MaxNormValues(device_data_);
+  }
+
 private:
+  static const Kokkos::View<T**, DeviceMemorySpace>& Data(const FieldData<T>& x)
+  {
+    return OperandOfKind<SimpleFieldData>(x).device_data_;
+  }
+
   std::shared_ptr<const FieldLayout> layout_;
   ValueBasis basis_;
   Kokkos::View<T**, DeviceMemorySpace> device_data_;

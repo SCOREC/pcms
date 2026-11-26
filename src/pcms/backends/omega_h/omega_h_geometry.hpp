@@ -13,6 +13,7 @@
 #include <Omega_h_shape.hpp>
 #include <memory>
 #include <mutex>
+#include <span>
 #include <string>
 #include <utility>
 #include <variant>
@@ -365,6 +366,12 @@ protected:
   ///         deterministic and MeshFields is not enabled, or for another rule
   [[nodiscard]] Quadrature CreateQuadrature(
     const pcms::detail::QuadratureRule& rule) const override;
+
+  /// @brief The sum over the mesh's ranks. Collective.
+  void SumOverRanks(std::span<Real> values) const override;
+
+  /// @brief The maximum over the mesh's ranks. Collective.
+  void MaxOverRanks(std::span<Real> values) const override;
 
 private:
   /// The containing-element search, built on first use.

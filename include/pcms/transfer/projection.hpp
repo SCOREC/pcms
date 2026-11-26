@@ -14,9 +14,36 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 namespace pcms
 {
+
+/// @brief Options of the mass-system solve of a projection
+struct LinearSolveOptions
+{
+  /// @brief Solution method
+  enum class Method
+  {
+    /// Assembled when PCMS has PETSc, the layout is on one rank and the
+    /// evaluator has evaluation rows; MatrixFree otherwise
+    Automatic,
+    /// Conjugate gradients preconditioned by the lumped mass, matrix free
+    MatrixFree,
+    /// PETSc KSP on the assembled matrix (conjugate gradients preconditioned
+    /// by its diagonal, unless the PETSc options say otherwise); needs
+    /// PCMS_ENABLE_PETSC
+    Assembled
+  };
+  /// Solution method
+  Method method = Method::Automatic;
+  /// Relative residual tolerance
+  Real relative_tolerance = 1e-12;
+  /// Iteration limit; 0 means the number of unknowns
+  int max_iterations = 0;
+  /// Assembled: PETSc options prefix of the KSP
+  std::string petsc_options_prefix;
+};
 
 struct ConservativeProjectionOptions
 {

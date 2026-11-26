@@ -3,6 +3,7 @@
 
 #include "pcms/backends/omega_h_meshfields/layout.hpp"
 #include "pcms/backends/omega_h_meshfields/evaluator_backend.hpp"
+#include "pcms/field/detail/field_data_ops.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/assert.hpp"
@@ -10,7 +11,9 @@
 #include "pcms/utility/omega_h_array_utils.hpp"
 
 #include <Kokkos_Core.hpp>
+#include <Omega_h_comm.hpp>
 #include <memory>
+#include <span>
 
 namespace pcms::omega_h_meshfields
 {
@@ -108,19 +111,69 @@ public:
   void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
     pcms::detail::CopyDeviceRank2ViewToDeviceView(owned_data_, values);
-    if (!layout_->HasGhosts()) {
-      SyncBackend(MakeConstRank2View(owned_data_));
-      return;
-    }
-    // Write the owned rows into the backend's values with ghosts, keeping its
-    // ghost values.
-    auto local = ReadBackend();
-    pcms::detail::ScatterRows(MakeConstRank2View(owned_data_),
-                              layout_->GetOwnedIndices(),
-                              pcms::MakeRank2View(local));
-    SyncBackend(MakeConstRank2View(local));
+    SetBackendFromOwned();
   }
 
+protected:
+  void LinearSum(T a, const FieldData<T>& x, T b,
+                 const FieldData<T>& y) override
+  {
+    pcms::detail::LinearSumValues(owned_data_, a, Data(x), b, Data(y));
+    SetBackendFromOwned();
+  }
+
+  void Scale(T c, const FieldData<T>& x) override
+  {
+    pcms::detail::ScaleValues(owned_data_, c, Data(x));
+    SetBackendFromOwned();
+  }
+
+  void Const(T c) override
+  {
+    pcms::detail::ConstValues(owned_data_, c);
+    SetBackendFromOwned();
+  }
+
+  void Div(const FieldData<T>& x, const FieldData<T>& y) override
+  {
+    pcms::detail::DivValues(owned_data_, Data(x), Data(y));
+    SetBackendFromOwned();
+  }
+
+  [[nodiscard]] T DotProdLocal(const FieldData<T>& x) const override
+  {
+    return pcms::detail::DotProdValues(owned_data_, Data(x));
+  }
+
+  [[nodiscard]] T MinLocal() const override
+  {
+    return pcms::detail::MinValues(owned_data_);
+  }
+
+  [[nodiscard]] T MaxNormLocal() const override
+  {
+    return pcms::detail::MaxNormValues(owned_data_);
+  }
+
+  // Sums over the mesh's ranks. Collective.
+  void SumOverRanks(std::span<T> values) const override
+  {
+    for (auto& value : values) {
+      value = static_cast<T>(layout_->GetMesh().comm()->allreduce(
+        static_cast<utility::OmegaHValue_t<T>>(value), OMEGA_H_SUM));
+    }
+  }
+
+  // Maximizes over the mesh's ranks. Collective.
+  void MaxOverRanks(std::span<T> values) const override
+  {
+    for (auto& value : values) {
+      value = static_cast<T>(layout_->GetMesh().comm()->allreduce(
+        static_cast<utility::OmegaHValue_t<T>>(value), OMEGA_H_MAX));
+    }
+  }
+
+public:
   void Synchronize() override
   {
     const int nc = layout_->GetNumComponents();
@@ -151,6 +204,26 @@ public:
   }
 
 private:
+  static const Kokkos::View<T**, DeviceMemorySpace>& Data(const FieldData<T>& x)
+  {
+    return pcms::detail::OperandOfKind<MeshFieldsFieldData>(x).owned_data_;
+  }
+
+  // Writes the owned values into the backend's values with ghosts, keeping
+  // its ghost values.
+  void SetBackendFromOwned()
+  {
+    if (!layout_->HasGhosts()) {
+      SyncBackend(MakeConstRank2View(owned_data_));
+      return;
+    }
+    auto local = ReadBackend();
+    pcms::detail::ScatterRows(MakeConstRank2View(owned_data_),
+                              layout_->GetOwnedIndices(),
+                              pcms::MakeRank2View(local));
+    SyncBackend(MakeConstRank2View(local));
+  }
+
   // The backend's values of every DOF holder with ghosts, in mesh order.
   Kokkos::View<T**, DeviceMemorySpace> ReadBackend() const
   {

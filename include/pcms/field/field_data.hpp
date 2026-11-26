@@ -3,9 +3,19 @@
 
 #include "pcms/field/value_view.hpp"
 #include "pcms/utility/arrays.hpp"
+#include "pcms/utility/assert.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include <memory>
+#include <span>
 #include <variant>
+
+namespace pcms
+{
+template <typename T>
+class FieldData;
+} // namespace pcms
+
+#include "pcms/field/detail/field_data.hpp"
 
 namespace pcms
 {
@@ -50,6 +60,89 @@ public:
   virtual void Synchronize() {}
 
   virtual ~FieldData() noexcept = default;
+
+protected:
+  // Coefficient operations: the extension API through which PCMS computes
+  // with the coefficients of fields (the linear solvers and projections),
+  // reached through the pcms::detail functions of the same names. The set
+  // follows the SUNDIALS N_Vector naming and grows by adding virtuals whose
+  // default throws. They act in place on the coefficients this rank owns, on
+  // the kind's own storage, and leave the ghost copies stale: PCMS
+  // synchronizes the field (Synchronize) before anything reads them. The
+  // operands are field data of this kind, layout and value basis (PCMS checks
+  // them); all but the rank reductions throw unless the kind overrides them.
+
+  /// @brief this = a x + b y
+  virtual void LinearSum(T /*a*/, const FieldData& /*x*/, T /*b*/,
+                         const FieldData& /*y*/)
+  {
+    NoCoefficientOperations();
+  }
+
+  /// @brief this = c x
+  virtual void Scale(T /*c*/, const FieldData& /*x*/)
+  {
+    NoCoefficientOperations();
+  }
+
+  /// @brief this = c
+  virtual void Const(T /*c*/) { NoCoefficientOperations(); }
+
+  /// @brief this = x / y, entry by entry
+  virtual void Div(const FieldData& /*x*/, const FieldData& /*y*/)
+  {
+    NoCoefficientOperations();
+  }
+
+  /// @return the sum of this_i x_i over the coefficients this rank owns
+  [[nodiscard]] virtual T DotProdLocal(const FieldData& /*x*/) const
+  {
+    NoCoefficientOperations();
+  }
+
+  /// @return the smallest coefficient this rank owns
+  [[nodiscard]] virtual T MinLocal() const { NoCoefficientOperations(); }
+
+  /// @return the largest coefficient magnitude this rank owns
+  [[nodiscard]] virtual T MaxNormLocal() const { NoCoefficientOperations(); }
+
+  /// @brief Replaces each value by its sum over the ranks the data is
+  ///        partitioned over. Collective; a single rank by default.
+  virtual void SumOverRanks(std::span<T> /*values*/) const {}
+
+  /// @brief Replaces each value by its maximum over the ranks the data is
+  ///        partitioned over. Collective; a single rank by default.
+  virtual void MaxOverRanks(std::span<T> /*values*/) const {}
+
+private:
+  template <typename U>
+  friend void detail::LinearSum(U a, const FieldData<U>& x, U b,
+                                const FieldData<U>& y, FieldData<U>& z);
+  template <typename U>
+  friend void detail::Scale(U c, const FieldData<U>& x, FieldData<U>& z);
+  template <typename U>
+  friend void detail::Const(U c, FieldData<U>& z);
+  template <typename U>
+  friend void detail::Div(const FieldData<U>& x, const FieldData<U>& y,
+                          FieldData<U>& z);
+  template <typename U>
+  friend U detail::DotProdLocal(const FieldData<U>& x, const FieldData<U>& y);
+  template <typename U>
+  friend U detail::MinLocal(const FieldData<U>& x);
+  template <typename U>
+  friend U detail::MaxNormLocal(const FieldData<U>& x);
+  template <typename U>
+  friend void detail::SumOverRanks(const FieldData<U>& data,
+                                   std::span<U> values);
+  template <typename U>
+  friend void detail::MaxOverRanks(const FieldData<U>& data,
+                                   std::span<U> values);
+
+  [[noreturn]] static void NoCoefficientOperations()
+  {
+    throw pcms_error("FieldData: this field data provides no coefficient "
+                     "operations");
+  }
 };
 
 using FieldDataVariant = std::variant<

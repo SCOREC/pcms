@@ -4,6 +4,7 @@
 #include "pcms/utility/assert.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
 #include "pcms/utility/detail/profile.hpp"
+#include <Omega_h_comm.hpp>
 #include "pcms/utility/types.hpp"
 #include "pcms/utility/uniform_grid.hpp"
 #include <stdexcept>
@@ -249,6 +250,20 @@ SupportResults OmegaHGeometry::Neighbourhood(
   return searchNeighbors(mesh_, site_dim, flat_points, dim, seeds,
                          options.radius * options.radius, options.min_supports,
                          3 * options.min_supports, options.adapt_radius);
+}
+
+void OmegaHGeometry::SumOverRanks(std::span<Real> values) const
+{
+  for (auto& value : values) {
+    value = mesh_.comm()->allreduce(value, OMEGA_H_SUM);
+  }
+}
+
+void OmegaHGeometry::MaxOverRanks(std::span<Real> values) const
+{
+  for (auto& value : values) {
+    value = mesh_.comm()->allreduce(value, OMEGA_H_MAX);
+  }
 }
 
 } // namespace pcms::omega_h

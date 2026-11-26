@@ -5,6 +5,7 @@
 #define PCMS_GEOMETRY_DETAIL_QUADRATURE_HPP
 
 #include <cstdint>
+#include <span>
 #include <variant>
 
 namespace pcms::detail
@@ -28,6 +29,14 @@ using QuadratureRule = std::variant<GaussRule, MonteCarloRule>;
 ///        kinds built on other geometries.
 [[nodiscard]] Quadrature CreateQuadrature(const Geometry& geometry,
                                           const QuadratureRule& rule);
+
+/// @brief Replaces each value by its sum over the ranks the entities of
+///        `geometry` are partitioned over, e.g. a quadrature sum. Collective.
+void SumOverRanks(const Geometry& geometry, std::span<Real> values);
+
+/// @brief Replaces each value by its maximum over the ranks the entities of
+///        `geometry` are partitioned over. Collective.
+void MaxOverRanks(const Geometry& geometry, std::span<Real> values);
 
 } // namespace pcms::detail
 

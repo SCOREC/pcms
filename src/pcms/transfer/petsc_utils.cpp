@@ -12,7 +12,8 @@ PetscErrorCode createSeqAIJMat(MPI_Comm comm, PetscInt m, PetscInt n,
                                PetscInt nz, const PetscInt nnz[], Mat* mat)
 {
   PetscFunctionBeginUser;
-#if defined(PETSC_HAVE_KOKKOS)
+#if defined(PETSC_HAVE_KOKKOS) &&                                              \
+  (defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP))
   PetscCall(MatCreateSeqAIJKokkos(comm, m, n, nz, nnz, mat));
 #else
   PetscCall(MatCreateSeqAIJ(comm, m, n, nz, nnz, mat));
@@ -23,7 +24,8 @@ PetscErrorCode createSeqAIJMat(MPI_Comm comm, PetscInt m, PetscInt n,
 PetscErrorCode createSeqVec(MPI_Comm comm, PetscInt n, Vec* vec)
 {
   PetscFunctionBeginUser;
-#if defined(PETSC_HAVE_KOKKOS)
+#if defined(PETSC_HAVE_KOKKOS) &&                                              \
+  (defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP))
   PetscCall(VecCreateSeqKokkos(comm, n, vec));
 #else
   PetscCall(VecCreateSeq(comm, n, vec));

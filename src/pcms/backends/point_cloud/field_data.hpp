@@ -25,7 +25,20 @@ public:
   Rank2View<const Real, DeviceMemorySpace> GetValues() const override;
   void SetValues(Rank2View<const Real, DeviceMemorySpace> data) override;
 
+protected:
+  void LinearSum(Real a, const FieldData<Real>& x, Real b,
+                 const FieldData<Real>& y) override;
+  void Scale(Real c, const FieldData<Real>& x) override;
+  void Const(Real c) override;
+  void Div(const FieldData<Real>& x, const FieldData<Real>& y) override;
+  [[nodiscard]] Real DotProdLocal(const FieldData<Real>& x) const override;
+  [[nodiscard]] Real MinLocal() const override;
+  [[nodiscard]] Real MaxNormLocal() const override;
+
 private:
+  static const Kokkos::View<Real**, DeviceMemorySpace>& Data(
+    const FieldData<Real>& x);
+
   std::shared_ptr<const pcms::detail::PointCloudLayout> layout_;
   ValueBasis basis_;
   Kokkos::View<Real**, DeviceMemorySpace> device_data_;

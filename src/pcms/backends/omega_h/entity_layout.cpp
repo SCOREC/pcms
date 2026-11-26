@@ -178,7 +178,7 @@ void OmegaHEntityLayout::BuildOwnedViews()
 
 bool OmegaHEntityLayout::IsDistributed() const
 {
-  return true;
+  return mesh_.comm()->size() > 1;
 }
 
 EntOffsetsArray OmegaHEntityLayout::GetEntOffsets() const

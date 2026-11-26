@@ -4,6 +4,7 @@
 #include <pybind11/pybind11.h>
 
 #include "pcms/field/coordinate_map.hpp"
+#include "pcms/field/detail/transform_chain.hpp"
 #include "pcms/field/value_view.hpp"
 #include "pcms/pythonapi/py_value_types.hpp"
 
@@ -24,19 +25,27 @@ void bind_coordinate_map_module(py::module& m)
       },
       "The query points in the map's target coordinate system, read-only")
     .def("num_points", &BoundCoordinateMap::NumPoints)
-    .def("output_basis", &BoundCoordinateMap::OutputBasis, py::arg("stored"),
-         "The basis values stored in `stored` are re-expressed in")
+    .def(
+      "output_basis",
+      [](const BoundCoordinateMap& self, const ValueBasis& stored) {
+        return detail::TransformChain(stored, self.ValueTransforms(stored))
+          .OutputBasis();
+      },
+      py::arg("stored"),
+      "The basis values stored in `stored` are re-expressed in")
     .def(
       "transform_values",
       [](const BoundCoordinateMap& self, PyValueView values) {
-        ValueBasis transformed;
+        ValueBasis basis = values.basis;
         WithDeviceOutput(values.values, [&](auto out) {
-          transformed = self
-                          .TransformValues(ValueView<Real, DeviceMemorySpace>(
-                            values.basis, out))
-                          .GetBasis();
+          for (const auto* transform : self.ValueTransforms(values.basis)) {
+            const ValueBasis next = transform->OutputBasis(basis);
+            transform->Apply(ValueView<Real, DeviceMemorySpace>(basis, out),
+                             ValueView<Real, DeviceMemorySpace>(next, out));
+            basis = next;
+          }
         });
-        return PyValueView{transformed, values.values};
+        return PyValueView{basis, values.values};
       },
       py::arg("values"),
       "Re-express `values` (one row per query point, over a writeable "

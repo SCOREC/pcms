@@ -114,14 +114,11 @@ void CaseA()
   // Values run opposite to points: this map re-expresses cylindrical
   // components as Cartesian ones, in place. Here, e_theta at each point.
   auto v = ToDevice({0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0}, 3);
-  ValueBasis cartesian = CylindricalVector();
-  for (const auto* transform : bound->ValueTransforms(CylindricalVector())) {
-    const ValueBasis in = cartesian;
-    cartesian = transform->OutputBasis(in);
-    transform->Apply(
-      ValueView<Real, DeviceMemorySpace>(in, MakeRank2View(v)),
-      ValueView<Real, DeviceMemorySpace>(cartesian, MakeRank2View(v)));
-  }
+  const ValueBasis cartesian =
+    ApplyValueTransforms(*bound,
+                         ValueView<const Real, DeviceMemorySpace>(
+                           CylindricalVector(), MakeConstRank2View(v)),
+                         MakeRank2View(v));
   auto vh = ToHost(MakeConstRank2View(v));
   Real err = 0.0;
   for (int i = 0; i < 3; ++i) {

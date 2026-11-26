@@ -18,6 +18,17 @@
 namespace pcms::transfer::detail
 {
 
+/// @brief A Real function of `space` whose basis is a scalar, or an array of
+///        its components if it has several.
+inline Function<Real> ScratchFunction(const FunctionSpace& space)
+{
+  ValueBasis basis;
+  if (space.GetLayout()->GetNumComponents() > 1) {
+    basis.kind = ValueKind::Array;
+  }
+  return space.CreateFunction<Real>("", std::move(basis));
+}
+
 // The internal forms of the Galerkin projections, written on the evaluation of
 // a space at the points of a quadrature (E) and the quadrature weights (W);
 // they know nothing of the kind of the space. Their interfaces are meant to

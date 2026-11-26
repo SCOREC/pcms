@@ -383,7 +383,7 @@ void BilinearForm::AssembleLumped(Field<Real>& lumped) const
   if (trial_evaluator_ != nullptr) {
     throw pcms_error("BilinearForm::AssembleLumped: the form is not square");
   }
-  auto ones = TestSpace()->CreateFunction<Real>();
+  auto ones = ScratchFunction(*TestSpace());
   const auto& layout = *TestSpace()->GetLayout();
   Kokkos::View<Real**, DeviceMemorySpace> values(
     "bilinear_form_ones", layout.GetNumDofHolder(), layout.GetNumComponents());

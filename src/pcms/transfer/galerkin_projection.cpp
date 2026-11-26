@@ -37,9 +37,9 @@ GalerkinProjection::GalerkinProjection(
       detail::FormOptions{.quadrature = MakeQuadrature(*target_space_, options),
                           .to_trial = options.to_source}),
     mass_(target_space_),
-    functional_(target_space_->CreateFunction<Real>()),
-    coefficients_(target_space_->CreateFunction<Real>()),
-    correction_(target_space_->CreateFunction<Real>())
+    functional_(detail::ScratchFunction(*target_space_)),
+    coefficients_(detail::ScratchFunction(*target_space_)),
+    correction_(detail::ScratchFunction(*target_space_))
 {
   if (!mass_.SupportsApply()) {
     throw pcms_error("GalerkinProjection: the target space's evaluator does "
@@ -48,7 +48,7 @@ GalerkinProjection::GalerkinProjection(
   const Geometry& source_geometry = SourceGeometry(*source);
   const FunctionSpace& target = *target_space_;
   if (options.mass_matrix_type == MassMatrixType::Lumped) {
-    lumped_ = std::make_unique<Function<Real>>(target.CreateFunction<Real>());
+    lumped_ = std::make_unique<Function<Real>>(detail::ScratchFunction(target));
     mass_.AssembleLumped(*lumped_);
   } else {
     solver_ = std::make_unique<detail::LinearSolver>(mass_, options.solve);

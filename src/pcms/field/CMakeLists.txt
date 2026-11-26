@@ -3,6 +3,7 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/field_metadata.hpp
         ../../../include/pcms/field/detail/field_metadata.hpp
         ../../../include/pcms/field/coordinate_map.hpp
+        ../../../include/pcms/field/embedding.hpp
         ../../../include/pcms/field/value_transform.hpp
         ../../../include/pcms/field/value_view.hpp
         element_dispatch.hpp
@@ -38,6 +39,7 @@ set(PCMS_FIELD_HEADERS
 )
 set(PCMS_FIELD_SOURCES
         field_metadata.cpp
+        embedding.cpp
         field_layout.cpp
         function_space.cpp
         function_spaces.cpp

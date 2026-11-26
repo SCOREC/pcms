@@ -5,17 +5,14 @@
 #include <Omega_h_mesh.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/lagrange_layout.hpp>
-#include <pcms/transfer/omega_h_mass_integrator.hpp>
-#include <pcms/transfer/omega_h_conservative_projection.hpp>
+#include <pcms/transfer/forms.hpp>
+#include <pcms/transfer/projection.hpp>
 #include "field_test_utils.hpp"
-#include <petscksp.h>
 #include "pcms/backends/omega_h/omega_h.hpp"
 
 namespace pcms
 {
 using omega_h::OmegaHLagrangeLayout;
-using transfer::BuildOmegaHMassIntegrator;
-using transfer::OmegaHConservativeProjection;
 } // namespace pcms
 
 // Reference corner tet:
@@ -26,9 +23,9 @@ using transfer::OmegaHConservativeProjection;
 //   M_ij = V/20 * (1 + delta_ij)
 //        = 1/60 on diagonal, 1/120 off-diagonal.
 
-TEST_CASE("OmegaHMassIntegrator (3D): P1 mass on reference tet matches "
+TEST_CASE("BilinearForm (3D): P1 mass on reference tet matches "
           "analytic V/20*(1+delta)",
-          "[mass_integrator][3d][analytic]")
+          "[bilinear_form][3d][analytic]")
 {
   Omega_h::Library lib;
   auto mesh = pcms::test::BuildReferenceTet(lib);
@@ -41,31 +38,35 @@ TEST_CASE("OmegaHMassIntegrator (3D): P1 mass on reference tet matches "
   constexpr pcms::Real M_off = V / 20.0;  // 1/120
 
   auto space = pcms::test::MakeP1Space(mesh);
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
-  Mat mat = integrator->GetMatrix();
-
+  const pcms::transfer::detail::BilinearForm form(space);
+  const auto coo = form.AssembleCoo();
+  const auto rows =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, coo.rows);
+  const auto columns =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, coo.columns);
+  const auto values =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, coo.values);
   const auto layout =
     std::dynamic_pointer_cast<const pcms::OmegaHLagrangeLayout>(
       space->GetLayout());
   REQUIRE(layout != nullptr);
-
-  // PETSc rows are active indices = global_to_local(local_vertex).
-  const auto perm = layout->GetGlobalToLocalPermutationHost();
-  REQUIRE(static_cast<int>(perm.extent(0)) == 4);
+  const auto& gids = layout->GetGidsHost();
 
   pcms::Real grand_total = 0.0;
   for (int i = 0; i < 4; ++i) {
     pcms::Real row_sum = 0.0;
     for (int j = 0; j < 4; ++j) {
-      PetscInt r = static_cast<PetscInt>(perm(i));
-      PetscInt c = static_cast<PetscInt>(perm(j));
-      PetscScalar got = 0.0;
-      MatGetValues(mat, 1, &r, 1, &c, &got);
+      pcms::Real got = 0.0;
+      for (std::size_t k = 0; k < values.extent(0); ++k) {
+        if (rows(k) == static_cast<pcms::GO>(gids[i]) &&
+            columns(k) == static_cast<pcms::GO>(gids[j])) {
+          got += values(k);
+        }
+      }
       const pcms::Real expected = (i == j) ? M_diag : M_off;
-      CAPTURE(i, j, r, c, expected, got);
-      CHECK(static_cast<pcms::Real>(got) ==
-            Catch::Approx(expected).epsilon(1e-12));
-      row_sum += static_cast<pcms::Real>(got);
+      CAPTURE(i, j, expected, got);
+      CHECK(got == Catch::Approx(expected).epsilon(1e-12));
+      row_sum += got;
     }
     // Row sum =\int \lamda_i = V/4
     CHECK(row_sum == Catch::Approx(V / 4.0).epsilon(1e-12));
@@ -75,8 +76,8 @@ TEST_CASE("OmegaHMassIntegrator (3D): P1 mass on reference tet matches "
   CHECK(grand_total == Catch::Approx(V).epsilon(1e-12));
 }
 
-TEST_CASE("OmegaHMassIntegrator (3D): P0 mass on reference tet equals volume",
-          "[mass_integrator][3d][analytic]")
+TEST_CASE("BilinearForm (3D): P0 mass on reference tet equals volume",
+          "[bilinear_form][3d][analytic]")
 {
   Omega_h::Library lib;
   auto mesh = pcms::test::BuildReferenceTet(lib);
@@ -84,14 +85,15 @@ TEST_CASE("OmegaHMassIntegrator (3D): P0 mass on reference tet equals volume",
   constexpr pcms::Real V = 1.0 / 6.0;
 
   auto space = pcms::test::MakeP0Space(mesh);
-  auto integrator = pcms::BuildOmegaHMassIntegrator(*space);
-  Mat mat = integrator->GetMatrix();
-
-  PetscInt r = 0;
-  PetscInt c = 0;
-  PetscScalar got = 0.0;
-  MatGetValues(mat, 1, &r, 1, &c, &got);
-  CHECK(static_cast<pcms::Real>(got) == Catch::Approx(V).epsilon(1e-12));
+  const pcms::transfer::detail::BilinearForm form(space);
+  const auto coo = form.AssembleCoo();
+  const auto values =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, coo.values);
+  pcms::Real total = 0.0;
+  for (std::size_t k = 0; k < values.extent(0); ++k) {
+    total += values(k);
+  }
+  CHECK(total == Catch::Approx(V).epsilon(1e-12));
 }
 
 TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
@@ -108,13 +110,13 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
   auto space = pcms::test::MakeP1Space(mesh);
   auto source = space->CreateFunction<pcms::Real>();
   auto target = space->CreateFunction<pcms::Real>();
-  pcms::OmegaHConservativeProjection projection(space, space);
+  auto projection = pcms::CreateConservativeProjection(space, space);
   SECTION("constant field")
   {
     const double c = 2.5;
     pcms::test::SetField(
       source, KOKKOS_LAMBDA(pcms::Real, pcms::Real, pcms::Real) { return c; });
-    projection.Apply(source, target);
+    projection->Apply(source, target);
     const auto values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
     REQUIRE(static_cast<Omega_h::LO>(values.size()) == 4);
@@ -129,7 +131,7 @@ TEST_CASE("OmegaHConservativeProjection (3D): same-mesh reference tet is "
       source, KOKKOS_LAMBDA(pcms::Real x, pcms::Real y, pcms::Real z) {
         return 1.0 + x + 2.0 * y + 3.0 * z;
       });
-    projection.Apply(source, target);
+    projection->Apply(source, target);
     const auto values = pcms::detail::FlattenToRank1View(
       target.GetDOFHolderDataHost().GetValues());
     const auto coords_h = pcms::test::CopyCoordinatesToHost(

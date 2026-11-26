@@ -8,7 +8,7 @@
 #include <pcms/backends/omega_h/omega_h.hpp>
 
 #include <pcms/transfer/mass_matrix_type.hpp>
-#include <pcms/transfer/omega_h_conservative_projection.hpp>
+#include <pcms/transfer/projection.hpp>
 #include <pcms/transfer/omega_h_form_integrator_utils.hpp>
 #include <pcms/utility/arrays.hpp>
 #include "field_test_utils.hpp"
@@ -23,7 +23,6 @@ namespace pcms
 {
 using omega_h::CreateGeometry;
 using omega_h::IntersectionResults;
-using transfer::OmegaHConservativeProjection;
 } // namespace pcms
 
 // Same-mesh P0->P1 projection has closed-form answers, which makes it a sharp
@@ -368,9 +367,9 @@ std::vector<double> ProjectSameMesh(Omega_h::Mesh& mesh,
   auto target = target_space->CreateFunction<pcms::Real>();
   pcms::test::SetField(source, SourceFunction<Dim>{});
 
-  pcms::OmegaHConservativeProjection projection(source_space, target_space,
-                                                mass_type);
-  projection.Apply(source, target);
+  auto projection = pcms::CreateConservativeProjection(
+    source_space, target_space, {.mass_matrix_type = mass_type});
+  projection->Apply(source, target);
 
   source_values = ToVector(pcms::detail::FlattenToRank1View(
     source.GetDOFHolderDataHost().GetValues()));

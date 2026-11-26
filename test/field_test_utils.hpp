@@ -22,11 +22,6 @@
 #include "pcms/backends/omega_h/omega_h.hpp"
 #endif
 #include "pcms/field/function_spaces.hpp"
-#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-#include "pcms/transfer/linear_form_integrator.hpp"
-#include "pcms/transfer/omega_h_intersection_rhs_integrator.hpp"
-#include "pcms/transfer/omega_h_mc_rhs_integrator.hpp"
-#endif
 #include <cmath>
 #include <memory>
 #include <string>
@@ -745,24 +740,6 @@ inline void CheckOwnersMatchSearch(CoordinateView<DeviceMemorySpace> points,
                    FoundRecords(*owners.geometry->Bind(points)));
 }
 #endif // PCMS_ENABLE_OMEGA_H
-
-#if defined(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
-// Evaluates source_field at the integrator's points, searched on the source
-// space's geometry, and assembles the load vector.
-inline void EvaluateAndAssemble(
-  transfer::LinearFormIntegrator& integrator,
-  const std::shared_ptr<const FunctionSpace>& source_space,
-  const Field<Real>& source_field)
-{
-  const auto pts = integrator.GetIntegrationPoints();
-  const std::size_t npts = pts.GetValues().extent(0);
-  auto evaluator = source_space->CreatePointEvaluator<Real>(
-    source_space->GetGeometry()->Bind(pts));
-  Kokkos::View<Real**, DeviceMemorySpace> sampled("sampled", npts, 1);
-  evaluator->Evaluate(source_field, TagLike(source_field, sampled));
-  integrator.Assemble(MakeConstRank2View(sampled));
-}
-#endif // PCMS_ENABLE_CONSERVATIVE_PROJECTION
 
 } // namespace pcms::test
 

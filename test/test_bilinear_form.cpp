@@ -6,6 +6,7 @@
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_shape.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
+#include <pcms/backends/uniform_grid/geometry.hpp>
 #include <pcms/field/field_ops.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/lagrange_layout.hpp>
@@ -293,4 +294,30 @@ TEST_CASE("BilinearForm: a trial on another mesh, applied, transposed and "
   const auto square = form.WithTrial(test_space);
   CHECK(square.Pair(v, w) == Catch::Approx(exact).epsilon(1e-12));
   CHECK(square.SupportsMatrix());
+}
+
+TEST_CASE("BilinearForm: an evaluate-only space pairs but does not apply",
+          "[bilinear_form]")
+{
+  pcms::UniformGrid<1> grid;
+  grid.bot_left = {0.0};
+  grid.edge_length = {1.0};
+  grid.divisions = {8};
+  const auto geometry =
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::CreateCartesian(1));
+  const auto spline = pcms::CreateSplineSpace(geometry);
+  auto f = spline->CreateFunction<pcms::Real>();
+  pcms::test::SetFieldComponents(
+    f, [](pcms::Real x, pcms::Real* out) { out[0] = x * x; });
+  const pcms::transfer::detail::BilinearForm form(
+    spline, pcms::transfer::detail::FormOptions{
+              .quadrature = pcms::CreateGaussQuadrature(geometry, 6)});
+  CHECK(form.Pair(f, f) == Catch::Approx(0.2).epsilon(1e-12));
+  CHECK_FALSE(form.SupportsApply());
+  CHECK_FALSE(form.SupportsTranspose());
+  auto out = spline->CreateFunction<pcms::Real>();
+  CHECK_THROWS_WITH(form.Apply(f, out),
+                    Catch::Matchers::ContainsSubstring("transpose"));
+  CHECK_THROWS_WITH(form.ApplyTranspose(f, out),
+                    Catch::Matchers::ContainsSubstring("transpose"));
 }

@@ -4,7 +4,7 @@
 #include "pcms/field/field.hpp"
 #include "pcms/transfer/forms.hpp"
 #include "pcms/transfer/mass_matrix_type.hpp"
-#include "pcms/transfer/projection.hpp"
+#include "pcms/transfer/detail/projection.hpp"
 #include <memory>
 #include <optional>
 #include <string>
@@ -72,7 +72,7 @@ private:
 ///         positive, or the method is not available
 std::unique_ptr<LinearSolver> CreateLinearSolver(
   const BilinearForm& form, MassMatrixType type,
-  const LinearSolveOptions& options);
+  const pcms::detail::LinearSolveOptions& options);
 
 } // namespace pcms::transfer::detail
 

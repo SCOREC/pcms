@@ -216,7 +216,8 @@ Coo AssembleCoo(const pcms::detail::PointRows& rows,
 class PetscSolver final : public LinearSolver
 {
 public:
-  PetscSolver(const BilinearForm& form, const LinearSolveOptions& options)
+  PetscSolver(const BilinearForm& form,
+              const pcms::detail::LinearSolveOptions& options)
   {
     const auto& layout = *form.TestSpace()->GetLayout();
     if (layout.IsDistributed()) {
@@ -331,7 +332,7 @@ private:
 } // namespace
 
 std::unique_ptr<LinearSolver> CreatePetscSolver(
-  const BilinearForm& form, const LinearSolveOptions& options)
+  const BilinearForm& form, const pcms::detail::LinearSolveOptions& options)
 {
   return std::make_unique<PetscSolver>(form, options);
 }

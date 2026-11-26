@@ -43,7 +43,7 @@ There are two supported ways to build PCMS from source:
 - On [SCOREC systems](#build-on-scorec-systems), use the module-based scripts.
 
 A plain CMake configure builds the core and needs only Kokkos and MPI. Every
-optional capability (Omega_h, MeshFields, PETSc projections, polynomial
+optional capability (Omega_h, MeshFields, the PETSc projection solve, polynomial
 reconstruction, XGC, MFEM, the coupler, the C and Fortran APIs, Python, examples) is
 a `PCMS_ENABLE_<NAME>` flag that is off by default; see
 [MIGRATION.md](MIGRATION.md#building-and-linking) for the list.
@@ -58,7 +58,7 @@ and tests (Ninja, Release, tests and examples on):
 | `minimal` | none: Kokkos and MPI only |
 | `polynomial-reconstruction` | `POLYNOMIAL_RECONSTRUCTION` |
 | `unstructured` | `OMEGA_H`, `OMEGA_H_MESHFIELDS` |
-| `conservative` | `unstructured` and `CONSERVATIVE_PROJECTION` |
+| `conservative` | `unstructured` and `PETSC` |
 | `coupling-core` | `COUPLER` |
 | `coupling` | `COUPLER`, `OMEGA_H`, `XGC`, `C`, `FORTRAN` |
 | `full` | everything except `MFEM` |

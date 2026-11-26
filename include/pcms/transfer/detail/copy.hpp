@@ -49,7 +49,8 @@ public:
     }
   }
 
-  void Apply(const Field<T>& source, Field<T>& target) const override
+private:
+  void ApplyImpl(const Field<T>& source, Field<T>& target) const override
   {
     PCMS_FUNCTION_TIMER;
     detail::CheckCopyCompatible(source, target);
@@ -57,7 +58,6 @@ public:
     target.Synchronize();
   }
 
-private:
   std::shared_ptr<const FunctionSpace> source_space_;
   std::shared_ptr<const FunctionSpace> target_space_;
 };

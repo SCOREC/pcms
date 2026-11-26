@@ -1,4 +1,5 @@
 #include "pcms/transfer/forms.hpp"
+#include "pcms/geometry/detail/geometry.hpp"
 #include "pcms/utility/arrays.hpp"
 #include "pcms/utility/assert.hpp"
 #include <Kokkos_Core.hpp>

@@ -115,3 +115,21 @@ TEST_CASE("L2Integral of vector fields and of P0", "[l2][quadrature]")
   CHECK(vector_integral.Norm(w) == Approx(5.0).epsilon(1e-13));
   CHECK_THROWS(vector_integral.Apply(w));
 }
+
+TEST_CASE("L2Integral of a field of an evaluate-only space", "[l2][quadrature]")
+{
+  pcms::UniformGrid<1> grid;
+  grid.bot_left = {0.0};
+  grid.edge_length = {1.0};
+  grid.divisions = {8};
+  const auto geometry =
+    pcms::uniform_grid::CreateGeometry(grid, pcms::csys::CreateCartesian(1));
+  const auto spline = pcms::CreateSplineSpace(geometry);
+  auto f = spline->CreateFunction<pcms::Real>();
+  pcms::test::SetFieldComponents(
+    f, [](pcms::Real x, pcms::Real* out) { out[0] = x * x; });
+  const pcms::L2Integral integral(spline, nullptr,
+                                  pcms::CreateGaussQuadrature(geometry, 6));
+  CHECK(integral.Norm(f) == Approx(std::sqrt(0.2)).epsilon(1e-12));
+  CHECK(integral.Apply(f) == Approx(1.0 / 3.0).epsilon(1e-12));
+}

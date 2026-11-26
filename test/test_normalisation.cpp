@@ -4,7 +4,6 @@
 #include <pcms/backends/point_cloud/mls_interpolation_impl.hpp>
 #include <pcms/backends/point_cloud/interpolator_aliases.hpp>
 #include <pcms/backends/point_cloud/interpolator_view_utils.hpp>
-#include <pcms/backends/uniform_grid/linear_interpolant.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Omega_h_build.hpp>
 #include <Omega_h_file.hpp>
@@ -65,7 +64,7 @@ TEST_CASE("test_normalization_routine")
                                           dim);
       pcms::field::detail::fill(0, team, local_supports);
 
-      double target_point[PCMS_MAX_DIM] = {};
+      double target_point[3] = {};
 
       for (int i = 0; i < dim; ++i) {
         target_point[i] = target_coordinates[league_rank][i];

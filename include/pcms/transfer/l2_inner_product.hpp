@@ -14,8 +14,9 @@
 namespace pcms
 {
 
-/// @brief Integrals of the fields of a space by quadrature. Vectors and
-///        covectors are paired by the metric of their coordinate system.
+/// @brief Integrals of the fields of a space by quadrature, summed over the
+///        ranks of its layout. Vectors and covectors are paired by the metric
+///        of their coordinate system.
 class L2Integral
 {
 public:
@@ -40,6 +41,8 @@ public:
   [[nodiscard]] Real Inner(const Field<Real>& u, const Field<Real>& v) const;
 
   /// @return sqrt of the integral of |u - v|^2, from the pointwise difference
+  /// @throws pcms_error if u and v are evaluated in different value bases
+  ///         (units included)
   [[nodiscard]] Real Distance(const Field<Real>& u, const Field<Real>& v) const;
 
   /// @return sqrt of the integral of |u|^2

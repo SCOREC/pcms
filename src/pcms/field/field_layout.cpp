@@ -11,6 +11,13 @@ using field::BuildSortedGidPermutation;
 namespace pcms
 {
 
+bool FieldLayout::IsDistributed() const
+{
+  int size = 1;
+  MPI_Comm_size(GetCommunicator(), &size);
+  return size > 1;
+}
+
 OwnerHints DOFHolderOwners(const FieldLayout& layout)
 {
   const int entity_dim = layout.GetDOFHolderEntityDim();

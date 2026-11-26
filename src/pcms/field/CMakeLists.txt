@@ -2,6 +2,8 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/field.hpp
         ../../../include/pcms/field/field_metadata.hpp
         ../../../include/pcms/field/detail/field_metadata.hpp
+        ../../../include/pcms/field/units.hpp
+        ../../../include/pcms/field/detail/units.hpp
         ../../../include/pcms/field/coordinate_map.hpp
         ../../../include/pcms/field/embedding.hpp
         ../../../include/pcms/field/value_transform.hpp
@@ -14,7 +16,6 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/out_of_bounds_policy.hpp
         ../../../include/pcms/field/field_data.hpp
         ../../../include/pcms/field/field_ops.hpp
-        ../../../include/pcms/field/detail/field_data_ops.hpp
         ../../../include/pcms/field/detail/field_ops.hpp
         ../../../include/pcms/field/field_factory.hpp
         ../../../include/pcms/field/function_space.hpp
@@ -73,8 +74,8 @@ target_compile_features(pcms_field PUBLIC cxx_std_20)
 target_link_libraries(pcms_field PUBLIC
         pcms::utility
         pcms::localization
-        pcms::geometry)
-
+        pcms::geometry
+        MPI::MPI_CXX)
 if(PCMS_ENABLE_OMEGA_H)
     # private: core public headers do not include Omega_h. The Omega_h backend
     # header (pcms/backends/omega_h/omega_h.hpp) does; its users link

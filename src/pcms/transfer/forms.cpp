@@ -51,7 +51,8 @@ void ApplyWeights(const Kokkos::View<const Real*, DeviceMemorySpace>& weights,
 }
 
 // sum over the points of w(p) a(p) . b(p)
-Real WeightedDot(const Kokkos::View<const Real*, DeviceMemorySpace>& weights,
+Real WeightedDot(const FieldLayout& layout,
+                 const Kokkos::View<const Real*, DeviceMemorySpace>& weights,
                  const Rank2View<const Real, DeviceMemorySpace>& a,
                  const Rank2View<const Real, DeviceMemorySpace>& b)
 {
@@ -65,7 +66,7 @@ Real WeightedDot(const Kokkos::View<const Real*, DeviceMemorySpace>& weights,
       partial += weights(k / nc) * a(k / nc, k % nc) * b(k / nc, k % nc);
     },
     sum);
-  return sum;
+  return pcms::detail::Allreduce(layout, sum, MPI_SUM);
 }
 
 // the diagonal of E^T W E over the DOF holders with ghosts, read back at the
@@ -285,7 +286,8 @@ const pcms::detail::TransformChain& BilinearForm::G(
                        std::string(basis.system->Kind()) +
                        "' is not known at the points");
     }
-    g->lower = pcms::detail::LowerIndex(basis.system, metric, basis.scaling);
+    g->lower = pcms::detail::LowerIndex(
+      basis.system, metric, basis.scaling.value_or(ComponentScaling::Natural));
     transforms.push_back(&*g->lower);
   }
   g->chain.Reset(basis, std::move(transforms));
@@ -327,7 +329,8 @@ Real BilinearForm::Contract(ValueView<const Real, DeviceMemorySpace> a,
     g.Apply(gb, MakeRank2View(out));
     gb = MakeConstRank2View(out);
   }
-  return WeightedDot(GetQuadrature().weights, a.GetValues(), gb);
+  return WeightedDot(*TestSpace()->GetLayout(), GetQuadrature().weights,
+                     a.GetValues(), gb);
 }
 
 Real BilinearForm::Pair(const Field<Real>& v, const Field<Real>& u) const

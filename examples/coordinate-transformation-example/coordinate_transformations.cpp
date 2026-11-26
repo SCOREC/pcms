@@ -140,14 +140,14 @@ void CaseB(Omega_h::Library& lib)
 
   // A borrowed basis: the space's points are (r, theta, z), but the field's
   // components are Cartesian. B = (x, y, z) = (r cos theta, r sin theta, z).
-  auto b_src =
-    src->CreateFunction<Real>("b", values::Vector, csys::CreateCartesian(3));
+  auto b_src = src->CreateFunction<Real>(
+    "b", {.system = csys::CreateCartesian(3), .variance = values::Vector});
   FillField(b_src, [](Real r, Real theta, Real z, Real* out) {
     out[0] = r * std::cos(theta);
     out[1] = r * std::sin(theta);
     out[2] = z;
   });
-  auto b_tgt = tgt->CreateFunction<Real>("b", values::Vector);
+  auto b_tgt = tgt->CreateFunction<Real>("b", {.variance = values::Vector});
 
   // The values are already in the target's basis, so the map passes them
   // through and only the points are mapped.
@@ -174,14 +174,14 @@ void CaseC(Omega_h::Library& lib)
   // B = r e_r + z e_z in physical cylindrical components, which is (x, y, z)
   // in Cartesian ones. Its cylindrical components are linear in
   // (r, theta, z), so the transfer is exact.
-  auto b_src =
-    src->CreateFunction<Real>("b", values::Vector, ComponentScaling::Physical);
+  auto b_src = src->CreateFunction<Real>(
+    "b", {.scaling = ComponentScaling::Physical, .variance = values::Vector});
   FillField(b_src, [](Real r, Real, Real z, Real* out) {
     out[0] = r;
     out[1] = 0.0;
     out[2] = z;
   });
-  auto b_tgt = tgt->CreateFunction<Real>("b", values::Vector);
+  auto b_tgt = tgt->CreateFunction<Real>("b", {.variance = values::Vector});
 
   // The map given to the bind must end in the source's system: it carries
   // the target's Cartesian points to (r, theta, z), and the source's

@@ -12,11 +12,8 @@ if(@PCMS_ENABLE_COUPLER@)
     find_dependency(redev CONFIG HINTS "@redev_DIR@")
     find_dependency(ADIOS2 CONFIG HINTS "@ADIOS2_DIR@")
 endif()
-# MPI is public for the coupler and the C/Fortran APIs, private otherwise
-if(@PCMS_ENABLE_COUPLER@ OR @PCMS_ENABLE_C@ OR @PCMS_ENABLE_FORTRAN@
-   OR NOT @PCMS_BUILD_SHARED@)
-    find_dependency(MPI)
-endif()
+# field layouts carry an MPI communicator
+find_dependency(MPI)
 if(@PCMS_ENABLE_OMEGA_H@)
     # a private dependency of the core libraries, and what users of the
     # Omega_h backend header (pcms/backends/omega_h/omega_h.hpp) link
@@ -30,6 +27,9 @@ endif()
 # Private dependencies: a shared PCMS resolves them itself (RPATH); a static
 # PCMS needs them at the consumer's link step.
 if(NOT @PCMS_BUILD_SHARED@)
+    if(@PCMS_ENABLE_UNITS@)
+        find_dependency(units CONFIG HINTS "@units_DIR@")
+    endif()
     if(@PCMS_ENABLE_POLYNOMIAL_RECONSTRUCTION@)
         find_dependency(KokkosKernels CONFIG HINTS "@KokkosKernels_DIR@")
     endif()

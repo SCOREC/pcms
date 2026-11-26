@@ -147,9 +147,9 @@ ClientState::HandleVariant RegisterField(
   const XGCFieldFactory function_space(*registration.reverse_classification,
                                        registration.num_plane_nodes, name);
   auto field = function_space.template CreateField<T>(
-    std::move(name), std::make_unique<XGCFieldData<T>>(
-                       function_space.GetXGCLayout(), ValueBasis{},
-                       registration.data, registration.plane_comm));
+    {.name = std::move(name)}, std::make_unique<XGCFieldData<T>>(
+                                 function_space.GetXGCLayout(), ValueBasis{},
+                                 registration.data, registration.plane_comm));
   return ClientState::HandleVariant{
     app.AddField(std::move(field), participates)};
 }

@@ -50,11 +50,11 @@ using OwnedKsp = PetscOwner<KSP, KSPDestroy>;
 void Divide(const Field<Real>& numerator, const Field<Real>& denominator,
             Field<Real>& out)
 {
-  out.SetDOFHolderDataUnchecked(MakeConstRank2View(pcms::detail::MapOwned<Real>(
-    numerator.GetDOFHolderData().GetValues(),
-    denominator.GetDOFHolderData().GetValues(),
-    KOKKOS_LAMBDA(const Real n, const Real d) { return n / d; })));
-  out.Synchronize();
+  pcms::detail::SetValues(
+    out, pcms::detail::Elementwise<Real>(
+           numerator.GetDOFHolderData().GetValues(),
+           denominator.GetDOFHolderData().GetValues(),
+           KOKKOS_LAMBDA(const Real n, const Real d) { return n / d; }));
 }
 
 struct LinearSolver::Petsc
@@ -241,7 +241,7 @@ int LinearSolver::Solve(const Field<Real>& functional,
       break;
     }
     const Real alpha = rz / curvature;
-    Axpy(alpha, p, solution);
+    pcms::detail::AxpyValues(alpha, p, solution);
     Axpy(-alpha, ap, r);
     if (Norm2(r) <= target) {
       return iteration;

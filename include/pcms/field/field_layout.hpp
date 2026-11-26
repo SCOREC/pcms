@@ -10,6 +10,7 @@
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/geometry/bound_points.hpp"
 #include <array>
+#include <mpi.h>
 
 namespace pcms
 {
@@ -70,9 +71,11 @@ public:
   // from the order with ghosts. Layouts that hold ghosts override it.
   [[nodiscard]] virtual bool HasGhosts() const { return false; }
 
-  // returns true if the field layout is distributed: on several ranks it may
-  // hold ghost DOF holders in addition to the owned ones (see HasGhosts)
-  [[nodiscard]] virtual bool IsDistributed() const = 0;
+  /// @brief The communicator of the ranks the layout is distributed over
+  [[nodiscard]] virtual MPI_Comm GetCommunicator() const = 0;
+
+  /// @return whether the layout spans more than one rank
+  [[nodiscard]] bool IsDistributed() const;
 
   // Per DOF holder, ghosts included: whether this rank owns it.
   virtual Rank1View<const bool, HostMemorySpace> GetOwnedHost() const = 0;

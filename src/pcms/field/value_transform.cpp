@@ -89,7 +89,7 @@ ValueBasis ValueTransform::OutputBasis(const ValueBasis& in) const
                      std::to_string(to_->Dimension()) + ")");
   }
   if (lowers_) {
-    if (in.scaling != scaling_) {
+    if (in.scaling.value_or(ComponentScaling::Natural) != scaling_) {
       throw pcms_error("ValueTransform::OutputBasis: this transform takes " +
                        std::string(scaling_ == ComponentScaling::Physical
                                      ? "physical"
@@ -109,7 +109,8 @@ ValueBasis ValueTransform::OutputBasis(const ValueBasis& in) const
   const ComponentScaling scaling =
     scaling_.value_or(to_->IsOrthonormal() ? ComponentScaling::Physical
                                            : ComponentScaling::Natural);
-  return ValueBasis{to_, scaling, in.variance, in.parity};
+  return ValueBasis{to_,       scaling,           in.variance,
+                    in.parity, ValueKind::Tensor, in.units};
 }
 
 void ValueTransform::Run(const char* who, const ValueBasis& in_side,

@@ -22,7 +22,7 @@ class GeometricFactors
 {
 public:
   using JacobianView =
-    View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride>;
+    Rank3View<const Real, DeviceMemorySpace, Kokkos::layout_stride>;
 
   /// @param num_points number of points
   /// @param jacobian [points or 1][system][parameter]: d x_j / d xi_i

@@ -71,9 +71,9 @@ GlobalIDView<HostMemorySpace> EmptyFieldLayout::GetGidsHost() const
   return pcms::detail::make_const_array_view(gids_host_);
 }
 
-bool EmptyFieldLayout::IsDistributed() const
+MPI_Comm EmptyFieldLayout::GetCommunicator() const
 {
-  return false;
+  return MPI_COMM_SELF;
 }
 
 EntOffsetsArray EmptyFieldLayout::GetEntOffsets() const

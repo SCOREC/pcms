@@ -96,9 +96,9 @@ CoordinateView<DeviceMemorySpace> MFEMLayout::GetDOFHolderCoordinates() const
                                            MakeConstRank2View(coords_)};
 }
 
-bool MFEMLayout::IsDistributed() const
+MPI_Comm MFEMLayout::GetCommunicator() const
 {
-  return true;
+  return pmesh_.GetComm();
 }
 
 EntOffsetsArray MFEMLayout::GetEntOffsets() const

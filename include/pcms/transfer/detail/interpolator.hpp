@@ -133,7 +133,8 @@ private:
     }
     const ValueBasis written =
       evaluator_->OutputBasis(target.GetData().GetValueBasis());
-    const auto* scaling = Scaling(written, source.GetData().GetValueBasis());
+    const auto* scaling =
+      Scaling(written, source.GetData().GetValueBasis(), true);
     auto loads = source.GetDOFHolderData().GetValues();
     if constexpr (std::is_same_v<T, Real>) {
       if (scaling != nullptr) {
@@ -150,16 +151,20 @@ private:
   }
 
   // the conversion of values written in `written` to the scaling of the
-  // target's `declared` basis, or null
+  // target's `declared` basis, or null; a mismatch names the units of the
+  // call's source first
   const ValueTransform* Scaling(const ValueBasis& written,
-                                const ValueBasis& declared) const
+                                const ValueBasis& declared,
+                                bool transpose = false) const
   {
     if (!detail::SameValueBasisExceptScaling(written, declared) ||
         (!std::is_same_v<T, Real> &&
          !detail::SameValueBasis(written, declared))) {
       throw pcms_error(
         "Interpolator: the basis written for the source's stored basis "
-        "differs from the target's declared basis");
+        "differs from the target's declared basis" +
+        (transpose ? detail::UnitsMismatch(declared, written)
+                   : detail::UnitsMismatch(written, declared)));
     }
     return CachedScalingTransform(
       scaling_, written, declared,

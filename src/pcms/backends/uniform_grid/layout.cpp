@@ -156,9 +156,9 @@ UniformGridFieldLayout<Dim>::GetDOFHolderCoordinates() const
 }
 
 template <unsigned Dim>
-bool UniformGridFieldLayout<Dim>::IsDistributed() const
+MPI_Comm UniformGridFieldLayout<Dim>::GetCommunicator() const
 {
-  return false;
+  return MPI_COMM_SELF;
 }
 
 template <unsigned Dim>

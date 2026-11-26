@@ -129,7 +129,7 @@ public:
     return TrialEvaluator().SupportsTranspose();
   }
 
-  /// @return v^T B u
+  /// @return v^T B u, summed over the ranks of the test space's layout
   [[nodiscard]] Real Pair(const Field<Real>& v, const Field<Real>& u) const;
 
   /// @return whether the form is square with G = I and its evaluator gives
@@ -183,7 +183,8 @@ private:
   [[nodiscard]] ValueView<const Real, DeviceMemorySpace> EvaluateTrial(
     const Field<Real>& u) const;
 
-  /// @return the sum over the points of w a . (G b)
+  /// @return the sum over the points of w a . (G b), over the ranks of the
+  ///         test space's layout
   [[nodiscard]] Real Contract(ValueView<const Real, DeviceMemorySpace> a,
                               ValueView<const Real, DeviceMemorySpace> b) const;
 

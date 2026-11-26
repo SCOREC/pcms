@@ -22,9 +22,27 @@ namespace pcms::detail
                    std::to_string(rank));
 }
 
-[[nodiscard]] inline bool SameValueBasis(const ValueBasis& a,
-                                         const ValueBasis& b) noexcept
+/// @return "" unless both bases have units that differ, else why they differ
+[[nodiscard]] inline std::string UnitsMismatch(const ValueBasis& a,
+                                               const ValueBasis& b)
 {
+  if (!a.units || !b.units || SameUnits(*a.units, *b.units)) {
+    return "";
+  }
+  return std::string(": units [") + a.units->ToString() + "] and [" +
+         b.units->ToString() +
+         (SameDimensions(*a.units, *b.units)
+            ? "] differ in scale or offset; PCMS does not convert units, so "
+              "convert one of the fields"
+            : "] have different dimensions");
+}
+
+[[nodiscard]] inline bool SameValueBasis(const ValueBasis& a,
+                                         const ValueBasis& b)
+{
+  if (a.units && b.units && !SameUnits(*a.units, *b.units)) {
+    return false;
+  }
   if (a.Rank() == 0 && b.Rank() == 0) {
     return a.kind == b.kind &&
            (a.kind != ValueKind::Coordinates ||
@@ -58,7 +76,8 @@ inline void CheckWrittenValueBasis(const char* context,
   if (!detail::SameValueBasis(claimed, written)) {
     throw pcms_error(std::string(context) +
                      ": the output view's declared value type/basis does not "
-                     "match the basis this call writes");
+                     "match the basis this call writes" +
+                     detail::UnitsMismatch(claimed, written));
   }
 }
 
@@ -134,32 +153,38 @@ inline void ValidateValueSemantics(const ValueBasis& basis, int num_components,
   }
 }
 
-inline ValueBasis MakeValueBasis(
-  const std::shared_ptr<const CoordinateSystem>& space_system,
-  VarianceSignature variance,
-  std::shared_ptr<const CoordinateSystem> system, // null == the space's own
-  std::optional<ComponentScaling> scaling)
+/// @return the basis of a new field given none: scalar for one component,
+///         independent components (ValueKind::Array) for several
+inline ValueBasis DefaultValueBasis(int num_components)
 {
-  if (variance.Rank() == 0) {
-    return ValueBasis{};
+  return num_components > 1 ? ValueBasis{.kind = ValueKind::Array}
+                            : ValueBasis{};
+}
+
+/// @brief The basis of a new field: an unset system is the space's, an unset
+///        scaling is Physical for scalars and where the metric is the
+///        identity.
+/// @throws pcms_error if a vector or tensor on another system does not state
+///         its scaling
+inline ValueBasis ResolveValueBasis(
+  const std::shared_ptr<const CoordinateSystem>& space_system, ValueBasis basis)
+{
+  if (basis.Rank() > 0 && basis.system == nullptr) {
+    basis.system = space_system;
   }
-  if (system == nullptr) {
-    system = space_system;
+  if (basis.scaling) {
+    return basis;
   }
-  ComponentScaling resolved;
-  if (scaling.has_value()) {
-    resolved = *scaling;
-  } else if (system->IsOrthonormal()) {
-    resolved = ComponentScaling::Physical;
-  } else {
+  if (basis.Rank() > 0 && !basis.system->IsOrthonormal()) {
     throw pcms_error(
       "CreateFunction: physical and natural components differ on coordinate "
       "system '" +
-      std::string(system->Kind()) +
-      "', so the scaling must be stated (pass ComponentScaling::Physical or "
-      "ComponentScaling::Natural)");
+      std::string(basis.system->Kind()) +
+      "', so the scaling must be stated (set ValueBasis::scaling to "
+      "ComponentScaling::Physical or ComponentScaling::Natural)");
   }
-  return ValueBasis{std::move(system), resolved, variance};
+  basis.scaling = ComponentScaling::Physical;
+  return basis;
 }
 
 /// @brief Basis of the gradient of values stored in `stored`.

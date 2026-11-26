@@ -353,9 +353,9 @@ void MeshFieldsAdapterLayout::BuildOwnedViews()
   owned_indices_ = owned.owned_indices;
 }
 
-bool MeshFieldsAdapterLayout::IsDistributed() const
+MPI_Comm MeshFieldsAdapterLayout::GetCommunicator() const
 {
-  return mesh_.comm()->size() > 1;
+  return mesh_.comm()->get_impl();
 }
 
 Omega_h::Read<Omega_h::ClassId> MeshFieldsAdapterLayout::GetClassIDs() const

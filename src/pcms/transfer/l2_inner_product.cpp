@@ -1,6 +1,6 @@
 #include "pcms/transfer/l2_inner_product.hpp"
-#include "pcms/transfer/forms.hpp"
 #include "pcms/field/detail/field_ops.hpp"
+#include "pcms/transfer/forms.hpp"
 #include "pcms/utility/assert.hpp"
 #include <cmath>
 
@@ -53,7 +53,7 @@ Real L2Integral::Distance(const Field<Real>& u, const Field<Real>& v) const
   const auto vv = EvaluateTrial(*form_, v);
   pcms::detail::CheckWrittenValueBasis("L2Integral::Distance", uu.GetBasis(),
                                        vv.GetBasis());
-  const auto difference = pcms::detail::MapOwned<Real>(
+  const auto difference = pcms::detail::Elementwise<Real>(
     uu.GetValues(), vv.GetValues(),
     KOKKOS_LAMBDA(const Real a, const Real b) { return a - b; });
   const ValueView<const Real, DeviceMemorySpace> d(

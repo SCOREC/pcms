@@ -129,7 +129,8 @@ protected:
       throw pcms_error(
         "Field::SetDOFHolderData: the written view's declared value "
         "type/basis does not match this field's declaration (use the "
-        "Unchecked overload only for untagged wire/raw data)");
+        "Unchecked overload only for untagged wire/raw data)" +
+        detail::UnitsMismatch(basis, data_->GetValueBasis()));
     }
   }
 

@@ -34,7 +34,7 @@ public:
   Kokkos::View<const LO*, HostMemorySpace> GetOwnedIndicesHost() const override;
   Kokkos::View<const LO*, DeviceMemorySpace> GetOwnedIndices() const override;
 
-  [[nodiscard]] bool IsDistributed() const override;
+  [[nodiscard]] MPI_Comm GetCommunicator() const override;
   int GetDimension() const override;
   int GetDOFHolderEntityDim() const override;
 

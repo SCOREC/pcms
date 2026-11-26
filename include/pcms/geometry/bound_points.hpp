@@ -138,7 +138,7 @@ public:
   ///         parameter coordinates); computed on first use
   /// @throws pcms_error if the geometry's coordinate system has no metric and
   ///         the kind provides none
-  [[nodiscard]] View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride>
+  [[nodiscard]] Rank3View<const Real, DeviceMemorySpace, Kokkos::layout_stride>
   Jacobian() const;
 
   /// @return g(p, a, b), the metric in the parameter coordinates

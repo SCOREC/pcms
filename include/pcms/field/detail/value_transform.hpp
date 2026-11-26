@@ -18,7 +18,7 @@ namespace pcms::detail
 /// A Jacobian at points, J(p, j, i) = d x_j / d xi_i for a map xi -> x; a
 /// stride of 0 along the points means the same matrix at every point.
 using JacobianView =
-  View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride>;
+  Rank3View<const Real, DeviceMemorySpace, Kokkos::layout_stride>;
 
 /// The metric g(p, a, b) of a coordinate system at points.
 using MetricView = BoundCoordinateSystem::MetricView;

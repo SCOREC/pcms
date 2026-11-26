@@ -172,7 +172,7 @@ const detail::GeometricFactors& BoundPoints::Factors() const
   return *factors_;
 }
 
-View<3, const Real, DeviceMemorySpace, Kokkos::layout_stride>
+Rank3View<const Real, DeviceMemorySpace, Kokkos::layout_stride>
 BoundPoints::Jacobian() const
 {
   return Factors().Jacobian();

@@ -27,27 +27,31 @@ public:
 
   virtual ~FieldFactory() noexcept = default;
 
+  /// @brief Creates a Field.
+  /// @param metadata its name, units and duality
+  /// @param basis its values' basis
   template <typename T>
-  [[nodiscard]] Field<T> CreateField(
-    std::string name = "", VarianceSignature variance = values::Scalar,
-    std::optional<ComponentScaling> scaling = std::nullopt) const;
+  [[nodiscard]] Field<T> CreateField(FieldMetadata metadata,
+                                     ValueBasis basis) const;
 
-  template <typename T>
-  [[nodiscard]] Field<T> CreateField(
-    std::string name, VarianceSignature variance,
-    std::shared_ptr<const CoordinateSystem> system,
-    std::optional<ComponentScaling> scaling = std::nullopt) const;
-
-  /// @brief Creates a Field of scalar values.
-  /// @param metadata its name and duality
+  /// @brief Creates a Field of scalar values, or of independent components
+  ///        (ValueKind::Array) for a layout of several components.
   template <typename T>
   [[nodiscard]] Field<T> CreateField(FieldMetadata metadata) const;
+
+  /// @brief Creates a Field named `name`; see the overloads with metadata.
+  template <typename T>
+  [[nodiscard]] Field<T> CreateField(std::string name, ValueBasis basis) const;
+
+  /// @brief Creates a Field named `name` in the default basis.
+  template <typename T>
+  [[nodiscard]] Field<T> CreateField(std::string name = "") const;
 
   // Expert API: wrap externally constructed field data into a Field. The
   // concrete factory validates backend-specific field-data type and storage
   // size compatibility.
   template <typename T>
-  [[nodiscard]] Field<T> CreateField(std::string name,
+  [[nodiscard]] Field<T> CreateField(FieldMetadata metadata,
                                      std::unique_ptr<FieldData<T>> data) const;
 
 protected:
@@ -65,40 +69,43 @@ protected:
 };
 
 template <typename T>
-Field<T> FieldFactory::CreateField(
-  std::string name, VarianceSignature variance,
-  std::optional<ComponentScaling> scaling) const
+Field<T> FieldFactory::CreateField(std::string name, ValueBasis basis) const
 {
-  return CreateField<T>(std::move(name), variance, nullptr, scaling);
+  return CreateField<T>(FieldMetadata{.name = std::move(name)},
+                        std::move(basis));
 }
 
 template <typename T>
-Field<T> FieldFactory::CreateField(
-  std::string name, VarianceSignature variance,
-  std::shared_ptr<const CoordinateSystem> system,
-  std::optional<ComponentScaling> scaling) const
+Field<T> FieldFactory::CreateField(std::string name) const
 {
-  static_assert(detail::is_supported_field_type_v<T>,
-                "T is not a supported field type");
-  ValueBasis basis = detail::MakeValueBasis(
-    GetLayout()->GetCoordinateSystem(), variance, std::move(system), scaling);
-  detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
-  Field<T> field = std::get<Field<T>>(
-    CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
-  field.metadata_.name = std::move(name);
-  return field;
+  return CreateField<T>(FieldMetadata{.name = std::move(name)});
 }
 
 template <typename T>
 Field<T> FieldFactory::CreateField(FieldMetadata metadata) const
 {
-  Field<T> field = CreateField<T>();
+  return CreateField<T>(
+    std::move(metadata),
+    detail::DefaultValueBasis(GetLayout()->GetNumComponents()));
+}
+
+template <typename T>
+Field<T> FieldFactory::CreateField(FieldMetadata metadata,
+                                   ValueBasis basis) const
+{
+  static_assert(detail::is_supported_field_type_v<T>,
+                "T is not a supported field type");
+  basis = detail::ResolveValueBasis(GetLayout()->GetCoordinateSystem(),
+                                    std::move(basis));
+  detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
+  Field<T> field = std::get<Field<T>>(
+    CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
   field.metadata_ = std::move(metadata);
   return field;
 }
 
 template <typename T>
-Field<T> FieldFactory::CreateField(std::string name,
+Field<T> FieldFactory::CreateField(FieldMetadata metadata,
                                    std::unique_ptr<FieldData<T>> data) const
 {
   static_assert(detail::is_supported_field_type_v<T>,
@@ -110,7 +117,7 @@ Field<T> FieldFactory::CreateField(std::string name,
                                  GetLayout()->GetNumComponents());
   Field<T> field =
     std::get<Field<T>>(CreateFieldImpl(FieldDataVariant{std::move(data)}));
-  field.metadata_.name = std::move(name);
+  field.metadata_ = std::move(metadata);
   return field;
 }
 

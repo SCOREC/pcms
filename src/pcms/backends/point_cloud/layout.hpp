@@ -24,7 +24,7 @@ public:
   GlobalIDView<HostMemorySpace> GetGidsHost() const override;
   CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const override;
 
-  [[nodiscard]] bool IsDistributed() const override;
+  [[nodiscard]] MPI_Comm GetCommunicator() const override;
   size_t GetNumEnts() const;
   EntOffsetsArray GetEntOffsets() const override;
 

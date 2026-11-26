@@ -4,7 +4,7 @@
 #include "pcms/backends/xgc/layout.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/utility/assert.hpp"
-#include "pcms/utility/mpi_type.hpp"
+#include "pcms/utility/detail/mpi_type.hpp"
 #include <Kokkos_Core.hpp>
 #include <mpi.h>
 #include <memory>
@@ -86,7 +86,7 @@ public:
     }
     if (plane_comm_ != MPI_COMM_NULL) {
       MPI_Bcast(data_.data_handle(), static_cast<int>(data_.size()),
-                utility::GetMPIType(T{}), 0, plane_comm_);
+                pcms::detail::GetMPIType(T{}), 0, plane_comm_);
     }
   }
 

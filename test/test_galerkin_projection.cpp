@@ -52,9 +52,12 @@ Host2D RandomDofs(const pcms::FieldLayout& layout, std::mt19937& rng)
 // The generic adjoint test: <E x, y> == <x, E^T y> for random DOFs x of the
 // space and random point values y, for any evaluator that SupportsTranspose.
 // The space must be unghosted (serial), so that the holders are the owned ones.
+// The values are in the evaluator's output basis (a bind with a coordinate
+// map re-expresses vectors), and the fields have the basis `variance` gives.
 void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
                   const pcms::PointEvaluator<pcms::Real>& evaluator,
-                  unsigned seed)
+                  unsigned seed,
+                  pcms::VarianceSignature variance = pcms::values::Scalar)
 {
   REQUIRE(evaluator.SupportsTranspose());
   const int num_components = space->GetLayout()->GetNumComponents();
@@ -62,24 +65,26 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   std::mt19937 rng(seed);
   std::uniform_real_distribution<double> uniform(-1.0, 1.0);
   const auto x = RandomDofs(*space->GetLayout(), rng);
-  Host2D y("y", num_points, num_components);
+
+  auto field = space->CreateFunction<pcms::Real>("x", variance);
+  SetDofs(field, x);
+  const auto basis = evaluator.OutputBasis(field.GetData().GetValueBasis());
+  const int num_values =
+    basis.Rank() == 0 ? num_components : basis.system->Dimension();
+  Host2D y("y", num_points, num_values);
   for (std::size_t i = 0; i < y.size(); ++i) {
     y.data()[i] = uniform(rng);
   }
-
-  auto field = space->CreateFunction<pcms::Real>();
-  SetDofs(field, x);
-  Device2D e_x("Ex", num_points, num_components);
-  const auto basis = field.GetData().GetValueBasis();
+  Device2D e_x("Ex", num_points, num_values);
   evaluator.Evaluate(field,
                      pcms::ValueView<pcms::Real, pcms::DeviceMemorySpace>(
                        basis, pcms::MakeRank2View(e_x)));
   // the device layout is the one ValueView expects (LayoutLeft on a GPU)
-  Device2D y_device("y_device", num_points, num_components);
+  Device2D y_device("y_device", num_points, num_values);
   {
     auto y_mirror = Kokkos::create_mirror_view(y_device);
     for (int i = 0; i < num_points; ++i) {
-      for (int c = 0; c < num_components; ++c) {
+      for (int c = 0; c < num_values; ++c) {
         y_mirror(i, c) = y(i, c);
       }
     }
@@ -88,7 +93,7 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   const pcms::ValueView<const pcms::Real, pcms::DeviceMemorySpace> y_view(
     basis, pcms::MakeConstRank2View(y_device));
 
-  auto functional = space->CreateFunction<pcms::Real>();
+  auto functional = space->CreateFunction<pcms::Real>("functional", variance);
   evaluator.EvaluateTranspose(y_view, functional);
   const auto e_x_host =
     Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, e_x);
@@ -189,6 +194,46 @@ TEST_CASE("EvaluateTranspose is the adjoint of Evaluate (Omega_h Lagrange)",
   const auto bound = pcms::test::Bind(*geometry, RandomPoints(dim, 200, 3));
   const auto evaluator = space->CreatePointEvaluator<pcms::Real>(bound);
   CheckAdjoint(space, *evaluator, 11);
+}
+
+TEST_CASE("EvaluateTranspose through a coordinate map is the transpose of "
+          "Evaluate",
+          "[quadrature][adjoint]")
+{
+  Omega_h::Library lib;
+  auto mesh = pcms::test::BuildUnitCube(lib, 2);
+  auto geometry =
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
+  // query points in (R, theta, Z) whose images are in the cube
+  const auto cartesian = RandomPoints(3, 50, 5);
+  std::vector<pcms::Real> cylindrical;
+  for (std::size_t i = 0; i < cartesian.size(); i += 3) {
+    const pcms::Real x = cartesian[i];
+    const pcms::Real y = cartesian[i + 1];
+    cylindrical.insert(cylindrical.end(),
+                       {std::hypot(x, y), std::atan2(y, x), cartesian[i + 2]});
+  }
+  const auto query = pcms::test::CreateDeviceCoordinateView(
+    cylindrical, pcms::csys::CreateCylindricalRThetaZ(), 3);
+  const auto bound =
+    geometry->Bind(query.coordinate_view, pcms::OutOfBoundsPolicy{},
+                   pcms::CreateCylindricalToCartesian());
+  SECTION("a scalar field")
+  {
+    const auto space = pcms::test::MakeP1Space(geometry);
+    CheckAdjoint(space, *space->CreatePointEvaluator<pcms::Real>(bound), 13);
+  }
+  SECTION("a vector field: Cartesian components come out cylindrical")
+  {
+    const auto space = pcms::CreateLagrangeSpace(
+      geometry, 1, 3,
+      pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+    const auto evaluator = space->CreatePointEvaluator<pcms::Real>(bound);
+    const auto f = space->CreateFunction<pcms::Real>("v", pcms::values::Vector);
+    CHECK(evaluator->OutputBasis(f.GetData().GetValueBasis()).system->Kind() ==
+          "cylindrical_rthetaz");
+    CheckAdjoint(space, *evaluator, 17, pcms::values::Vector);
+  }
 }
 
 TEST_CASE("EvaluateTranspose checks its arguments", "[adjoint]")
@@ -631,23 +676,4 @@ TEST_CASE("ApplyTranspose of a projection is its adjoint, for both solve "
   const auto [cv_lhs, cv_rhs] =
     AdjointPair(*control_variate, source_space, target_space);
   CHECK(cv_lhs == Catch::Approx(cv_rhs).epsilon(1e-10));
-}
-
-TEST_CASE("L2 inner products of vectors refuse systems with a varying "
-          "metric",
-          "[quadrature][l2]")
-{
-  // The weights carry the volume factor, so scalars are fine; the metric
-  // inner product of vectors is not applied yet (S5).
-  Omega_h::Library lib;
-  auto mesh = pcms::test::BuildUnitCube(lib, 1);
-  const auto cylindrical = pcms::CreateLagrangeSpace(
-    pcms::omega_h::CreateGeometry(mesh, pcms::csys::CreateCylindricalRThetaZ()),
-    1, 3, pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
-  const pcms::L2Integral product(cylindrical, cylindrical);
-  auto scalar = cylindrical->CreateFunction<pcms::Real>("scalar");
-  auto vector = cylindrical->CreateFunction<pcms::Real>(
-    "vector", pcms::values::Vector, pcms::ComponentScaling::Physical);
-  CHECK_NOTHROW(product.Inner(scalar, scalar));
-  CHECK_THROWS_AS(product.Inner(vector, vector), pcms::pcms_error);
 }

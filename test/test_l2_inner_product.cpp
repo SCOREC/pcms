@@ -9,6 +9,7 @@
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/transfer/l2_inner_product.hpp>
 #include <pcms/utility/coordinate_systems/cartesian.hpp>
+#include <pcms/utility/coordinate_systems/cylindrical.hpp>
 #include "field_test_utils.hpp"
 #include <cmath>
 
@@ -114,6 +115,75 @@ TEST_CASE("L2Integral of vector fields and of P0", "[l2][quadrature]")
                                  });
   CHECK(vector_integral.Norm(w) == Approx(5.0).epsilon(1e-13));
   CHECK_THROWS(vector_integral.Apply(w));
+}
+
+TEST_CASE("L2Integral pairs vectors and covectors through the metric",
+          "[l2][quadrature]")
+{
+  // (R, theta, Z) in the unit cube; the same field in natural, physical and
+  // Cartesian components
+  Omega_h::Library lib;
+  auto mesh = pcms::test::BuildUnitCube(lib, 4);
+  const auto space = pcms::CreateLagrangeSpace(
+    pcms::omega_h::CreateGeometry(mesh, pcms::csys::CreateCylindricalRThetaZ()),
+    1, 3, pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
+  const pcms::L2Integral integral(space);
+  const auto norm = [&](pcms::ValueBasis basis, auto components) {
+    auto f = space->CreateFunction<pcms::Real>("", std::move(basis));
+    pcms::test::SetFieldComponents(f, components);
+    return integral.Norm(f);
+  };
+  const auto cartesian = pcms::csys::CreateCartesian(3);
+  // the vector R e_theta: |v|^2 = R^2, whose integral is 1/4
+  const pcms::Real vector =
+    norm({.scaling = pcms::ComponentScaling::Natural,
+          .variance = pcms::values::Vector},
+         [](pcms::Real, pcms::Real, pcms::Real, pcms::Real* out) {
+           out[0] = 0;
+           out[1] = 1;
+           out[2] = 0;
+         });
+  CHECK(vector == Approx(0.5).epsilon(1e-2));
+  CHECK(norm({.scaling = pcms::ComponentScaling::Physical,
+              .variance = pcms::values::Vector},
+             [](pcms::Real r, pcms::Real, pcms::Real, pcms::Real* out) {
+               out[0] = 0;
+               out[1] = r;
+               out[2] = 0;
+             }) == Approx(vector).epsilon(1e-12));
+  CHECK(norm({.system = cartesian,
+              .scaling = pcms::ComponentScaling::Physical,
+              .variance = pcms::values::Vector},
+             [](pcms::Real r, pcms::Real theta, pcms::Real, pcms::Real* out) {
+               out[0] = -r * std::sin(theta);
+               out[1] = r * std::cos(theta);
+               out[2] = 0;
+             }) == Approx(vector).epsilon(1e-2));
+  // the gradient of R theta: |grad|^2 = theta^2 + 1, whose integral is 2/3
+  const pcms::Real gradient =
+    norm({.scaling = pcms::ComponentScaling::Natural,
+          .variance = pcms::values::Covector},
+         [](pcms::Real r, pcms::Real theta, pcms::Real, pcms::Real* out) {
+           out[0] = theta;
+           out[1] = r;
+           out[2] = 0;
+         });
+  CHECK(gradient == Approx(std::sqrt(2.0 / 3.0)).epsilon(1e-2));
+  CHECK(norm({.scaling = pcms::ComponentScaling::Physical,
+              .variance = pcms::values::Covector},
+             [](pcms::Real, pcms::Real theta, pcms::Real, pcms::Real* out) {
+               out[0] = theta;
+               out[1] = 1;
+               out[2] = 0;
+             }) == Approx(gradient).epsilon(1e-12));
+  CHECK(norm({.system = cartesian,
+              .scaling = pcms::ComponentScaling::Physical,
+              .variance = pcms::values::Covector},
+             [](pcms::Real, pcms::Real theta, pcms::Real, pcms::Real* out) {
+               out[0] = theta * std::cos(theta) - std::sin(theta);
+               out[1] = theta * std::sin(theta) + std::cos(theta);
+               out[2] = 0;
+             }) == Approx(gradient).epsilon(1e-2));
 }
 
 TEST_CASE("L2Integral of a field of an evaluate-only space", "[l2][quadrature]")

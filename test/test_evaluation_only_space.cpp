@@ -202,7 +202,9 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
   const auto target_layout = target->GetLayout();
   const auto on_plane = source->GetGeometry()->Bind(
     target_layout->GetDOFHolderCoordinates(), pcms::OutOfBoundsPolicy{},
-    pcms::CreatePoloidalPlaneEmbedding(theta0));
+    pcms::CreateCoordinateEmbedding(pcms::csys::CreateCylindricalRZ(),
+                                    pcms::csys::CreateCylindricalRThetaZ(), 1,
+                                    theta0));
   const auto interpolator =
     pcms::CreateInterpolator<Real>(source, target, on_plane);
 
@@ -222,13 +224,13 @@ TEST_CASE("Evaluation-only space interpolates onto a poloidal plane")
     }
   }
 
-  // The embedding maps points only, so vector values cannot pass through it.
+  // Vectors would need the inverse of the embedding's 2 x 3 Jacobian.
   auto evaluator = source->CreatePointEvaluator<Real>(on_plane);
   REQUIRE_THROWS_WITH(
     evaluator->OutputBasis(ValueBasis{pcms::csys::CreateCylindricalRThetaZ(),
                                       pcms::ComponentScaling::Physical,
                                       pcms::values::Vector}),
-    ContainsSubstring("cannot re-express"));
+    ContainsSubstring("not square"));
 }
 
 TEST_CASE("Functions of an evaluation-only space hold no values")

@@ -211,7 +211,7 @@ namespace
 template <int Dim>
 void CheckInverse(const pcms::detail::SquareMatrix<Dim>& m)
 {
-  const auto inverse = pcms::detail::Invert(m);
+  const auto inverse = pcms::detail::Invert<Dim>(m);
   for (int j = 0; j < Dim; ++j) {
     const auto column = pcms::detail::Multiply<Dim>(m, inverse[j]);
     for (int i = 0; i < Dim; ++i) {
@@ -228,6 +228,39 @@ TEST_CASE("Invert gives the inverse of a 1x1 to 3x3 matrix")
   CheckInverse<2>(SquareMatrix<2>{{{2.0, 1.0}, {-1.0, 3.0}}});
   CheckInverse<3>(
     SquareMatrix<3>{{{2.0, 0.5, 0.0}, {1.0, 3.0, -1.0}, {0.0, 1.0, 4.0}}});
+}
+
+TEST_CASE("Small matrices: the determinant, inverse and solution of a "
+          "non-symmetric matrix")
+{
+  using pcms::detail::SquareMatrix;
+  // rows (0 2 1), (1 1 0), (3 0 1), stored by column
+  const SquareMatrix<3> m{{{0.0, 1.0, 3.0}, {2.0, 1.0, 0.0}, {1.0, 0.0, 1.0}}};
+  CHECK(pcms::detail::Determinant<3>(m) == Catch::Approx(-5.0));
+  const double inverse[3][3] = {
+    {-0.2, 0.4, 0.2}, {0.2, 0.6, -0.2}, {0.6, -1.2, 0.4}};
+  const auto inv = pcms::detail::Invert<3>(m);
+  for (int i = 0; i < 3; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      CHECK(inv[j][i] == Catch::Approx(inverse[i][j]).margin(1e-14));
+    }
+  }
+  // the first pivot is zero
+  const auto x = pcms::detail::Solve<3>(m, {-1.0, -1.0, 6.0});
+  CHECK(x[0] == Catch::Approx(1.0).margin(1e-14));
+  CHECK(x[1] == Catch::Approx(-2.0).margin(1e-14));
+  CHECK(x[2] == Catch::Approx(3.0).margin(1e-14));
+  // rows (1 2), (3 4)
+  const SquareMatrix<2> a{{{1.0, 3.0}, {2.0, 4.0}}};
+  CHECK(pcms::detail::Determinant<2>(a) == Catch::Approx(-2.0));
+  const auto a_inv = pcms::detail::Invert<2>(a);
+  CHECK(a_inv[0][0] == Catch::Approx(-2.0));
+  CHECK(a_inv[1][0] == Catch::Approx(1.0));
+  CHECK(a_inv[0][1] == Catch::Approx(1.5));
+  CHECK(a_inv[1][1] == Catch::Approx(-0.5));
+  const auto y = pcms::detail::Solve<2>(a, {5.0, 11.0});
+  CHECK(y[0] == Catch::Approx(1.0));
+  CHECK(y[1] == Catch::Approx(2.0));
 }
 
 TEST_CASE("BarycentricFromGlobal")

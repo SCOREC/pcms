@@ -14,6 +14,7 @@
 #include "pcms/utility/coordinate_system.hpp"
 #include "pcms/utility/coordinate_systems/cartesian.hpp"
 #include "pcms/utility/coordinate_systems/cylindrical.hpp"
+#include "pcms/utility/coordinate_systems/parameter.hpp"
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/utility/entity_types.hpp"
 #include "pcms/utility/memory_spaces.hpp"

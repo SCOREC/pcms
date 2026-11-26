@@ -84,10 +84,10 @@ class TestCoordinateSystem:
     def test_properties(self):
         cyl = pcms.csys.create_cylindrical_r_theta_z()
         assert cyl.kind() == "cylindrical_rthetaz"
-        assert cyl.has_orthogonal_basis()
-        assert not cyl.has_unit_scale_factors()
+        assert cyl.is_orthogonal()
+        assert not cyl.is_normalized()
         cart = pcms.csys.create_cartesian(3)
-        assert cart.has_orthogonal_basis() and cart.has_unit_scale_factors()
+        assert cart.is_orthogonal() and cart.is_normalized()
 
     def test_equality_is_by_value(self):
         a = pcms.csys.create_cartesian(3)

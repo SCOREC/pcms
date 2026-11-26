@@ -355,14 +355,16 @@ public:
     const NeighbourhoodOptions& options,
     const OwnerHints& owners = {}) const override;
 
-  /// The per-element constant Jacobian of the affine simplex map, computed
-  /// for all elements on the first call.
-  [[nodiscard]] DifferentialView Differential(
-    const BoundPoints& bound) const override;
-
 protected:
   [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override;
+
+  /// @brief Quadrature over the elements: MeshFields' reference rule of the
+  ///        order (Gauss) or uniform random samples on each element.
+  /// @throws pcms_error if the order has no rule, if the rule is
+  ///         deterministic and MeshFields is not enabled, or for another rule
+  [[nodiscard]] Quadrature CreateQuadrature(
+    const pcms::detail::QuadratureRule& rule) const override;
 
 private:
   /// The containing-element search, built on first use.
@@ -376,13 +378,10 @@ private:
   Omega_h::Read<Omega_h::I8> owned_mask_;
   std::shared_ptr<const CoordinateSystem> system_;
   SearchOptions search_options_;
-  // The search and Differential are built once, lazily; the geometry is const
-  // and shared, hence the once_flags. These are the mutable members and they
-  // are caches.
+  // The search is built once, lazily; the geometry is const and shared, hence
+  // the once_flag. These are the mutable members and they are a cache.
   mutable std::once_flag search_once_;
   mutable std::unique_ptr<GridPointSearchVariant> search_;
-  mutable std::once_flag differential_once_;
-  mutable DifferentialView differential_;
 };
 
 /// The grid search over a mesh, with options.divisions divisions per axis when

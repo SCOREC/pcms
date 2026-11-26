@@ -2,7 +2,9 @@
 #define PCMS_GEOMETRY_DETAIL_BOUND_POINTS_HPP
 
 #include <Kokkos_Core.hpp>
+#include "pcms/utility/arrays.hpp"
 #include "pcms/utility/memory_spaces.hpp"
+#include "pcms/utility/types.hpp"
 #include <cstddef>
 #include <string>
 #include <type_traits>

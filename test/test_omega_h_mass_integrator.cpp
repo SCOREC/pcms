@@ -47,13 +47,13 @@ public:
     return "cartesian";
   }
   [[nodiscard]] int Dimension() const noexcept override { return 2; }
-  [[nodiscard]] bool HasOrthogonalBasis() const noexcept override
+  [[nodiscard]] bool IsOrthogonal() const noexcept override { return true; }
+  [[nodiscard]] bool IsNormalized() const noexcept override { return true; }
+  [[nodiscard]] std::unique_ptr<pcms::BoundCoordinateSystem> Bind(
+    pcms::Rank2View<const pcms::Real, pcms::DeviceMemorySpace> points)
+    const override
   {
-    return true;
-  }
-  [[nodiscard]] bool HasUnitScaleFactors() const noexcept override
-  {
-    return true;
+    return pcms::csys::CreateCartesian(2)->Bind(points);
   }
   [[nodiscard]] bool operator==(
     const pcms::CoordinateSystem& other) const noexcept override

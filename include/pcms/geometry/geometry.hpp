@@ -5,6 +5,7 @@
 #include "pcms/utility/coordinate_view.hpp"
 #include "pcms/field/out_of_bounds_policy.hpp"
 #include "pcms/geometry/bound_points.hpp"
+#include "pcms/geometry/quadrature.hpp"
 #include "pcms/geometry/supports.hpp"
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/types.hpp"
@@ -39,25 +40,13 @@ struct NeighbourhoodOptions
   bool adapt_radius = true;
 };
 
-/// @brief Jacobian of the geometry map at bound points.
-///
-/// jacobian(r, i, j) = d x_j / d xi_i, determinant(r) = det. When
-/// per_element is true, r is an element id; otherwise r indexes the bound
-/// source's FoundPoints().
-struct DifferentialView
-{
-  Kokkos::View<const Real***, DeviceMemorySpace> jacobian;
-  Kokkos::View<const Real*, DeviceMemorySpace> determinant;
-  bool per_element = false;
-  [[nodiscard]] bool Empty() const noexcept { return jacobian.extent(0) == 0; }
-};
-
 /// @brief The coordinate function of a set of entities (a mesh, a grid, a
 ///        point cloud) and its inverse.
 ///
-/// A Geometry has a native coordinate system, the search that locates
-/// physical points among its entities and, when the kind has one, the
-/// Jacobian of the map from parametric to physical coordinates. Function
+/// A Geometry has a native coordinate system and the search that locates
+/// physical points among its entities; the geometric factors at located
+/// points (Jacobian, metric, volume factor) are the bound points'
+/// (BoundPoints::Jacobian). Function
 /// spaces are created on a geometry, and their layouts carry it
 /// (FieldLayout::GetGeometry); Bind produces BoundPoints every space on the
 /// geometry accepts.
@@ -101,7 +90,7 @@ public:
   ///        or null; the points are located at their images, and evaluators
   ///        created from the result re-express their values through it
   /// @return BoundPoints for the evaluator sources on this geometry; its
-  ///         LocatedPointValues() are the query points (or their images)
+  ///         LocatedPoints() are the query points (or their images)
   /// @throws pcms_error if the query coordinate system is not
   ///         GetCoordinateSystem() (without a map) or the map does not take it
   ///         to GetCoordinateSystem(), or the policy is NEAREST_BOUNDARY and
@@ -183,14 +172,6 @@ public:
     CoordinateView<DeviceMemorySpace> coords, int site_dim,
     const NeighbourhoodOptions& options, const OwnerHints& owners = {}) const;
 
-  /// @brief Jacobian at the bound points.
-  /// @param bound a BoundPoints of this geometry
-  /// @return an empty view unless the kind overrides it
-  /// @throws pcms_error from the kinds that override it if `bound` belongs to
-  ///         another geometry
-  [[nodiscard]] virtual DifferentialView Differential(
-    const BoundPoints& bound) const;
-
 protected:
   Geometry() = default;
 
@@ -201,7 +182,19 @@ protected:
   [[nodiscard]] virtual std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const = 0;
 
+  /// @brief Quadrature over this geometry's cells by `rule`
+  ///        (CreateGaussQuadrature, CreateMonteCarloQuadrature).
+  /// @return points generated in the cells, bound without a search, and
+  ///         their weights
+  /// @throws pcms_error unless the kind overrides it for the rule, or if it
+  ///         cannot generate the rule
+  [[nodiscard]] virtual Quadrature CreateQuadrature(
+    const detail::QuadratureRule& rule) const;
+
 private:
+  friend Quadrature detail::CreateQuadrature(
+    const Geometry& geometry, const detail::QuadratureRule& rule);
+
   // creates the passkey of BoundPoints::Rebind
   struct RebindKey : BoundPoints::RebindKey
   {

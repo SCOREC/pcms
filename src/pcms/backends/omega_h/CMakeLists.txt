@@ -11,10 +11,10 @@ if(PCMS_ENABLE_OMEGA_H)
   # binary field and the public entry points: part of pcms::field
   target_sources(
     pcms_field
-    PRIVATE entity_layout.cpp lagrange_layout.cpp geometry.cpp omega_h.cpp
+    PRIVATE entity_layout.cpp lagrange_layout.cpp geometry.cpp quadrature.cpp omega_h.cpp
             uniform_grid_binary_field.cpp entity_layout.hpp lagrange_layout.hpp
             field_data.hpp lagrange_evaluator.hpp
-            uniform_grid_binary_field.hpp omega_h_geometry.hpp
+            uniform_grid_binary_field.hpp omega_h_geometry.hpp simplex_quadrature.hpp
     PUBLIC FILE_SET field TYPE HEADERS BASE_DIRS
            ${PROJECT_SOURCE_DIR}/include/pcms FILES
            ${PROJECT_SOURCE_DIR}/include/pcms/backends/omega_h/omega_h.hpp

@@ -26,10 +26,10 @@ namespace pcms::detail
 [[nodiscard]] inline std::optional<ComponentScaling> DerivedComponentScaling(
   const CoordinateSystem& system) noexcept
 {
-  if (!system.HasOrthogonalBasis()) {
+  if (!system.IsOrthogonal()) {
     return ComponentScaling::Natural;
   }
-  if (system.HasUnitScaleFactors()) {
+  if (system.IsNormalized()) {
     return ComponentScaling::Physical;
   }
   return std::nullopt;
@@ -82,7 +82,7 @@ inline void ValidateValueBasis(const ValueBasis& basis)
       "system");
   }
   if (basis.scaling == ComponentScaling::Physical &&
-      !basis.system->HasOrthogonalBasis()) {
+      !basis.system->IsOrthogonal()) {
     throw pcms_error(
       "ValidateValueBasis: coordinate system '" +
       std::string(basis.system->Kind()) +
@@ -158,7 +158,7 @@ inline ValueBasis MakeValueBasis(
   if (system == nullptr) {
     throw pcms_error("GradientBasis: derivatives require a coordinate system");
   }
-  const ComponentScaling scaling = system->HasOrthogonalBasis()
+  const ComponentScaling scaling = system->IsOrthogonal()
                                      ? ComponentScaling::Physical
                                      : ComponentScaling::Natural;
   if (stored.Rank() == 0) {

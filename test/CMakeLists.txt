@@ -460,6 +460,7 @@ if(Catch2_FOUND)
       APPEND
       PCMS_UNIT_TEST_SOURCES
       test_coordinate_transformation.cpp
+      test_coordinate_metric.cpp
             test_eqdsk.cpp
       test_uniform_grid.cpp
       test_field_evaluation.cpp
@@ -495,6 +496,7 @@ if(Catch2_FOUND)
 
   if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
     list(APPEND PCMS_UNIT_TEST_SOURCES
+      test_quadrature.cpp
       test_omega_h_intersection_rhs_integrator.cpp
       test_omega_h_mass_integrator.cpp
       test_omega_h_mc_rhs_integrator.cpp

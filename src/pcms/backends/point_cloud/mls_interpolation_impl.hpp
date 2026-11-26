@@ -309,9 +309,9 @@ void scale_column_trans_matrix(const ScratchMatView& matrix,
  * to `solution_vector`.
  */
 KOKKOS_INLINE_FUNCTION
-void solve_matrix_svd(member_type team, const ScratchVecView& weight,
-                      ScratchVecView rhs_values, ScratchMatView matrix,
-                      ScratchVecView solution_vector, double lambda, double tol)
+void pseudo_inverse_svd(member_type team, const ScratchVecView& weight,
+                        ScratchMatView matrix, ScratchMatView pseudo_inverse,
+                        double lambda, double tol)
 {
   int row = matrix.extent(0);
   int column = matrix.extent(1);
@@ -324,8 +324,6 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
     weight_size, row);
 
   eval_row_scaling(team, weight, matrix);
-  team.team_barrier();
-  eval_rhs_scaling(team, weight, rhs_values);
   team.team_barrier();
 
   // initilize U (orthogonal matrices)  array
@@ -348,9 +346,7 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
   ScratchMatView temp_matrix(team.team_scratch(1), column, row);
   fill(0, team, temp_matrix);
 
-  // initialise V S^-1 U^T
-  ScratchMatView vsigmaInvUtMul(team.team_scratch(1), column, row);
-  fill(0, team, vsigmaInvUtMul);
+  fill(0, team, pseudo_inverse);
 
   if (team.team_rank() == 0) {
     KokkosBatched::SerialSVD::invoke(KokkosBatched::SVD_USV_Tag(), matrix, U,
@@ -367,7 +363,19 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
     member_type, KokkosBatched::Trans::Transpose,
     KokkosBatched::Trans::NoTranspose,
     KokkosBatched::Algo::Gemm::Unblocked>::invoke(team, 1.0, Vt, temp_matrix,
-                                                  0.0, vsigmaInvUtMul);
+                                                  0.0, pseudo_inverse);
+}
+
+KOKKOS_INLINE_FUNCTION
+void solve_matrix_svd(member_type team, const ScratchVecView& weight,
+                      ScratchVecView rhs_values, ScratchMatView matrix,
+                      ScratchVecView solution_vector, double lambda, double tol)
+{
+  ScratchMatView vsigmaInvUtMul(team.team_scratch(1), matrix.extent(1),
+                                matrix.extent(0));
+  pseudo_inverse_svd(team, weight, matrix, vsigmaInvUtMul, lambda, tol);
+  eval_rhs_scaling(team, weight, rhs_values);
+  team.team_barrier();
 
   KokkosBlas::TeamGemv<
     member_type, KokkosBlas::Trans::NoTranspose,
@@ -377,29 +385,30 @@ void solve_matrix_svd(member_type team, const ScratchVecView& weight,
 }
 
 /**
- * @brief Maps the data from source mesh to target mesh
+ * @brief The MLS coefficient rows: for each target point, the weights c_j with
+ * which the MLS value at the target is sum_j c_j source_value[idx_j] over its
+ * supports (the CSR rows of the supports): c_j = phi_j sum_k t_k M_kj, where
+ * M = V S^-1 U^T is the (regularized) pseudo-inverse of the weighted
+ * Vandermonde matrix and t is the polynomial basis at the target.
  *
- * @param source_values Scalar array view of source field values
- * @param source_coordinates Scalar array view of the coordinates of control
- * points of source field
- * @param target_coordinates Scalar array view of the coordinates of control
- * points of target field
+ * @param source_coordinates Scalar array view of the coordinates of the source
+ * points
+ * @param target_coordinates Scalar array view of the coordinates of the target
+ * points
  * @param support The object that encapsulates support info
  * @param dim The dimension of the simulations
  * @param degree The degree of the interpolation order
  * @param rbf_func The radial basis function choice
- * @param[in/out] Scalar array view of the interpolated field in target mesh
- *
- *
+ * @param[out] coefficients one entry per support entry (support.supports_idx);
+ * zero for targets without supports
  */
 template <typename Func>
-void mls_interpolation(RealConstDefaultRank1View source_values,
-                       RealConstDefaultRank1View source_coordinates,
-                       RealConstDefaultRank1View target_coordinates,
-                       const SupportResults& support, const LO& dim,
-                       const LO& degree, Func rbf_func,
-                       RealDefaultRank1View approx_target_values, double lambda,
-                       double tol)
+void mls_coefficients(RealConstDefaultRank1View source_coordinates,
+                      RealConstDefaultRank1View target_coordinates,
+                      const SupportResults& support, const LO& dim,
+                      const LO& degree, Func rbf_func,
+                      RealDefaultRank1View coefficients, double lambda,
+                      double tol)
 {
   PCMS_FUNCTION_TIMER;
   static_assert(std::is_invocable_r_v<double, Func, double, double>,
@@ -407,24 +416,7 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
   static_assert(!std::is_pointer_v<Func>,
                 "function pointer will fail in GPU execution context");
 
-  int nsources = source_coordinates.size() / dim;
-
-  PCMS_CHECK_PRINTF(
-    source_values.size() == nsources,
-    "[ERROR] The size of the source values and source coordinates is not "
-    "same. "
-    "The current sizes are :\n"
-    "source_values_size = %d, source_coordinates_size = %d\n",
-    source_values.size(), nsources);
-
   const auto ntargets = target_coordinates.size() / dim;
-
-  PCMS_CHECK_PRINTF(approx_target_values.size() == ntargets,
-                    "[ERROR] The size of the approx target values and the "
-                    "number of targets is "
-                    "not same. The current numbers are :\n"
-                    "approx_target_values = %d, ntargets = %d\n",
-                    approx_target_values.size(), ntargets);
 
   IntHostMatView host_slice_length(
     "stores slice length of  polynomial basis in host", degree, dim);
@@ -445,7 +437,6 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
   int scratch_size = tp.scratch_size_max(1);
   PCMS_ALWAYS_ASSERT(scratch_size > shared_size);
 
-  // calculates the interpolated values
   Kokkos::parallel_for(
     "MLS coefficients", tp.set_scratch_size(1, Kokkos::PerTeam(shared_size)),
     KOKKOS_LAMBDA(const member_type& team) {
@@ -454,17 +445,14 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
       int end_ptr = support.supports_ptr[league_rank + 1];
       int nsupports = end_ptr - start_ptr;
 
-      // A missing query has no MLS system to solve. All threads in this team
-      // take the same branch, before allocating scratch or entering the SVD.
-      // The point evaluator applies its missing-point policy afterwards.
+      // A missing query has no MLS system to solve and no coefficients. All
+      // threads in this team take the same branch, before allocating scratch
+      // or entering the SVD. The point evaluator applies its missing-point
+      // policy afterwards.
       if (nsupports == 0) {
-        if (team.team_rank() == 0) {
-          approx_target_values[league_rank] = 0.0;
-        }
         return;
       }
 
-      //      Logger logger(0);
       //  local_source_point stores the coordinates of source supports of a
       //  given target
       ScratchMatView local_source_points(team.team_scratch(1), nsupports, dim);
@@ -472,26 +460,22 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
       // rbf function values of source supports Phi(n,n)
       ScratchVecView phi_vector(team.team_scratch(1), nsupports);
 
-      // rbf function values of source supports Phi(n,n)
       //  vondermonde matrix P from the vectors of basis vector of supports
       ScratchMatView vandermonde_matrix(team.team_scratch(1), nsupports,
                                         basis_size);
-      // stores known vector (b)
-      ScratchVecView support_values(team.team_scratch(1), nsupports);
 
       // basis of target
       ScratchVecView target_basis_vector(team.team_scratch(1), basis_size);
 
-      // solution coefficients (solution vector)
-      ScratchVecView solution_coefficients(team.team_scratch(1), basis_size);
+      // the pseudo-inverse M (basis_size x nsupports)
+      ScratchMatView pseudo_inverse(team.team_scratch(1), basis_size,
+                                    nsupports);
 
       // Initialize the scratch matrices and  vectors
       fill(0.0, team, local_source_points);
       fill(0.0, team, vandermonde_matrix);
       fill(0.0, team, phi_vector);
-      fill(0.0, team, support_values);
       fill(0.0, team, target_basis_vector);
-      fill(0.0, team, solution_coefficients);
 
       /**
        *
@@ -529,23 +513,8 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
         });
       team.team_barrier();
 
-      /** support_values(nsupports) (or known rhs vector b) is the vector of
-       * the quantity that we want interpolate
-       *
-       *
-       * step 2: find local supports function values
-       */
-      Kokkos::parallel_for(
-        Kokkos::TeamThreadRange(team, nsupports), [=](const int j) {
-          support_values(j) =
-            source_values[support.supports_idx[start_ptr + j]];
-          PCMS_CHECK_PRINTF(!std::isnan(support_values(j)),
-                            "ERROR: NaN found: at support %d\n", j);
-        });
-      team.team_barrier();
-
       /**
-       * step 3: normalize local source supports and target point
+       * step 2: normalize local source supports and target point
        */
 
       normalize_supports(team, target_point, local_source_points);
@@ -555,7 +524,7 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
        * evaluates the basis vector of a given target point Coord target_point;
        * this can evaluate monomial basis vector for any degree of polynomial
        *
-       * step 4: call basis vector evaluation function (eval_basis_vector);
+       * step 3: call basis vector evaluation function (eval_basis_vector);
        */
       eval_basis_vector(slice_length, target_point, target_basis_vector);
 
@@ -563,7 +532,7 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
        * created with the basis vector of source supports stacking on top of
        * each other
        *
-       * step 5: create vandermonde matrix
+       * step 4: create vandermonde matrix
        */
       Kokkos::parallel_for(
         Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
@@ -578,40 +547,80 @@ void mls_interpolation(RealConstDefaultRank1View source_values,
         support.radii2[league_rank]);
 
       /**
-       * step 6: solve overdetermined system using SVD
-       *
+       * step 5: the pseudo-inverse of the weighted system by SVD
        */
-      solve_matrix_svd(team, phi_vector, support_values, vandermonde_matrix,
-                       solution_coefficients, lambda, tol);
+      pseudo_inverse_svd(team, phi_vector, vandermonde_matrix, pseudo_inverse,
+                         lambda, tol);
       team.team_barrier();
 
-      double target_value = KokkosBlas::Experimental::dot(
-        team, solution_coefficients, target_basis_vector);
-
-      if (team.team_rank() == 0) {
-        PCMS_CHECK_PRINTF(!std::isnan(target_value), "Nan at %d\n",
-                          league_rank);
-        approx_target_values[league_rank] = target_value;
-      }
+      /**
+       * step 6: c_j = phi_j sum_k t_k M_kj
+       */
+      Kokkos::parallel_for(
+        Kokkos::TeamThreadRange(team, nsupports), [=](int j) {
+          double c = 0;
+          for (int k = 0; k < basis_size; ++k) {
+            c += target_basis_vector(k) * pseudo_inverse(k, j);
+          }
+          c *= phi_vector(j);
+          PCMS_CHECK_PRINTF(!std::isnan(c), "Nan at %d\n", league_rank);
+          coefficients[start_ptr + j] = c;
+        });
     });
 }
 
 /**
  * @brief \overload
- * Maps the data from source mesh to target mesh
- *
- * @param source_values Read array of Source field values
- * @param source_coordinates Read array of the coordinates of control points
- * of source field
- * @param target_coordinates Read array of the coordinates of control points
- * of target field
- * @param support The object that enpasulates support info
- * @param dim The dimension of the simulations
- * @param degree The degree of the interpolation order
- * @param rbf_func The radial basis function choice
- * @return  the interpolated field at the target points
- *
- *
+ * The coefficient rows of the targets, as a device array aligned with the
+ * entries of `support` (see the array form).
+ */
+template <typename Func>
+Kokkos::View<Real*, DeviceMemorySpace> mls_coefficients(
+  Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
+  Kokkos::View<const Real*, DeviceMemorySpace> target_coordinates,
+  const SupportResults& support, LO dim, LO degree, Func rbf_func,
+  double lambda, double tol)
+{
+  Kokkos::View<Real*, DeviceMemorySpace> coefficients(
+    "mls_coefficients", support.supports_idx.extent(0));
+  mls_coefficients(
+    RealConstDefaultRank1View(source_coordinates.data(),
+                              source_coordinates.size()),
+    RealConstDefaultRank1View(target_coordinates.data(),
+                              target_coordinates.size()),
+    support, dim, degree, rbf_func,
+    RealDefaultRank1View(coefficients.data(), coefficients.size()), lambda,
+    tol);
+  return coefficients;
+}
+
+/**
+ * @brief The MLS values at the targets from the coefficient rows:
+ * values[i] = sum_j c_j source_values[idx_j] over the supports of target i.
+ */
+inline Kokkos::View<Real*, DeviceMemorySpace> apply_mls_coefficients(
+  Kokkos::View<const Real*, DeviceMemorySpace> coefficients,
+  Kokkos::View<const Real*, DeviceMemorySpace> source_values,
+  const SupportResults& support, LO ntargets)
+{
+  Kokkos::View<Real*, DeviceMemorySpace> values("approximated target values",
+                                                ntargets);
+  Kokkos::parallel_for(
+    "MLS apply coefficients", ntargets, KOKKOS_LAMBDA(const LO i) {
+      Real sum = 0;
+      for (LO j = support.supports_ptr[i]; j < support.supports_ptr[i + 1];
+           ++j) {
+        sum += coefficients[j] * source_values[support.supports_idx[j]];
+      }
+      values[i] = sum;
+    });
+  return values;
+}
+
+/**
+ * @brief Maps the data from source mesh to target mesh: the coefficient rows
+ * applied to the source values (a per-call solve; an evaluator that
+ * evaluates repeatedly keeps the rows instead).
  */
 template <typename Func>
 Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
@@ -621,27 +630,20 @@ Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
   const SupportResults& support, LO dim, LO degree, Func rbf_func,
   double lambda, double tol)
 {
-  const auto ntargets = static_cast<LO>(target_coordinates.size()) / dim;
-
-  RealConstDefaultRank1View source_values_array_view(source_values.data(),
-                                                     source_values.size());
-  RealConstDefaultRank1View source_coordinates_array_view(
-    source_coordinates.data(), source_coordinates.size());
-  RealConstDefaultRank1View target_coordinates_array_view(
-    target_coordinates.data(), target_coordinates.size());
-  RealDefaultRank1View radii2_array_view(support.radii2.data(),
-                                         support.radii2.size());
-
-  Kokkos::View<Real*, DeviceMemorySpace> interpolated_values(
-    "approximated target values", ntargets);
-  RealDefaultRank1View interpolated_values_array_view(
-    interpolated_values.data(), interpolated_values.size());
-
-  mls_interpolation(source_values_array_view, source_coordinates_array_view,
-                    target_coordinates_array_view, support, dim, degree,
-                    rbf_func, interpolated_values_array_view, lambda, tol);
-
-  return interpolated_values;
+  PCMS_CHECK_PRINTF(
+    static_cast<LO>(source_values.size()) ==
+      static_cast<LO>(source_coordinates.size()) / dim,
+    "[ERROR] The size of the source values and source coordinates is not "
+    "same. The current sizes are :\nsource_values_size = %d, "
+    "source_coordinates_size = %d\n",
+    static_cast<int>(source_values.size()),
+    static_cast<int>(source_coordinates.size() / dim));
+  const auto coefficients =
+    mls_coefficients(source_coordinates, target_coordinates, support, dim,
+                     degree, rbf_func, lambda, tol);
+  return apply_mls_coefficients(coefficients, source_values, support,
+                                static_cast<LO>(target_coordinates.size()) /
+                                  dim);
 }
 
 } // namespace detail

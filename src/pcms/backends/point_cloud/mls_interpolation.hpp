@@ -67,5 +67,22 @@ Kokkos::View<Real*, DeviceMemorySpace> mls_interpolation(
   const SupportResults& support, LO dim, LO degree, RadialBasisFunction bf,
   double lambda = 0, double tol = 1e-6, double decay_factor = 5.0);
 
+/**
+ * @brief The coefficient rows of the MLS interpolation at the target points:
+ * the value at target i is the sum over its supports k (the CSR row of
+ * `support`) of coefficients[k] * source_values[support.supports_idx[k]]. The
+ * rows do not depend on the source values, so an evaluator that evaluates the
+ * same targets repeatedly computes them once. Arguments as for
+ * mls_interpolation.
+ *
+ * @return one coefficient per support entry, aligned with
+ * support.supports_idx; targets without supports have no entries
+ */
+Kokkos::View<Real*, DeviceMemorySpace> mls_coefficients(
+  Kokkos::View<const Real*, DeviceMemorySpace> source_coordinates,
+  Kokkos::View<const Real*, DeviceMemorySpace> target_coordinates,
+  const SupportResults& support, LO dim, LO degree, RadialBasisFunction bf,
+  double lambda = 0, double tol = 1e-6, double decay_factor = 5.0);
+
 } // namespace pcms::detail
 #endif // PCMS_FIELD_EVALUATOR_MLS_INTERPOLATION_HPP

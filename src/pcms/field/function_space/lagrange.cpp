@@ -231,7 +231,7 @@ std::shared_ptr<const FunctionSpace> CreateOmegaHLagrangeSpace(
   }
   auto layout = std::make_shared<OmegaHLagrangeLayout>(
     geometry, order, num_components, options.layout_name);
-  auto eval_factory = std::make_shared<OmegaHLagrangeEvaluatorFactory<Real>>(
+  auto eval_factory = std::make_shared<OmegaHLagrangeEvaluatorFactory>(
     std::move(geometry), layout);
   return std::make_shared<NativeOmegaHLagrangeFunctionSpace>(
     layout, eval_factory, eval_factory->GetGeometry(), order);

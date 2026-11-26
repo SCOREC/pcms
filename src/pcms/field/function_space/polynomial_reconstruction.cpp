@@ -7,7 +7,6 @@
 
 namespace pcms
 {
-using point_cloud::PointCloudEvaluatorFactory;
 using point_cloud::PointCloudGeometry;
 } // namespace pcms
 
@@ -28,7 +27,7 @@ std::shared_ptr<const FunctionSpace> CreatePolynomialReconstructionSpace(
                      "geometries are supported");
   }
   auto layout = cloud_geometry->GetSiteLayout();
-  auto eval_factory = std::make_shared<PointCloudEvaluatorFactory>(
+  auto eval_factory = point_cloud::CreateMLSEvaluatorFactory(
     std::move(cloud_geometry), layout, options);
   return std::make_shared<FunctionSpace>(layout, eval_factory,
                                          eval_factory->GetGeometry());

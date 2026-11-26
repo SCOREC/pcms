@@ -26,7 +26,7 @@ void InitializePointCloudClassification(
 
 PointCloudLayout::PointCloudLayout(
   int dim, Kokkos::View<Real**> coords,
-  std::shared_ptr<const CoordinateSystem> coordinate_system)
+  std::shared_ptr<const CoordinateSystem> coordinate_system, int num_components)
   : dim_(dim),
     coords_(coords),
     owned_("", coords.extent(0)),
@@ -36,7 +36,7 @@ PointCloudLayout::PointCloudLayout(
 {
   SetCoordinateSystem(pcms::detail::ResolveCoordinateSystem(
     std::move(coordinate_system), static_cast<int>(coords_.extent(1))));
-  components_ = 1;
+  components_ = num_components;
 
   namespace KE = Kokkos::Experimental;
   KE::fill(Kokkos::DefaultExecutionSpace(), owned_, true);

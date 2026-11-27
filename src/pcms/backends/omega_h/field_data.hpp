@@ -150,7 +150,8 @@ public:
         {0, 0},
         {static_cast<int64_t>(data.extent(0)), static_cast<int64_t>(nc)}),
       KOKKOS_LAMBDA(const int64_t o, const int64_t c) {
-        data(o, c) = static_cast<T>(synced[owned(o) * nc + c]);
+        const LO i = owned(o) * nc + static_cast<LO>(c);
+        data(o, c) = static_cast<T>(synced[i]);
       });
   }
 

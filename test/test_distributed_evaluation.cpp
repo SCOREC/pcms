@@ -103,11 +103,10 @@ std::vector<Real> LocalPoints(Omega_h::Mesh& mesh, int order)
   auto points = Centroids(mesh, mesh.dim());
   if (order == 1) {
     for (int entity_dim : {0, 1}) {
+      const auto coords = Omega_h::HostRead<Real>(mesh.coords());
       const auto more =
         entity_dim == 0
-          ? std::vector<Real>(Omega_h::HostRead<Real>(mesh.coords()).data(),
-                              Omega_h::HostRead<Real>(mesh.coords()).data() +
-                                mesh.coords().size())
+          ? std::vector<Real>(coords.data(), coords.data() + coords.size())
           : Centroids(mesh, entity_dim);
       points.insert(points.end(), more.begin(), more.end());
     }
@@ -182,12 +181,16 @@ Host2D Evaluate(const pcms::PointEvaluator<Real>& evaluator,
 Host2D OwnedHolderCoordinates(const pcms::FieldLayout& layout, int dim)
 {
   const auto coords = layout.GetDOFHolderCoordinates().GetValues();
-  const LO n = layout.GetNumDofHolder();
-  Kokkos::View<const Real**, pcms::DeviceMemorySpace, Kokkos::MemoryUnmanaged>
-    device(coords.data_handle(), n, dim);
-  Host2D host("holder_coordinates", n, dim);
-  pcms::DeepCopyMismatchLayouts(host, device);
-  return host;
+  Device2D device("holder_coordinates", layout.GetNumDofHolder(), dim);
+  Kokkos::parallel_for(
+    "OwnedHolderCoordinates",
+    Kokkos::MDRangePolicy<pcms::DefaultExecutionSpace, Kokkos::Rank<2>>(
+      {0, 0},
+      {static_cast<int64_t>(device.extent(0)), static_cast<int64_t>(dim)}),
+    KOKKOS_LAMBDA(const int64_t i, const int64_t d) {
+      device(i, d) = coords(i, d);
+    });
+  return ToHost(device);
 }
 
 std::string Case(bool ghosted, int dim, int order, int nc)
@@ -218,7 +221,8 @@ void CheckEvaluate(const pcms::FunctionSpace& space,
   int wrong = 0;
   for (LO p = 0; p < evaluator->NumPoints(); ++p) {
     for (int c = 0; c < nc; ++c) {
-      const Real expected = Linear(&points[p * dim], dim, c);
+      const Real expected =
+        Linear(&points[static_cast<std::size_t>(p) * dim], dim, c);
       if (std::abs(values(p, c) - expected) > 1e-12) {
         if (wrong == 0) {
           std::fprintf(stderr, "[rank %d] %s: point %d comp %d: %g != %g\n",

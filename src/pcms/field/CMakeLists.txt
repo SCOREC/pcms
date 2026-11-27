@@ -4,6 +4,7 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/value_view.hpp
         element_dispatch.hpp
         gid_permutation.hpp
+        point_rows.hpp
         ../../../include/pcms/field/field_layout.hpp
         layout/empty.hpp
         ../../../include/pcms/field/out_of_bounds_policy.hpp

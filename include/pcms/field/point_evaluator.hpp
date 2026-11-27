@@ -32,16 +32,6 @@ class PointEvaluator;
 namespace pcms
 {
 
-/// @brief The evaluation at the points as a CSR matrix whose columns are the
-///        global ids of the DOF holders.
-template <typename T>
-struct PointMatrix
-{
-  Kokkos::View<const LO*, DeviceMemorySpace> row_offsets; // [points + 1]
-  Kokkos::View<const GO*, DeviceMemorySpace> columns;     // [entries]
-  Kokkos::View<const T*, DeviceMemorySpace> values;       // [entries]
-};
-
 /// @brief Evaluates fields at the points of a BoundPoints.
 ///
 /// Created by PointEvaluatorFactory::CreatePointEvaluator. Evaluate writes
@@ -102,20 +92,6 @@ public:
     Field<T>& functional) const
   {
     TransposeChecked(values, functional, T{});
-  }
-
-  /// @return whether GetMatrix and the Value operator are supported
-  [[nodiscard]] virtual bool SupportsMatrix() const noexcept { return false; }
-
-  /// @brief The evaluation as a sparse matrix E: component c of the values is
-  ///        E times component c of the DOFs.
-  /// @throws pcms_error if the matrix is not supported
-  [[nodiscard]] PointMatrix<T> GetMatrix() const
-  {
-    if (!SupportsMatrix() || op_ != DifferentialOperator::Value) {
-      throw pcms_error("PointEvaluator::GetMatrix: not supported");
-    }
-    return GetMatrixImpl();
   }
 
   /// @return number of query points
@@ -195,9 +171,6 @@ protected:
     Field<T>& /*functional*/, T /*beta*/) const
   {
   }
-
-  /// @return the evaluation matrix; called only if SupportsMatrix()
-  virtual PointMatrix<T> GetMatrixImpl() const { return {}; }
 
 private:
   template <typename U, typename L>

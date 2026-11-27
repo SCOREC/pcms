@@ -7,6 +7,7 @@
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/omega_h.hpp>
 #include "field_test_utils.hpp"
+#include "pcms/field/point_rows.hpp"
 #include <cmath>
 #include <map>
 #include <random>
@@ -114,26 +115,21 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
     }
   }
 
-  // the matrix form: E x from the CSR rows equals Evaluate
-  if (evaluator.SupportsMatrix()) {
-    const auto matrix = evaluator.GetMatrix();
+  // the evaluation rows: E x from the CSR rows equals Evaluate
+  if (const auto* source = pcms::detail::AsRowsSource(evaluator)) {
+    const auto* rows = &source->Rows();
     const auto offsets = Kokkos::create_mirror_view_and_copy(
-      pcms::HostMemorySpace{}, matrix.row_offsets);
-    const auto columns = Kokkos::create_mirror_view_and_copy(
-      pcms::HostMemorySpace{}, matrix.columns);
+      pcms::HostMemorySpace{}, rows->offsets);
+    const auto holders = Kokkos::create_mirror_view_and_copy(
+      pcms::HostMemorySpace{}, rows->holders);
     const auto values = Kokkos::create_mirror_view_and_copy(
-      pcms::HostMemorySpace{}, matrix.values);
-    const auto gids = space->GetLayout()->GetGidsHost();
-    std::map<pcms::GO, int> holder_of;
-    for (std::size_t h = 0; h < gids.extent(0); ++h) {
-      holder_of[gids(h)] = static_cast<int>(h);
-    }
+      pcms::HostMemorySpace{}, rows->values);
     REQUIRE(offsets.extent(0) == static_cast<std::size_t>(num_points) + 1);
     for (int p = 0; p < num_points; ++p) {
       for (int c = 0; c < num_components; ++c) {
         double sum = 0;
         for (int k = offsets(p); k < offsets(p + 1); ++k) {
-          sum += values(k) * x(holder_of.at(columns(k)), c);
+          sum += values(k) * x(holders(k), c);
         }
         CHECK(sum == Catch::Approx(e_x_host(p, c)).margin(1e-13));
       }

@@ -5,6 +5,7 @@
 #include "pcms/backends/omega_h/lagrange_layout.hpp"
 #include "pcms/field/point_evaluator_factory.hpp"
 #include "pcms/field/point_evaluator.hpp"
+#include "pcms/field/point_rows.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/backends/omega_h/field_data.hpp"
 #include "pcms/utility/assert.hpp"
@@ -69,6 +70,19 @@ void FillOmegaHLagrangeRows(
     });
 }
 
+/// @return the offsets of `num_rows` rows of `stride` entries each
+inline Kokkos::View<LO*, DeviceMemorySpace> StrideOffsets(LO num_rows,
+                                                          int stride)
+{
+  Kokkos::View<LO*, DeviceMemorySpace> offsets("omega_h_lagrange_offsets",
+                                               num_rows + 1);
+  Kokkos::parallel_for(
+    "pcms::omega_h::StrideOffsets",
+    Kokkos::RangePolicy<DefaultExecutionSpace>(0, num_rows + 1),
+    KOKKOS_LAMBDA(const LO p) { offsets(p) = p * stride; });
+  return offsets;
+}
+
 } // namespace detail
 
 // OmegaHLagrangePointEvaluator<T> implements PointEvaluator<T> for simplex
@@ -83,7 +97,9 @@ void FillOmegaHLagrangeRows(
 template <typename T,
           typename LayoutPolicy =
             pcms::detail::default_layout_for_memory_space_t<DeviceMemorySpace>>
-class OmegaHLagrangePointEvaluator : public PointEvaluator<T, LayoutPolicy>
+class OmegaHLagrangePointEvaluator
+  : public PointEvaluator<T, LayoutPolicy>
+  , public pcms::detail::RowsSource
 {
 public:
   /// @param layout Omega_h Lagrange layout of the evaluated fields
@@ -108,6 +124,9 @@ public:
       detail::FillOmegaHLagrangeRows<3>(mesh, layout_->GetOrder(), *binding_,
                                         holders_, weights_);
     }
+    rows_ = pcms::detail::PointRows{
+      detail::StrideOffsets(binding_->NumPoints(), stride_), holders_,
+      weights_};
   }
 
   // Public because CUDA forbids extended lambdas in non-public member
@@ -185,38 +204,24 @@ public:
       .SetFromOwners(reduced, beta);
   }
 
-  [[nodiscard]] bool SupportsMatrix() const noexcept override { return true; }
-
-  PointMatrix<T> GetMatrixImpl() const override
+  [[nodiscard]] const pcms::detail::PointRows& Rows() const override
   {
-    const LO n = binding_->NumPoints();
-    const int stride = stride_;
-    const auto holders = holders_;
-    const auto weights = weights_;
-    const auto gids = layout_->GetGidsWithGhosts();
-    Kokkos::View<LO*, DeviceMemorySpace> offsets("offsets", n + 1);
-    Kokkos::View<GO*, DeviceMemorySpace> columns("columns", holders.extent(0));
-    Kokkos::View<T*, DeviceMemorySpace> entries("entries", holders.extent(0));
-    Kokkos::parallel_for(
-      "OmegaHLagrangePointEvaluator::GetMatrix",
-      Kokkos::RangePolicy<DefaultExecutionSpace>(0, n + 1),
-      KOKKOS_LAMBDA(const LO p) {
-        offsets(p) = p * stride;
-        for (int v = p * stride; p < n && v < (p + 1) * stride; ++v) {
-          columns(v) = gids[holders(v)];
-          entries(v) = static_cast<T>(weights(v));
-        }
-      });
-    return PointMatrix<T>{offsets, columns, entries};
+    return rows_;
+  }
+
+  [[nodiscard]] GlobalIDView<DeviceMemorySpace> HolderGids() const override
+  {
+    return layout_->GetGidsWithGhosts();
   }
 
 private:
   std::shared_ptr<const OmegaHLagrangeLayout> layout_;
   std::shared_ptr<const pcms::detail::OmegaHMeshBinding> binding_;
-  // the evaluation matrix: stride_ entries per point
+  // the evaluation rows: stride_ entries per point
   int stride_;
   Kokkos::View<LO*, DeviceMemorySpace> holders_;
   Kokkos::View<Real*, DeviceMemorySpace> weights_;
+  pcms::detail::PointRows rows_;
 };
 
 // ---------------------------------------------------------------------------

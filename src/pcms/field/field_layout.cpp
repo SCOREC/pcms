@@ -50,6 +50,19 @@ void FieldLayout::BuildGlobalToLocalPermutation(
   Kokkos::deep_copy(global_to_local_, global_to_local_host_);
 }
 
+GlobalIDView<DeviceMemorySpace> FieldLayout::GetGids() const
+{
+  const auto host = GetGidsHost();
+  if (gids_.extent(0) != host.size()) {
+    Kokkos::View<GO*, HostMemorySpace> copy("field_layout_gids", host.size());
+    for (std::size_t i = 0; i < host.size(); ++i) {
+      copy(i) = host[i];
+    }
+    gids_ = Kokkos::create_mirror_view_and_copy(DeviceMemorySpace{}, copy);
+  }
+  return GlobalIDView<DeviceMemorySpace>(gids_.data(), gids_.size());
+}
+
 Kokkos::View<const LO*, HostMemorySpace>
 FieldLayout::GetGlobalToLocalPermutationHost() const
 {

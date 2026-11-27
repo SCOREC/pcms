@@ -95,6 +95,9 @@ public:
 
   virtual GlobalIDView<HostMemorySpace> GetGidsHost() const = 0;
 
+  // Device analogue of GetGidsHost(): the global ids of the owned DOF holders.
+  [[nodiscard]] virtual GlobalIDView<DeviceMemorySpace> GetGids() const;
+
   // Maps each local DOF holder to its contiguous active index, ordered by GID
   // within each entity block. Components are not included in the permutation.
   // For local GIDs [102, 7, 41, 19], the permutation is [3, 0, 2, 1]. Thus
@@ -172,6 +175,8 @@ private:
   std::shared_ptr<const Geometry> geometry_;
   std::string name_;
   Kokkos::View<LO*, HostMemorySpace> global_to_local_host_;
+  // GetGids(): the owned global ids copied to the device on first use
+  mutable Kokkos::View<GO*, DeviceMemorySpace> gids_;
   Kokkos::View<LO*, DeviceMemorySpace> global_to_local_;
 };
 

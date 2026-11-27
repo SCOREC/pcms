@@ -193,7 +193,7 @@ public:
     const int stride = stride_;
     const auto holders = holders_;
     const auto weights = weights_;
-    const auto gids = layout_->GetGids();
+    const auto gids = layout_->GetGidsWithGhosts();
     Kokkos::View<LO*, DeviceMemorySpace> offsets("offsets", n + 1);
     Kokkos::View<GO*, DeviceMemorySpace> columns("columns", holders.extent(0));
     Kokkos::View<T*, DeviceMemorySpace> entries("entries", holders.extent(0));

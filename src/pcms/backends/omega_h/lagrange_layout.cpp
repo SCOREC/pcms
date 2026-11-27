@@ -167,7 +167,7 @@ GlobalIDView<HostMemorySpace> OmegaHLagrangeLayout::GetGidsHost() const
                                        owned_gids_host_.size());
 }
 
-GlobalIDView<DeviceMemorySpace> OmegaHLagrangeLayout::GetGids() const
+GlobalIDView<DeviceMemorySpace> OmegaHLagrangeLayout::GetGidsWithGhosts() const
 {
   return GlobalIDView<DeviceMemorySpace>(gids_.data(), gids_.size());
 }

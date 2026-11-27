@@ -72,10 +72,11 @@ Real Linear(const Real* x, int dim, int c)
 }
 
 // A DOF value that depends only on the holder's global id, so that every rank
-// knows the value of every holder.
+// knows the value of every holder; computed exactly, so that every call site
+// gives the same value however the compiler contracts it.
 Real DofOfGid(GO gid, int c)
 {
-  return std::sin(1.3 * static_cast<Real>(gid) + 0.7 * c);
+  return static_cast<Real>((gid * 37 + 11 * c) % 101) / 128.0 - 0.4;
 }
 
 std::vector<Real> Centroids(Omega_h::Mesh& mesh, int entity_dim)

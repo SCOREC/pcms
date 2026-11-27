@@ -327,8 +327,25 @@ void CheckTransposeAndMatrix(const pcms::FunctionSpace& space,
       for (LO k = offsets(p); k < offsets(p + 1); ++k) {
         sum += entries(k) * DofOfGid(columns(k), c);
       }
-      wrong += std::abs(sum - e_x(p, c)) > 1e-13;
+      if (std::abs(sum - e_x(p, c)) > 1e-13) {
+        if (wrong < 3) {
+          std::fprintf(stderr,
+                       "[rank %d] %s: point %d of %d comp %d: rows %.17g, "
+                       "Evaluate %.17g\n",
+                       Rank(), name.c_str(), p, n_points, c, sum, e_x(p, c));
+          for (LO k = offsets(p); k < offsets(p + 1); ++k) {
+            std::fprintf(stderr, "    k %d gid %lld weight %.17g value %.17g\n",
+                         k, static_cast<long long>(columns(k)), entries(k),
+                         DofOfGid(columns(k), c));
+          }
+        }
+        ++wrong;
+      }
     }
+  }
+  if (wrong > 0) {
+    std::fprintf(stderr, "[rank %d] %s: %d of %d values differ\n", Rank(),
+                 name.c_str(), wrong, n_points * nc);
   }
   Check(wrong == 0, name + ": the CSR rows times x equal Evaluate");
 }

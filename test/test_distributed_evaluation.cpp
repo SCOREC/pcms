@@ -76,7 +76,7 @@ Real Linear(const Real* x, int dim, int c)
 // gives the same value however the compiler contracts it.
 Real DofOfGid(GO gid, int c)
 {
-  return static_cast<Real>((gid * 37 + 11 * c) % 101) / 128.0 - 0.4;
+  return static_cast<Real>((gid * 37 + GO{11} * c) % 101) / 128.0 - 0.4;
 }
 
 std::vector<Real> Centroids(Omega_h::Mesh& mesh, int entity_dim)

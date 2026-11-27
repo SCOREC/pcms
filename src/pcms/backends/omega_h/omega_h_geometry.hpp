@@ -360,14 +360,20 @@ public:
   [[nodiscard]] DifferentialView Differential(
     const BoundPoints& bound) const override;
 
+  /// The containing-element search, built on first use.
+  const GridPointSearchVariant& Search() const;
+
+  /// @return the options of the containing-element search
+  [[nodiscard]] const SearchOptions& GetSearchOptions() const noexcept
+  {
+    return search_options_;
+  }
+
 protected:
   [[nodiscard]] std::shared_ptr<BoundPoints> BindImpl(
     const BindRequest& request) const override;
 
 private:
-  /// The containing-element search, built on first use.
-  const GridPointSearchVariant& Search() const;
-
   // The library must outlive the mesh and the cached search data.
   std::shared_ptr<Omega_h::Library> library_owner_;
   std::shared_ptr<Omega_h::Mesh> mesh_owner_;

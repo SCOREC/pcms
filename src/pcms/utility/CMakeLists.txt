@@ -22,6 +22,7 @@ set(
         mesh_geometry.hpp
         ../../../include/pcms/utility/memory_spaces.hpp
         mpi_type.hpp
+        mpi_utilities.hpp
         omega_h_array_utils.hpp
         ../../../include/pcms/utility/types.hpp
         array_mask.hpp

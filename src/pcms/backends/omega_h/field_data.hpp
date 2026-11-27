@@ -134,11 +134,26 @@ public:
   // Fills the tag's ghost entries with their owners' values. Collective.
   void Synchronize() override { mesh_->sync_tag(tag_dim_, tag_name_); }
 
-  // Sets the values from one entry per entity and component, of which only
-  // the owners' entries are read, and fills the ghosts. Collective.
-  void SetFromOwners(Omega_h::Read<tag_value_type> values)
+  // Sets the values to `values` + beta times the current ones, from one entry
+  // per entity and component, of which only the owners' entries are read, and
+  // fills the ghosts. beta == 0 does not read the current values. Collective.
+  void SetFromOwners(Omega_h::Read<tag_value_type> values, T beta = T{})
   {
     const int nc = layout_->GetNumComponents();
+    if (beta != T{}) {
+      const auto current =
+        mesh_->get_array<tag_value_type>(tag_dim_, tag_name_);
+      Omega_h::Write<tag_value_type> combined(values.size(), "set_from_owners");
+      const auto b = static_cast<tag_value_type>(beta);
+      Kokkos::parallel_for(
+        "pcms::OmegaHFieldData::SetFromOwners::Combine",
+        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0,
+                                                                values.size()),
+        KOKKOS_LAMBDA(const LO i) {
+          combined[i] = values[i] + b * current[i];
+        });
+      values = Omega_h::Read<tag_value_type>(combined);
+    }
     const auto synced = mesh_->sync_array(tag_dim_, values, nc);
     mesh_->set_tag(tag_dim_, tag_name_, synced);
     const auto owned = layout_->GetOwnedIndices();

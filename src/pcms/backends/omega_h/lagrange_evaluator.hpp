@@ -154,7 +154,7 @@ public:
   // Public for the same reason as EvaluateImpl.
   void EvaluateTransposeImpl(
     Rank2View<const T, DeviceMemorySpace, LayoutPolicy> values,
-    Field<T>& functional) const override
+    Field<T>& functional, T beta) const override
   {
     PCMS_FUNCTION_TIMER;
     using TagValue = utility::OmegaHValue_t<T>;
@@ -182,7 +182,7 @@ public:
       layout_->GetDOFHolderEntityDim(), Omega_h::Read<TagValue>(sums), n_comp,
       OMEGA_H_SUM);
     dynamic_cast<OmegaHFieldData<T>&>(functional.GetData())
-      .SetFromOwners(reduced);
+      .SetFromOwners(reduced, beta);
   }
 
   [[nodiscard]] bool SupportsMatrix() const noexcept override { return true; }

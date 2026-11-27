@@ -23,6 +23,15 @@ namespace pcms
 template <typename T>
 class Field;
 
+template <typename T, typename LayoutPolicy>
+class PointEvaluator;
+} // namespace pcms
+
+#include "pcms/field/detail/evaluate_transpose.hpp"
+
+namespace pcms
+{
+
 /// @brief The evaluation at the points as a CSR matrix whose columns are the
 ///        global ids of the DOF holders.
 template <typename T>
@@ -92,11 +101,7 @@ public:
     ValueView<const T, DeviceMemorySpace, LayoutPolicy> values,
     Field<T>& functional) const
   {
-    if (!SupportsTranspose() || op_ != DifferentialOperator::Value) {
-      throw pcms_error("PointEvaluator::EvaluateTranspose: not supported");
-    }
-    CheckArguments("PointEvaluator::EvaluateTranspose", functional, values);
-    EvaluateTransposeImpl(values.GetValues(), functional);
+    TransposeChecked(values, functional, T{});
   }
 
   /// @return whether GetMatrix and the Value operator are supported
@@ -182,11 +187,12 @@ protected:
     const Field<T>& field,
     ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const = 0;
 
-  /// @brief Adds E^T values to the functional; called only if
-  ///        SupportsTranspose(), with checked arguments.
+  /// @brief functional = E^T values + beta functional, on the owned DOF
+  ///        holders, synchronized; beta == 0 must not read the functional.
+  ///        Called only if SupportsTranspose(), with checked arguments.
   virtual void EvaluateTransposeImpl(
     Rank2View<const T, DeviceMemorySpace, LayoutPolicy> /*values*/,
-    Field<T>& /*functional*/) const
+    Field<T>& /*functional*/, T /*beta*/) const
   {
   }
 
@@ -194,6 +200,23 @@ protected:
   virtual PointMatrix<T> GetMatrixImpl() const { return {}; }
 
 private:
+  template <typename U, typename L>
+  friend void detail::EvaluateTranspose(
+    const PointEvaluator<U, L>& evaluator,
+    ValueView<const U, DeviceMemorySpace, L> values, Field<U>& functional,
+    U beta);
+
+  void TransposeChecked(
+    ValueView<const T, DeviceMemorySpace, LayoutPolicy> values,
+    Field<T>& functional, T beta) const
+  {
+    if (!SupportsTranspose() || op_ != DifferentialOperator::Value) {
+      throw pcms_error("PointEvaluator::EvaluateTranspose: not supported");
+    }
+    CheckArguments("PointEvaluator::EvaluateTranspose", functional, values);
+    EvaluateTransposeImpl(values.GetValues(), functional, beta);
+  }
+
   /// @brief Checks that `field` is of the accepted layout and that `values`
   ///        has the basis and shape of the output for it.
   /// @throws pcms_error if the layout or the basis differs
@@ -234,6 +257,15 @@ private:
   // layout of the fields Evaluate accepts; null accepts any field
   std::shared_ptr<const FieldLayout> accepted_layout_;
 };
+
+template <typename T, typename LayoutPolicy>
+void detail::EvaluateTranspose(
+  const PointEvaluator<T, LayoutPolicy>& evaluator,
+  ValueView<const T, DeviceMemorySpace, LayoutPolicy> values,
+  Field<T>& functional, T beta)
+{
+  evaluator.TransposeChecked(values, functional, beta);
+}
 
 // Variant types using default layout for device memory space
 using PointEvaluatorVariant =

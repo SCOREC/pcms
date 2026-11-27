@@ -311,6 +311,19 @@ void CheckTransposeAndMatrix(const pcms::FunctionSpace& space,
     Check(differ == 0, name + ": a second EvaluateTranspose overwrites");
   }
 
+  pcms::detail::EvaluateTranspose(*evaluator, y_view, functional,
+                                  pcms::Real(1));
+  {
+    const auto twice = functional.GetDOFHolderDataHost().GetValues();
+    int differ = 0;
+    for (LO h = 0; h < n_owned; ++h) {
+      for (int c = 0; c < nc; ++c) {
+        differ += std::abs(twice(h, c) - 2 * once(h, c)) > 1e-14;
+      }
+    }
+    Check(differ == 0, name + ": beta = 1 adds E^T y to the functional");
+  }
+
   // E x from the CSR rows, with x looked up by global id
   const auto matrix = evaluator->GetMatrix();
   const auto offsets = Kokkos::create_mirror_view_and_copy(

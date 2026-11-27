@@ -86,6 +86,7 @@ BoundPoints::BoundPoints(std::shared_ptr<const Geometry> geometry,
 void BoundPoints::Reset(const BindRequest& request)
 {
   policy_ = request.policy;
+  metric_.reset();
   map_ = request.map;
   coordinate_map_ = request.coordinate_map;
   system_ = request.query_coords.GetCoordinateSystem();
@@ -108,6 +109,15 @@ void BoundPoints::Reset(const BindRequest& request)
   } else {
     pcms::detail::iota_view<LO>(all);
   }
+}
+
+CoordinateView<DeviceMemorySpace> BoundPoints::LocatedPoints() const
+{
+  if (map_ != nullptr) {
+    return map_->MappedPoints();
+  }
+  return CoordinateView<DeviceMemorySpace>(
+    system_, MakeConstRank2View(LocatedPointValues()));
 }
 
 Kokkos::View<const Real**, DeviceMemorySpace> BoundPoints::LocatedPointValues()
@@ -146,6 +156,29 @@ void BoundPoints::SetFound(Kokkos::View<const bool*, DeviceMemorySpace> found)
     found, Kokkos::subview(point_indices_, Kokkos::make_pair(0, num_found)),
     Kokkos::subview(point_indices_, Kokkos::make_pair(num_found, num_points_)));
   num_found_ = num_found;
+}
+
+std::unique_ptr<BoundCoordinateSystem> BoundPoints::ComputeMetric() const
+{
+  return geometry_->GetCoordinateSystem()->Bind(LocatedPoints().GetValues());
+}
+
+const BoundCoordinateSystem& BoundPoints::BoundMetric() const
+{
+  if (metric_ == nullptr) {
+    metric_ = ComputeMetric();
+  }
+  return *metric_;
+}
+
+BoundCoordinateSystem::MetricView BoundPoints::Metric() const
+{
+  return BoundMetric().Metric();
+}
+
+BoundCoordinateSystem::FactorView BoundPoints::VolumeFactor() const
+{
+  return BoundMetric().VolumeFactor();
 }
 
 } // namespace pcms

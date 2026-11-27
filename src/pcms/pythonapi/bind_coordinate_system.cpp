@@ -60,13 +60,17 @@ void bind_coordinate_system_module(py::module& m)
         return self.ptr->Dimension();
       },
       "Number of coordinate columns")
-    .def("has_orthogonal_basis",
+    .def("is_orthogonal",
          [](const Immutable<CoordinateSystem>& self) {
-           return self.ptr->HasOrthogonalBasis();
+           return self.ptr->IsOrthogonal();
          })
-    .def("has_unit_scale_factors",
+    .def("is_normalized",
          [](const Immutable<CoordinateSystem>& self) {
-           return self.ptr->HasUnitScaleFactors();
+           return self.ptr->IsNormalized();
+         })
+    .def("is_orthonormal",
+         [](const Immutable<CoordinateSystem>& self) {
+           return self.ptr->IsOrthonormal();
          })
     .def(
       "__eq__",

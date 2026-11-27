@@ -109,7 +109,7 @@ public:
       throw pcms::pcms_error("MockEvaluator: not a field of this source");
     }
     const auto out = values.GetValues();
-    const auto points = Bound().LocatedPointValues();
+    const auto points = Bound().LocatedPoints().GetValues();
     Kokkos::parallel_for(
       Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(
         0, static_cast<LO>(points.extent(0))),
@@ -159,17 +159,25 @@ private:
 
 // A space on an empty layout whose fields are made from data naming the
 // quantity (MockData), evaluated by the mock on the analytic geometry.
+class MockSpace final : public pcms::FunctionSpace
+{
+public:
+  using pcms::FunctionSpace::FunctionSpace;
+
+protected:
+  pcms::FieldDataVariant CreateFieldData(pcms::Type, ValueBasis) const override
+  {
+    throw pcms::pcms_error("MockSpace: pass the data naming the quantity");
+  }
+};
+
 std::shared_ptr<const pcms::FunctionSpace> MakeMockSpace(int num_components)
 {
   const auto layout = std::make_shared<pcms::EmptyFieldLayout>(
     pcms::csys::CreateCylindricalRThetaZ(), num_components);
   const auto geometry = std::make_shared<AnalyticGeometry>();
-  return std::make_shared<pcms::FunctionSpace>(
-    layout,
-    [](pcms::Type, ValueBasis) -> pcms::FieldDataVariant {
-      throw pcms::pcms_error("MockSpace: pass the data naming the quantity");
-    },
-    std::make_shared<MockEvaluatorFactory>(geometry, layout), geometry);
+  return std::make_shared<MockSpace>(
+    layout, std::make_shared<MockEvaluatorFactory>(geometry, layout), geometry);
 }
 
 std::shared_ptr<const pcms::FunctionSpace> MakePoloidalTarget(
@@ -237,21 +245,17 @@ TEST_CASE("FunctionSpace requires the geometry of its evaluator source")
 {
   const auto layout = std::make_shared<pcms::EmptyFieldLayout>(
     pcms::csys::CreateCylindricalRThetaZ(), 1);
-  const auto create_data = [](pcms::Type,
-                              ValueBasis) -> pcms::FieldDataVariant {
-    throw pcms::pcms_error("no data");
-  };
   const auto geometry = std::make_shared<AnalyticGeometry>();
   const auto evaluator =
     std::make_shared<MockEvaluatorFactory>(geometry, layout);
   REQUIRE_THROWS_WITH(
-    pcms::FunctionSpace(layout, create_data, evaluator, nullptr),
+    pcms::FunctionSpace(layout, evaluator, nullptr),
     Catch::Matchers::ContainsSubstring("the geometry must not be null"));
   REQUIRE_THROWS_WITH(
-    pcms::FunctionSpace(layout, create_data, nullptr, nullptr),
+    pcms::FunctionSpace(layout, nullptr, nullptr),
     Catch::Matchers::ContainsSubstring("the geometry must not be null"));
   REQUIRE_THROWS_WITH(
-    pcms::FunctionSpace(layout, create_data, evaluator,
+    pcms::FunctionSpace(layout, evaluator,
                         std::make_shared<AnalyticGeometry>()),
     Catch::Matchers::ContainsSubstring("the evaluator source's geometry"));
 }

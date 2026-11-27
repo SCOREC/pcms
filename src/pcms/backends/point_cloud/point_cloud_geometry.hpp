@@ -47,8 +47,7 @@ public:
     // MLS distances are based on the unweighted Euclidean measure, which is
     // valid only with the identity metric; this almost certainly should be
     // generalized to take the metric for distances
-    if (!pcms::detail::HasIdentityMetric(
-          *site_layout_->GetCoordinateSystem())) {
+    if (!site_layout_->GetCoordinateSystem()->IsOrthonormal()) {
       throw pcms_error(
         "PointCloudGeometry: MLS point-cloud evaluation requires a "
         "coordinate system whose metric is the identity; got '" +

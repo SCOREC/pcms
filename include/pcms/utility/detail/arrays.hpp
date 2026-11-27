@@ -6,6 +6,29 @@
 namespace pcms::detail
 {
 
+/// @brief `values` as a strided view of `num_points` rows; a single stored row
+///        (extent 1) is shared by every point (stride 0).
+template <typename KokkosView>
+[[nodiscard]] auto PerPointView(const KokkosView& values, LO num_points)
+{
+  constexpr int Rank = static_cast<int>(KokkosView::rank());
+  using Extents = Kokkos::dextents<LO, Rank>;
+  std::array<LO, Rank> extents{};
+  std::array<LO, Rank> strides{};
+  for (int r = 0; r < Rank; ++r) {
+    extents[r] = static_cast<LO>(values.extent(r));
+    strides[r] = static_cast<LO>(values.stride(r));
+  }
+  extents[0] = num_points;
+  if (values.extent(0) == 1) {
+    strides[0] = 0;
+  }
+  return View<Rank, typename KokkosView::const_value_type,
+              typename KokkosView::memory_space, Kokkos::layout_stride>(
+    values.data(),
+    Kokkos::layout_stride::mapping<Extents>(Extents(extents), strides));
+}
+
 template <typename ContainerType, typename ElementType, typename Extents,
           typename LayoutPolicy, typename AccessorPolicy>
 auto make_mdspan(const ContainerType& /* unused */)

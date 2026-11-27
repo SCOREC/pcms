@@ -1,6 +1,7 @@
 #include "pcms/geometry/geometry.hpp"
 #include "pcms/field/coordinate_map.hpp"
 #include "pcms/utility/assert.hpp"
+#include "pcms/utility/detail/memory_spaces.hpp"
 #include <string>
 
 namespace pcms
@@ -113,9 +114,37 @@ SupportResults Geometry::Neighbourhood(CoordinateView<DeviceMemorySpace>, int,
                    "neighbourhood search");
 }
 
-DifferentialView Geometry::Differential(const BoundPoints&) const
+Quadrature Geometry::CreateQuadrature(const detail::QuadratureRule&) const
 {
-  return {};
+  throw pcms_error("CreateQuadrature: this geometry has no quadrature of "
+                   "that rule");
+}
+
+Quadrature detail::CreateQuadrature(const Geometry& geometry,
+                                    const QuadratureRule& rule)
+{
+  return geometry.CreateQuadrature(rule);
+}
+
+Quadrature CreateGaussQuadrature(
+  const std::shared_ptr<const Geometry>& geometry, int order)
+{
+  if (order < 0) {
+    throw pcms_error("CreateGaussQuadrature: the order must not be negative");
+  }
+  return detail::CreateQuadrature(*geometry, detail::GaussRule{order});
+}
+
+Quadrature CreateMonteCarloQuadrature(
+  const std::shared_ptr<const Geometry>& geometry, int samples_per_cell,
+  std::uint64_t seed)
+{
+  if (samples_per_cell < 1) {
+    throw pcms_error("CreateMonteCarloQuadrature: the samples per cell must "
+                     "be positive");
+  }
+  return detail::CreateQuadrature(
+    *geometry, detail::MonteCarloRule{samples_per_cell, seed});
 }
 
 void detail::CheckNeighbourhoodArguments(
@@ -130,7 +159,7 @@ void detail::CheckNeighbourhoodArguments(
                      std::string(geometry.GetCoordinateSystem()->Kind()) + "'");
   }
   // the searches measure Euclidean distances
-  if (!pcms::detail::HasIdentityMetric(*geometry.GetCoordinateSystem())) {
+  if (!geometry.GetCoordinateSystem()->IsOrthonormal()) {
     throw pcms_error(
       caller +
       ": requires a coordinate system whose metric is the "
@@ -144,6 +173,27 @@ void detail::CheckNeighbourhoodArguments(
                      std::to_string(options.max_supports) +
                      "; other bounds are not honoured yet");
   }
+}
+
+void detail::ScaleByVolumeFactor(Kokkos::View<Real*, DeviceMemorySpace> weights,
+                                 const BoundPoints& bound)
+{
+  const auto volume = bound.VolumeFactor();
+  pcms::detail::ForEach(
+    "ScaleByVolumeFactor", static_cast<LO>(weights.extent(0)),
+    KOKKOS_LAMBDA(const LO i) { weights(i) *= volume(i); });
+  Kokkos::fence("ScaleByVolumeFactor");
+}
+
+Quadrature detail::BindQuadrature(
+  const Geometry& geometry, const CoordinateView<DeviceMemorySpace>& points,
+  Kokkos::View<Real*, DeviceMemorySpace> weights, const OwnerHints& owners)
+{
+  auto bound = geometry.Bind(points, owners);
+  if (geometry.GetCoordinateSystem()->HasMetric()) {
+    ScaleByVolumeFactor(weights, *bound);
+  }
+  return Quadrature{std::move(bound), weights, {}};
 }
 
 void detail::CheckEntityIds(Kokkos::View<const LO*, DeviceMemorySpace> ids,

@@ -23,6 +23,16 @@ namespace pcms
 template <typename T>
 class Field;
 
+/// @brief The evaluation at the points as a CSR matrix whose columns are the
+///        global ids of the DOF holders.
+template <typename T>
+struct PointMatrix
+{
+  Kokkos::View<const LO*, DeviceMemorySpace> row_offsets; // [points + 1]
+  Kokkos::View<const GO*, DeviceMemorySpace> columns;     // [entries]
+  Kokkos::View<const T*, DeviceMemorySpace> values;       // [entries]
+};
+
 /// @brief Evaluates fields at the points of a BoundPoints.
 ///
 /// Created by PointEvaluatorFactory::CreatePointEvaluator. Evaluate writes
@@ -53,21 +63,54 @@ public:
   void Evaluate(const Field<T>& field,
                 ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const
   {
-    if (accepted_layout_ != nullptr &&
-        &field.GetLayout() != accepted_layout_.get()) {
-      throw pcms_error("PointEvaluator::Evaluate: the field is not a field of "
-                       "the function space this evaluator was created from");
-    }
-    CheckOutputShape(field, values);
-    detail::CheckWrittenValueBasis(
-      "PointEvaluator::Evaluate", values.GetBasis(),
-      OutputBasis(field.GetData().GetValueBasis()));
+    CheckArguments("PointEvaluator::Evaluate", field, values);
     EvaluateImpl(field, values);
     const auto filled = FilledPoints();
     if (filled.extent(0) > 0) {
       detail::FillRows(values.GetValues(), filled,
                        static_cast<T>(bound_->Policy().fill_value));
     }
+  }
+
+  /// @return whether EvaluateTranspose and the Value operator are supported
+  [[nodiscard]] virtual bool SupportsTranspose() const noexcept
+  {
+    return false;
+  }
+
+  /// @brief Writes the transpose of the evaluation into a functional:
+  ///        functional = E^T values, with E the map from a field's DOFs to
+  ///        its values at the points, summed over the ranks (collective).
+  /// @param values shaped and tagged as Evaluate's output for a field of the
+  ///        functional's basis
+  /// @param functional a field of the evaluator's layout, overwritten
+  /// @throws pcms_error if the transpose is not supported, `functional` is
+  ///         not of the evaluator's layout or `values` has another basis
+  /// @throws std::invalid_argument if `values` is not shaped like
+  ///         Evaluate's output
+  void EvaluateTranspose(
+    ValueView<const T, DeviceMemorySpace, LayoutPolicy> values,
+    Field<T>& functional) const
+  {
+    if (!SupportsTranspose() || op_ != DifferentialOperator::Value) {
+      throw pcms_error("PointEvaluator::EvaluateTranspose: not supported");
+    }
+    CheckArguments("PointEvaluator::EvaluateTranspose", functional, values);
+    EvaluateTransposeImpl(values.GetValues(), functional);
+  }
+
+  /// @return whether GetMatrix and the Value operator are supported
+  [[nodiscard]] virtual bool SupportsMatrix() const noexcept { return false; }
+
+  /// @brief The evaluation as a sparse matrix E: component c of the values is
+  ///        E times component c of the DOFs.
+  /// @throws pcms_error if the matrix is not supported
+  [[nodiscard]] PointMatrix<T> GetMatrix() const
+  {
+    if (!SupportsMatrix() || op_ != DifferentialOperator::Value) {
+      throw pcms_error("PointEvaluator::GetMatrix: not supported");
+    }
+    return GetMatrixImpl();
   }
 
   /// @return number of query points
@@ -139,14 +182,32 @@ protected:
     const Field<T>& field,
     ValueView<T, DeviceMemorySpace, LayoutPolicy> values) const = 0;
 
-private:
-  /// @brief Checks that `values` has one row per query point and one column
-  ///        per component of the basis OutputBasis gives for the field.
-  /// @throws std::invalid_argument otherwise
-  void CheckOutputShape(
-    const Field<T>& field,
-    const ValueView<T, DeviceMemorySpace, LayoutPolicy>& values) const
+  /// @brief Adds E^T values to the functional; called only if
+  ///        SupportsTranspose(), with checked arguments.
+  virtual void EvaluateTransposeImpl(
+    Rank2View<const T, DeviceMemorySpace, LayoutPolicy> /*values*/,
+    Field<T>& /*functional*/) const
   {
+  }
+
+  /// @return the evaluation matrix; called only if SupportsMatrix()
+  virtual PointMatrix<T> GetMatrixImpl() const { return {}; }
+
+private:
+  /// @brief Checks that `field` is of the accepted layout and that `values`
+  ///        has the basis and shape of the output for it.
+  /// @throws pcms_error if the layout or the basis differs
+  /// @throws std::invalid_argument if the shape differs
+  template <typename Values>
+  void CheckArguments(const char* caller, const Field<T>& field,
+                      const Values& values) const
+  {
+    if (accepted_layout_ != nullptr &&
+        &field.GetLayout() != accepted_layout_.get()) {
+      throw pcms_error(std::string(caller) +
+                       ": the field is not a field of the function space "
+                       "this evaluator was created from");
+    }
     const auto num_points = static_cast<size_t>(NumPoints());
     // the field's components times the dimension per index OutputBasis adds
     // for the evaluator's operator
@@ -159,12 +220,13 @@ private:
     }
     if (values.extent(0) != num_points || values.extent(1) != num_components) {
       throw std::invalid_argument(
-        "PointEvaluator::Evaluate: the output view is shaped [" +
+        std::string(caller) + ": the output view is shaped [" +
         std::to_string(values.extent(0)) + "][" +
         std::to_string(values.extent(1)) + "] but must be [" +
         std::to_string(num_points) + "][" + std::to_string(num_components) +
         "] (query points x output components)");
     }
+    detail::CheckWrittenValueBasis(caller, values.GetBasis(), written);
   }
 
   std::shared_ptr<const BoundPoints> bound_;

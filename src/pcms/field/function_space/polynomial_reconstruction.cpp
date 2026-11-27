@@ -30,21 +30,8 @@ std::shared_ptr<const FunctionSpace> CreatePolynomialReconstructionSpace(
   auto layout = cloud_geometry->GetSiteLayout();
   auto eval_factory = std::make_shared<PointCloudEvaluatorFactory>(
     std::move(cloud_geometry), layout, options);
-  return std::make_shared<FunctionSpace>(
-    layout,
-    [layout](Type t, ValueBasis basis) -> FieldDataVariant {
-      return detail::apply_to_type(t, [&](auto tag) -> FieldDataVariant {
-        using T = typename decltype(tag)::type;
-        if constexpr (!std::is_same_v<T, double>) {
-          throw pcms_error("CreatePolynomialReconstructionSpace: only double "
-                           "(Real) is supported");
-        } else {
-          return std::make_unique<pcms::detail::SimpleFieldData<double>>(
-            layout, std::move(basis));
-        }
-      });
-    },
-    eval_factory, eval_factory->GetGeometry());
+  return std::make_shared<FunctionSpace>(layout, eval_factory,
+                                         eval_factory->GetGeometry());
 }
 
 } // namespace pcms

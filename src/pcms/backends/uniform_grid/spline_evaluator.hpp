@@ -203,6 +203,8 @@ public:
     }
   }
 
+  [[nodiscard]] bool HasNodalDOFs() const noexcept override { return true; }
+
 protected:
   std::unique_ptr<PointEvaluator<Real>> CreateEvaluator(
     std::shared_ptr<const Bound> bound, DifferentialOperator op) const override

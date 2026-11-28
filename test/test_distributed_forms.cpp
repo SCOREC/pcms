@@ -11,6 +11,8 @@
 #include "pcms/field/function_spaces.hpp"
 #include "pcms/transfer/forms.hpp"
 #include "pcms/transfer/linear_solver.hpp"
+#include "pcms/transfer/l2_inner_product.hpp"
+#include "pcms/transfer/projection.hpp"
 #include "pcms/utility/arrays.hpp"
 
 #include <cmath>
@@ -18,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <pcms/transfer/detail/projection.hpp>
 
 using pcms::GO;
 using pcms::LO;
@@ -104,7 +107,7 @@ Real Total(const pcms::Field<Real>& field, int c = -1)
   return SumOverRanks(sum);
 }
 
-// sum over the ranks of the owned x_i y_i
+// sum over the ranks of the owned x_i y_i, by hand: the reference for DotProd
 Real GlobalDot(const pcms::Field<Real>& x, const pcms::Field<Real>& y)
 {
   const auto a = x.GetDOFHolderDataHost().GetValues();
@@ -118,19 +121,12 @@ Real GlobalDot(const pcms::Field<Real>& x, const pcms::Field<Real>& y)
   return SumOverRanks(sum);
 }
 
-Real MaxDifference(const pcms::Field<Real>& x, const pcms::Field<Real>& y)
+// max over the ranks of |x - y|
+Real MaxDifference(const pcms::Function<Real>& x, const pcms::Function<Real>& y)
 {
-  const auto a = x.GetDOFHolderDataHost().GetValues();
-  const auto b = y.GetDOFHolderDataHost().GetValues();
-  Real local = 0;
-  for (size_t h = 0; h < a.extent(0); ++h) {
-    for (size_t k = 0; k < a.extent(1); ++k) {
-      local = std::max(local, std::abs(a(h, k) - b(h, k)));
-    }
-  }
-  Real global = 0;
-  MPI_Allreduce(&local, &global, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-  return global;
+  auto difference = x.GetSpace().CreateFunction<Real>();
+  pcms::detail::LinearSum(Real(1), x, Real(-1), y, difference);
+  return pcms::detail::MaxNorm(difference);
 }
 
 // DotProd, Apply and Norm2 of the coefficients reduce over the ranks.
@@ -195,8 +191,8 @@ void CheckBilinearForm(const BilinearForm& form, const Space& test,
   auto btv = trial->CreateFunction<Real>();
   form.Apply(u, bu);
   form.ApplyTranspose(v, btv);
-  const Real vbu = GlobalDot(v, bu);
-  const Real ubtv = GlobalDot(u, btv);
+  const Real vbu = pcms::detail::DotProd(v, bu);
+  const Real ubtv = pcms::detail::DotProd(u, btv);
   CheckClose(ubtv, vbu, 1e-12 * std::max(1.0, std::abs(vbu)),
              name + ": <v, B u> == <B^T v, u> over the ranks");
   CheckClose(form.Pair(v, u), vbu, 1e-12 * std::max(1.0, std::abs(vbu)),
@@ -285,6 +281,129 @@ void RunCases(Omega_h::Library& library, int dim, bool ghosted)
   }
 }
 
+// The integral of each component over the ranks: E^T W 1 paired with u.
+Real Integral(const Space& space, const pcms::Field<Real>& u)
+{
+  const BilinearForm form(space);
+  const int nc = space->GetLayout()->GetNumComponents();
+  Device2D ones("ones", form.GetQuadrature().weights.extent(0), nc);
+  Kokkos::deep_copy(ones, 1.0);
+  auto functional = space->CreateFunction<Real>();
+  form.Assemble(
+    pcms::ValueView<const Real, pcms::DeviceMemorySpace>(
+      functional.GetData().GetValueBasis(), pcms::MakeConstRank2View(ones)),
+    functional);
+  return pcms::detail::DotProd(functional, u);
+}
+
+// The projection reproduces a field of the target space, conserves the
+// integral and its transpose is its adjoint over the ranks.
+void CheckProjection(const pcms::TransferOperator<Real>& projection,
+                     const Space& source, const Space& target, bool exact,
+                     const std::string& name)
+{
+  const auto u = FieldOfGids(source, 0.3);
+  auto pu = target->CreateFunction<Real>();
+  projection.Apply(u, pu);
+  if (exact) {
+    auto expected = target->CreateFunction<Real>();
+    expected.SetDOFHolderDataHost(u.GetDOFHolderDataHost());
+    expected.Synchronize();
+    CheckClose(MaxDifference(pu, expected), 0, 1e-9,
+               name + ": reproduces a field of the target space");
+  }
+  const Real integral = Integral(source, u);
+  CheckClose(Integral(target, pu), integral,
+             1e-10 * std::max(1.0, std::abs(integral)),
+             name + ": conserves the integral");
+  if (projection.SupportsTranspose()) {
+    const auto b = FieldOfGids(target, 1.9);
+    auto ptb = source->CreateFunction<Real>();
+    projection.ApplyTranspose(b, ptb);
+    const Real lhs = pcms::detail::DotProd(pu, b);
+    CheckClose(pcms::detail::DotProd(u, ptb), lhs,
+               1e-10 * std::max(1.0, std::abs(lhs)),
+               name + ": <P u, b> == <u, P^T b> over the ranks");
+  }
+}
+
+// The L2 integrals of linear fields on every rank equal their serial values.
+void CheckL2Integrals(const Space& space, const Space& serial,
+                      const std::string& name)
+{
+  const auto u = distributed_test::LinearField(*space);
+  const auto serial_u = distributed_test::LinearField(*serial);
+  const auto zero = space->CreateFunction<Real>();
+  const pcms::L2Integral integral(space);
+  const pcms::L2Integral serial_integral(serial);
+  const auto check = [&](Real value, Real expected, const char* what) {
+    Real worst = 0;
+    const Real error = std::abs(value - expected);
+    MPI_Allreduce(&error, &worst, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    CheckClose(worst, 0, 1e-12 * std::max(1.0, std::abs(expected)),
+               name + ": " + what + " equals the serial value on every rank");
+  };
+  if (space->GetLayout()->GetNumComponents() == 1) {
+    check(integral.Apply(u), serial_integral.Apply(serial_u), "Apply");
+  }
+  check(integral.Norm(u), serial_integral.Norm(serial_u), "Norm");
+  check(integral.Inner(u, u), serial_integral.Inner(serial_u, serial_u),
+        "Inner");
+  check(integral.Distance(u, zero), serial_integral.Norm(serial_u), "Distance");
+}
+
+void RunProjectionCases(Omega_h::Library& library, int dim, bool ghosted)
+{
+  const int n = (dim == 2 ? 4 : 2) * library.world()->size();
+  const auto build = [&](Omega_h::CommPtr comm) {
+    auto mesh =
+      Omega_h::build_box(comm, OMEGA_H_SIMPLEX, 1.0, 1.0, dim == 3 ? 1.0 : 0.0,
+                         n, n, dim == 3 ? n : 0, false);
+    if (comm->size() > 1) {
+      mesh.set_parting(ghosted ? OMEGA_H_GHOSTED : OMEGA_H_ELEM_BASED,
+                       ghosted ? 1 : 0, false);
+    }
+    return mesh;
+  };
+  auto mesh = build(library.world());
+  auto other_mesh = build(library.world());
+  auto serial_mesh = build(library.self());
+  const auto geometry =
+    pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
+  const auto other_geometry = pcms::omega_h::CreateGeometry(
+    other_mesh, pcms::detail::DeferredCartesian());
+  const auto serial_geometry = pcms::omega_h::CreateGeometry(
+    serial_mesh, pcms::detail::DeferredCartesian());
+  for (int nc : {1, 2}) {
+    const auto components = " components " + std::to_string(nc);
+    for (int order : {0, 1}) {
+      const auto what = "P" + std::to_string(order) + components;
+      const auto space = Lagrange(geometry, order, nc);
+      CheckProjection(*pcms::CreateProjection(space, space), space, space, true,
+                      Name(ghosted, dim, what + " onto itself"));
+      CheckProjection(
+        *pcms::detail::CreateProjection(space, space,
+                                        {.control_variate = true}),
+        space, space, true,
+        Name(ghosted, dim, what + " onto itself, control variate"));
+      CheckL2Integrals(space, Lagrange(serial_geometry, order, nc),
+                       Name(ghosted, dim, what + " L2"));
+    }
+    // P1 onto P1 and P0 of another mesh with the same partition
+    const auto p1 = Lagrange(geometry, 1, nc);
+    for (int order : {0, 1}) {
+      const auto target = Lagrange(other_geometry, order, nc);
+      const auto what =
+        "P1 onto P" + std::to_string(order) + " of another mesh" + components;
+      CheckProjection(*pcms::CreateProjection(p1, target), p1, target,
+                      order == 1, Name(ghosted, dim, what));
+      CheckProjection(
+        *pcms::detail::CreateProjection(p1, target, {.control_variate = true}),
+        p1, target, order == 1, Name(ghosted, dim, what + ", control variate"));
+    }
+  }
+}
+
 } // namespace
 
 int main(int argc, char** argv)
@@ -298,6 +417,7 @@ int main(int argc, char** argv)
       for (int dim : {2, 3}) {
         for (bool ghosted : {false, true}) {
           RunCases(library, dim, ghosted);
+          RunProjectionCases(library, dim, ghosted);
         }
       }
     }

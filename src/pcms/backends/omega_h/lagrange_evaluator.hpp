@@ -254,6 +254,8 @@ public:
   {
   }
 
+  [[nodiscard]] bool HasNodalDOFs() const noexcept override { return true; }
+
 protected:
   std::unique_ptr<PointEvaluator<T>> CreateEvaluator(
     std::shared_ptr<const pcms::detail::OmegaHMeshBinding> bound,

@@ -93,6 +93,12 @@ public:
   /// @return whether the space's evaluator source supports `op`
   [[nodiscard]] bool Supports(DifferentialOperator op) const noexcept override;
 
+  /// @return whether the space's evaluator source has nodal DOFs
+  [[nodiscard]] bool HasNodalDOFs() const noexcept override
+  {
+    return evaluator_ != nullptr && evaluator_->HasNodalDOFs();
+  }
+
   ~FunctionSpace() noexcept override = default;
 
   /// @throws pcms_error if the space is not owned by a std::shared_ptr
@@ -107,6 +113,12 @@ public:
     std::string name, VarianceSignature variance,
     std::shared_ptr<const CoordinateSystem> system,
     std::optional<ComponentScaling> scaling = std::nullopt) const;
+
+  /// @brief Creates a Function of scalar values.
+  /// @param metadata its name and duality
+  /// @throws pcms_error if the space is not owned by a std::shared_ptr
+  template <typename T>
+  [[nodiscard]] Function<T> CreateFunction(FieldMetadata metadata) const;
 
   // Expert API: wrap externally constructed field data into a Function for this
   // space. The space validates backend-specific field-data type and storage
@@ -148,16 +160,16 @@ private:
   static Field<T> WrapField(std::shared_ptr<const FieldLayout> layout,
                             std::unique_ptr<FieldData<T>> data)
   {
-    return Field<T>(std::string{}, std::move(layout), std::move(data));
+    return Field<T>(FieldMetadata{}, std::move(layout), std::move(data));
   }
 
   template <typename T>
-  static Function<T> WrapFunction(std::string name,
+  static Function<T> WrapFunction(FieldMetadata metadata,
                                   std::shared_ptr<const FieldLayout> layout,
                                   std::unique_ptr<FieldData<T>> data,
                                   std::shared_ptr<const FunctionSpace> space)
   {
-    return Function<T>(std::move(name), std::move(layout), std::move(data),
+    return Function<T>(std::move(metadata), std::move(layout), std::move(data),
                        std::move(space));
   }
 
@@ -193,7 +205,23 @@ Function<T> FunctionSpace::CreateFunction(
   detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
   Field<T> field = std::get<Field<T>>(
     CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
-  return WrapFunction<T>(std::move(name), std::move(field.layout_),
+  return WrapFunction<T>(FieldMetadata{.name = std::move(name)},
+                         std::move(field.layout_), std::move(field.data_),
+                         std::move(owner));
+}
+
+template <typename T>
+Function<T> FunctionSpace::CreateFunction(FieldMetadata metadata) const
+{
+  static_assert(detail::is_supported_field_type_v<T>,
+                "T is not a supported field type");
+  auto owner = Owner();
+  ValueBasis basis = detail::MakeValueBasis(
+    GetCoordinateSystem(), values::Scalar, nullptr, std::nullopt);
+  detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
+  Field<T> field = std::get<Field<T>>(
+    CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
+  return WrapFunction<T>(std::move(metadata), std::move(field.layout_),
                          std::move(field.data_), std::move(owner));
 }
 
@@ -211,8 +239,9 @@ Function<T> FunctionSpace::CreateFunction(
                                  GetLayout()->GetNumComponents());
   Field<T> field =
     std::get<Field<T>>(CreateFieldImpl(FieldDataVariant{std::move(data)}));
-  return WrapFunction<T>(std::move(name), std::move(field.layout_),
-                         std::move(field.data_), std::move(owner));
+  return WrapFunction<T>(FieldMetadata{.name = std::move(name)},
+                         std::move(field.layout_), std::move(field.data_),
+                         std::move(owner));
 }
 
 } // namespace pcms

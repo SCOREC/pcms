@@ -20,34 +20,30 @@ namespace pcms::transfer::detail
 
 using omega_h::detail::IntegrationData;
 
-// The layout and Omega_h geometry of a scalar Lagrange space on a simplex mesh
+// The layout and Omega_h geometry of a Lagrange space on a simplex mesh
 // (triangles in 2D, tetrahedra in 3D) in Cartesian coordinates.
-struct OmegaHScalarSpace
+struct OmegaHLagrangeSpace
 {
   std::shared_ptr<const omega_h::OmegaHLagrangeLayout> layout;
   std::shared_ptr<const omega_h::OmegaHGeometry> geometry;
 };
 
-// Checks that `space` is a scalar Lagrange space of an order in [min_order,
+// Checks that `space` is a Lagrange space of an order in [min_order,
 // max_order] on the Omega_h geometry of a 2D or 3D simplex mesh, in the
 // Cartesian coordinate system of the mesh dimension, and returns its layout and
 // geometry. The integrators take their integrals in the mesh coordinates
 // without a metric, which is only the physical measure in Cartesian
 // coordinates; other systems are refused until the geometry's metric enters
 // the measures.
-inline OmegaHScalarSpace ResolveOmegaHScalarSpace(const FunctionSpace& space,
-                                                  int min_order, int max_order,
-                                                  const char* context,
-                                                  const char* role)
+inline OmegaHLagrangeSpace ResolveOmegaHLagrangeSpace(
+  const FunctionSpace& space, int min_order, int max_order, const char* context,
+  const char* role)
 {
   const std::string prefix = std::string(context) + ": " + role + " ";
   auto layout = std::dynamic_pointer_cast<const omega_h::OmegaHLagrangeLayout>(
     space.GetLayout());
   if (layout == nullptr) {
     throw pcms_error(prefix + "space must use OmegaHLagrangeLayout");
-  }
-  if (layout->GetNumComponents() != 1) {
-    throw pcms_error(prefix + "space must have exactly one component");
   }
   auto geometry = std::dynamic_pointer_cast<const omega_h::OmegaHGeometry>(
     space.GetGeometry());
@@ -308,68 +304,6 @@ OMEGA_H_INLINE void ForEachIntersectionSubsimplex(
           Omega_h::Real measure) { op(simplex, current_src_elm, measure); });
   }
 }
-
-// Target Lagrange basis on a simplex (triangle in 2D, tetrahedron in 3D),
-// parameterized by spatial dimension and element order, for the
-// conservative-projection RHS assembly. Order 0 is a single element-constant
-// DOF; order 1 is the Dim+1 vertex (barycentric) DOFs. Higher orders slot in as
-// additional specializations, kept in lock-step with element_dispatch.h.
-//
-// Each specialization provides, for a target element `elm` with local vertex
-// ids `verts` and vertex coordinates `tgt_verts`:
-//   ndof            number of local target DOFs
-//   Index(...)      active PETSc row for local dof k
-//   Values(pt, ...) basis values at the (global) integration point pt
-template <int Dim, int Order>
-struct TargetSimplexBasis;
-
-template <int Dim>
-struct TargetSimplexBasis<Dim, 0>
-{
-  static constexpr int ndof = 1;
-
-  template <typename Permutation>
-  KOKKOS_INLINE_FUNCTION static LO Index(
-    const Permutation& permutation, int elm,
-    const Omega_h::Few<Omega_h::LO, Dim + 1>&, int /*k*/)
-  {
-    return permutation(elm);
-  }
-
-  KOKKOS_INLINE_FUNCTION static void Values(
-    const Omega_h::Vector<Dim>&,
-    const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>&, Omega_h::Real out[ndof])
-  {
-    out[0] = 1.0;
-  }
-};
-
-template <int Dim>
-struct TargetSimplexBasis<Dim, 1>
-{
-  static constexpr int ndof = Dim + 1;
-
-  template <typename Permutation>
-  KOKKOS_INLINE_FUNCTION static LO Index(
-    const Permutation& permutation, int /*elm*/,
-    const Omega_h::Few<Omega_h::LO, Dim + 1>& verts, int k)
-  {
-    return permutation(verts[k]);
-  }
-
-  // P1 basis functions are the barycentric coordinates of the target element
-  // evaluated at the (global) integration point.
-  KOKKOS_INLINE_FUNCTION static void Values(
-    const Omega_h::Vector<Dim>& pt,
-    const Omega_h::Few<Omega_h::Vector<Dim>, Dim + 1>& tgt_verts,
-    Omega_h::Real out[ndof])
-  {
-    const auto bary = Omega_h::barycentric_from_global<Dim, Dim>(pt, tgt_verts);
-    for (int i = 0; i < ndof; ++i) {
-      out[i] = bary[i];
-    }
-  }
-};
 
 } // namespace pcms::transfer::detail
 

@@ -26,8 +26,8 @@ namespace pcms
 /// @param target_space space whose DOF holders receive the values; its basis
 ///        must be the basis the source's evaluators write
 /// @param policy out-of-bounds policy for the evaluation
-/// @throws pcms_error if `source` or `target_space` is null, or the source has
-///         no geometry
+/// @throws pcms_error if `source` or `target_space` is null, the source has no
+///         geometry, or the target's DOFs are not values at its DOF holders
 template <typename T = Real>
 [[nodiscard]] std::unique_ptr<TransferOperator<T>> CreateInterpolator(
   std::shared_ptr<const PointEvaluatorFactory> source,

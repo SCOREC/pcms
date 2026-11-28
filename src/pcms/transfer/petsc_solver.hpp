@@ -14,7 +14,7 @@ namespace pcms::transfer::detail
 /// @throws pcms_error if the layout is distributed or the test evaluator has
 ///         no evaluation rows
 std::unique_ptr<LinearSolver> CreatePetscSolver(
-  const BilinearForm& form, const LinearSolveOptions& options);
+  const BilinearForm& form, const pcms::detail::LinearSolveOptions& options);
 
 } // namespace pcms::transfer::detail
 

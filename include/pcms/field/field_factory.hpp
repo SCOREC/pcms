@@ -38,6 +38,11 @@ public:
     std::shared_ptr<const CoordinateSystem> system,
     std::optional<ComponentScaling> scaling = std::nullopt) const;
 
+  /// @brief Creates a Field of scalar values.
+  /// @param metadata its name and duality
+  template <typename T>
+  [[nodiscard]] Field<T> CreateField(FieldMetadata metadata) const;
+
   // Expert API: wrap externally constructed field data into a Field. The
   // concrete factory validates backend-specific field-data type and storage
   // size compatibility.
@@ -50,7 +55,7 @@ protected:
   static Field<T> WrapField(std::shared_ptr<const FieldLayout> layout,
                             std::unique_ptr<FieldData<T>> data)
   {
-    return Field<T>(std::string{}, std::move(layout), std::move(data));
+    return Field<T>(FieldMetadata{}, std::move(layout), std::move(data));
   }
 
   virtual FieldVariant CreateFieldImpl(Type storage_type,
@@ -80,7 +85,15 @@ Field<T> FieldFactory::CreateField(
   detail::ValidateValueSemantics(basis, GetLayout()->GetNumComponents());
   Field<T> field = std::get<Field<T>>(
     CreateFieldImpl(detail::TypeEnumFromType<T>(), std::move(basis)));
-  field.name_ = std::move(name);
+  field.metadata_.name = std::move(name);
+  return field;
+}
+
+template <typename T>
+Field<T> FieldFactory::CreateField(FieldMetadata metadata) const
+{
+  Field<T> field = CreateField<T>();
+  field.metadata_ = std::move(metadata);
   return field;
 }
 
@@ -97,7 +110,7 @@ Field<T> FieldFactory::CreateField(std::string name,
                                  GetLayout()->GetNumComponents());
   Field<T> field =
     std::get<Field<T>>(CreateFieldImpl(FieldDataVariant{std::move(data)}));
-  field.name_ = std::move(name);
+  field.metadata_.name = std::move(name);
   return field;
 }
 

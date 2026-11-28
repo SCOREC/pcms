@@ -54,7 +54,7 @@ def _run_example(script, *args):
 
 def test_conservative_transfer_example():
     if not hasattr(pcms, "create_conservative_projection"):
-        _skip_or_fail("pcms was built without PETSc/MeshFields")
+        _skip_or_fail("pcms was built without OMEGA_H_MESHFIELDS")
     stdout = _run_example("example_conservative_transfer.py")
     assert "Field transfer completed" in stdout
 

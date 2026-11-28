@@ -1,7 +1,10 @@
 #include "pcms/transfer/linear_solver.hpp"
+#include "pcms/configuration.hpp"
 #include "pcms/field/detail/field_ops.hpp"
 #include "pcms/field/point_rows.hpp"
+#ifdef PCMS_ENABLE_PETSC
 #include "pcms/transfer/petsc_solver.hpp"
+#endif
 #include "pcms/utility/assert.hpp"
 #include <utility>
 
@@ -74,10 +77,14 @@ private:
 };
 
 // whether the assembled solve applies to `form`
-bool CanAssemble(const BilinearForm& form)
+bool CanAssemble([[maybe_unused]] const BilinearForm& form)
 {
+#ifdef PCMS_ENABLE_PETSC
   return !form.TestSpace()->GetLayout()->IsDistributed() &&
          pcms::detail::AsRowsSource(form.TestEvaluator()) != nullptr;
+#else
+  return false;
+#endif
 }
 
 } // namespace
@@ -169,7 +176,7 @@ void CgSolver::Solve(const Field<Real>& functional, Field<Real>& solution) const
 
 std::unique_ptr<LinearSolver> CreateLinearSolver(
   const BilinearForm& form, MassMatrixType type,
-  const LinearSolveOptions& options)
+  const pcms::detail::LinearSolveOptions& options)
 {
   if (!form.IsSquare()) {
     throw pcms_error("CreateLinearSolver: the form is not square");
@@ -178,10 +185,16 @@ std::unique_ptr<LinearSolver> CreateLinearSolver(
   if (type == MassMatrixType::Lumped) {
     return std::make_unique<LumpedSolver>(form);
   }
-  if (options.method == LinearSolveOptions::Method::Assembled ||
-      (options.method == LinearSolveOptions::Method::Automatic &&
+  if (options.method == pcms::detail::LinearSolveOptions::Method::Assembled ||
+      (options.method == pcms::detail::LinearSolveOptions::Method::Automatic &&
        CanAssemble(form))) {
+#ifdef PCMS_ENABLE_PETSC
     return CreatePetscSolver(form, options);
+#else
+    throw pcms_error("CreateLinearSolver: the assembled solve needs PETSc; "
+                     "configure PCMS with -DPCMS_ENABLE_PETSC=ON or use the "
+                     "MatrixFree method");
+#endif
   }
   return std::make_unique<CgSolver>(form, options.relative_tolerance,
                                     options.max_iterations);

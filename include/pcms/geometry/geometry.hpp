@@ -12,6 +12,7 @@
 #include "pcms/utility/uniform_grid.hpp"
 #include <Kokkos_Core.hpp>
 #include <memory>
+#include <span>
 #include <string>
 
 namespace pcms
@@ -191,9 +192,23 @@ protected:
   [[nodiscard]] virtual Quadrature CreateQuadrature(
     const detail::QuadratureRule& rule) const;
 
+  /// @brief Replaces each value by its sum over the ranks the entities are
+  ///        partitioned over. Collective; a single rank unless the kind
+  ///        overrides it.
+  virtual void SumOverRanks(std::span<Real> /*values*/) const {}
+
+  /// @brief Replaces each value by its maximum over the ranks the entities are
+  ///        partitioned over. Collective; a single rank unless the kind
+  ///        overrides it.
+  virtual void MaxOverRanks(std::span<Real> /*values*/) const {}
+
 private:
   friend Quadrature detail::CreateQuadrature(
     const Geometry& geometry, const detail::QuadratureRule& rule);
+  friend void detail::SumOverRanks(const Geometry& geometry,
+                                   std::span<Real> values);
+  friend void detail::MaxOverRanks(const Geometry& geometry,
+                                   std::span<Real> values);
 
   // creates the passkey of BoundPoints::Rebind
   struct RebindKey : BoundPoints::RebindKey

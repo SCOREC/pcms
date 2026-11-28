@@ -355,7 +355,7 @@ void MeshFieldsAdapterLayout::BuildOwnedViews()
 
 bool MeshFieldsAdapterLayout::IsDistributed() const
 {
-  return true;
+  return mesh_.comm()->size() > 1;
 }
 
 Omega_h::Read<Omega_h::ClassId> MeshFieldsAdapterLayout::GetClassIDs() const

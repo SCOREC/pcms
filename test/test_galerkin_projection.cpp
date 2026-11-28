@@ -4,9 +4,13 @@
 #include <Omega_h_build.hpp>
 #include <Omega_h_library.hpp>
 #include <Omega_h_mesh.hpp>
+#include <catch2/matchers/catch_matchers_string.hpp>
+#include <pcms/field/detail/field_ops.hpp>
+#include <pcms/field/detail/simple_field_data.hpp>
 #include <pcms/field/function_spaces.hpp>
 #include <pcms/backends/omega_h/omega_h.hpp>
 #include "field_test_utils.hpp"
+#include "pcms/field/point_rows.hpp"
 #include <cmath>
 #include <map>
 #include <random>
@@ -103,6 +107,9 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
   }
   CAPTURE(lhs, rhs);
   CHECK(std::abs(lhs - rhs) <= 1e-12 * std::max(1.0, scale));
+  // the pairing of the functional with the function is the same number
+  CHECK(std::abs(pcms::detail::Apply(functional, field) - lhs) <=
+        1e-12 * std::max(1.0, scale));
 
   // overwrites: a second call gives the same result
   evaluator.EvaluateTranspose(y_view, functional);
@@ -114,26 +121,21 @@ void CheckAdjoint(const std::shared_ptr<const pcms::FunctionSpace>& space,
     }
   }
 
-  // the matrix form: E x from the CSR rows equals Evaluate
-  if (evaluator.SupportsMatrix()) {
-    const auto matrix = evaluator.GetMatrix();
+  // the evaluation rows: E x from the CSR rows equals Evaluate
+  if (const auto* source = pcms::detail::AsRowsSource(evaluator)) {
+    const auto* rows = &source->Rows();
     const auto offsets = Kokkos::create_mirror_view_and_copy(
-      pcms::HostMemorySpace{}, matrix.row_offsets);
-    const auto columns = Kokkos::create_mirror_view_and_copy(
-      pcms::HostMemorySpace{}, matrix.columns);
+      pcms::HostMemorySpace{}, rows->offsets);
+    const auto holders = Kokkos::create_mirror_view_and_copy(
+      pcms::HostMemorySpace{}, rows->holders);
     const auto values = Kokkos::create_mirror_view_and_copy(
-      pcms::HostMemorySpace{}, matrix.values);
-    const auto gids = space->GetLayout()->GetGidsHost();
-    std::map<pcms::GO, int> holder_of;
-    for (std::size_t h = 0; h < gids.extent(0); ++h) {
-      holder_of[gids(h)] = static_cast<int>(h);
-    }
+      pcms::HostMemorySpace{}, rows->values);
     REQUIRE(offsets.extent(0) == static_cast<std::size_t>(num_points) + 1);
     for (int p = 0; p < num_points; ++p) {
       for (int c = 0; c < num_components; ++c) {
         double sum = 0;
         for (int k = offsets(p); k < offsets(p + 1); ++k) {
-          sum += values(k) * x(holder_of.at(columns(k)), c);
+          sum += values(k) * x(holders(k), c);
         }
         CHECK(sum == Catch::Approx(e_x_host(p, c)).margin(1e-13));
       }
@@ -200,6 +202,58 @@ TEST_CASE("EvaluateTranspose checks its arguments", "[adjoint]")
   CHECK_THROWS_AS(evaluator->EvaluateTranspose(
                     View(basis, pcms::MakeConstRank2View(values)), foreign),
                   pcms::pcms_error);
+}
+
+TEST_CASE("coefficient operations: LinearSum, Scale, Const, Div, DotProd, "
+          "Norm2 and the pairing",
+          "[field_ops]")
+{
+  using pcms::detail::Apply;
+  using pcms::detail::DotProd;
+  Omega_h::Library lib;
+  auto mesh = pcms::test::BuildSquareMesh(lib, 3);
+  const auto space = pcms::test::MakeP1Space(mesh);
+  std::mt19937 rng(7);
+  const auto a = RandomDofs(*space->GetLayout(), rng);
+  const auto b = RandomDofs(*space->GetLayout(), rng);
+  auto x = space->CreateFunction<pcms::Real>();
+  auto y = space->CreateFunction<pcms::Real>();
+  SetDofs(x, a);
+  SetDofs(y, b);
+  double dot = 0, xx = 0;
+  for (std::size_t i = 0; i < a.extent(0); ++i) {
+    for (std::size_t c = 0; c < a.extent(1); ++c) {
+      dot += a(i, c) * b(i, c);
+      xx += a(i, c) * a(i, c);
+    }
+  }
+  CHECK(DotProd(x, y) == Catch::Approx(dot).epsilon(1e-14));
+  CHECK(Apply(x, y) == Catch::Approx(dot).epsilon(1e-14));
+  CHECK(pcms::detail::Norm2(x) == Catch::Approx(std::sqrt(xx)).epsilon(1e-14));
+  auto z = space->CreateFunction<pcms::Real>();
+  pcms::detail::LinearSum(3.0, x, 1.0, y, z); // z = 3 a + b
+  pcms::detail::Scale(0.5, z, z);             // z = (3 a + b) / 2
+  auto twos = space->CreateFunction<pcms::Real>();
+  pcms::detail::Const(2.0, twos);
+  pcms::detail::Div(z, twos, z); // z = (3 a + b) / 4
+  const auto values = z.GetDOFHolderDataHost().GetValues();
+  for (std::size_t i = 0; i < a.extent(0); ++i) {
+    for (std::size_t c = 0; c < a.extent(1); ++c) {
+      CHECK(values(i, c) ==
+            Catch::Approx(0.25 * (3 * a(i, c) + b(i, c))).epsilon(1e-14));
+    }
+  }
+  // fields of another layout are refused
+  auto other = pcms::test::MakeP1Space(mesh)->CreateFunction<pcms::Real>();
+  CHECK_THROWS_AS(DotProd(x, other), pcms::pcms_error);
+  // so are operands of another kind of field data
+  const pcms::detail::SimpleFieldData<pcms::Real> other_kind(
+    space->GetLayout(), x.GetData().GetValueBasis());
+  CHECK_THROWS_WITH(pcms::detail::DotProdLocal(x.GetData(), other_kind),
+                    Catch::Matchers::ContainsSubstring("another kind"));
+  CHECK_THROWS_WITH(
+    pcms::detail::LinearSum(1.0, x.GetData(), 1.0, other_kind, z.GetData()),
+    Catch::Matchers::ContainsSubstring("another kind"));
 }
 
 TEST_CASE("FunctionSpace::GetQuadrature is exact for products of two "

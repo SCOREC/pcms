@@ -4,13 +4,18 @@ set(PCMS_FIELD_HEADERS
         ../../../include/pcms/field/value_view.hpp
         element_dispatch.hpp
         gid_permutation.hpp
+        point_rows.hpp
         ../../../include/pcms/field/field_layout.hpp
         layout/empty.hpp
         ../../../include/pcms/field/out_of_bounds_policy.hpp
         ../../../include/pcms/field/field_data.hpp
+        ../../../include/pcms/field/detail/field_data.hpp
+        ../../../include/pcms/field/detail/field_data_ops.hpp
+        ../../../include/pcms/field/detail/field_ops.hpp
         ../../../include/pcms/field/field_factory.hpp
         ../../../include/pcms/field/function_space.hpp
         ../../../include/pcms/field/point_evaluator.hpp
+        ../../../include/pcms/field/detail/evaluate_transpose.hpp
         ../../../include/pcms/field/point_evaluator_factory.hpp
         ../../../include/pcms/field/query_points.hpp
         ../../../include/pcms/field/differential_operator.hpp

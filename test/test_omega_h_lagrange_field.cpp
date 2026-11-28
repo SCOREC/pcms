@@ -45,7 +45,7 @@ TEST_CASE("OmegaHLagrangeLayout order-1 properties")
   REQUIRE(layout.GetNumComponents() == 2);
   REQUIRE(layout.GetNumDofHolder() == mesh.nents(0));
   REQUIRE(layout.GetNumGlobalDofHolder() == mesh.nglobal_ents(0));
-  REQUIRE(layout.IsDistributed()); // always true for Omega_h mesh layouts
+  REQUIRE(layout.IsDistributed() == (mesh.comm()->size() > 1));
 
   // DOF holder coordinates should match vertex coordinates
   auto coords_device = layout.GetDOFHolderCoordinates().GetValues();
@@ -66,6 +66,23 @@ TEST_CASE("OmegaHLagrangeLayout order-1 properties")
   REQUIRE(offsets[0] == 0);
   for (int i = 1; i < pcms::ent_offsets_len; ++i)
     REQUIRE(offsets[i] == nverts);
+
+  // GetGids is GetGidsHost on the device
+  const auto host_gids = layout.GetGidsHost();
+  const auto device_gids = layout.GetGids();
+  REQUIRE(device_gids.size() == host_gids.size());
+  Kokkos::View<pcms::GO*, pcms::DeviceMemorySpace> copied("gids",
+                                                          device_gids.size());
+  Kokkos::parallel_for(
+    "copy_gids",
+    Kokkos::RangePolicy<pcms::DefaultExecutionSpace>(
+      0, static_cast<LO>(copied.extent(0))),
+    KOKKOS_LAMBDA(const LO i) { copied(i) = device_gids[i]; });
+  const auto copied_host =
+    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, copied);
+  for (std::size_t i = 0; i < host_gids.size(); ++i) {
+    CHECK(copied_host(i) == host_gids[i]);
+  }
 }
 
 TEST_CASE("OmegaHLagrangeLayout order-0 properties")

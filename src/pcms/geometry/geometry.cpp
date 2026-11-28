@@ -120,6 +120,16 @@ Quadrature Geometry::CreateQuadrature(const detail::QuadratureRule&) const
                    "that rule");
 }
 
+void detail::SumOverRanks(const Geometry& geometry, std::span<Real> values)
+{
+  geometry.SumOverRanks(values);
+}
+
+void detail::MaxOverRanks(const Geometry& geometry, std::span<Real> values)
+{
+  geometry.MaxOverRanks(values);
+}
+
 Quadrature detail::CreateQuadrature(const Geometry& geometry,
                                     const QuadratureRule& rule)
 {

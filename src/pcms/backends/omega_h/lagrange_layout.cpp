@@ -167,7 +167,7 @@ GlobalIDView<HostMemorySpace> OmegaHLagrangeLayout::GetGidsHost() const
                                        owned_gids_host_.size());
 }
 
-GlobalIDView<DeviceMemorySpace> OmegaHLagrangeLayout::GetGids() const
+GlobalIDView<DeviceMemorySpace> OmegaHLagrangeLayout::GetGidsWithGhosts() const
 {
   return GlobalIDView<DeviceMemorySpace>(gids_.data(), gids_.size());
 }
@@ -210,7 +210,7 @@ void OmegaHLagrangeLayout::BuildOwnedViews()
 
 bool OmegaHLagrangeLayout::IsDistributed() const
 {
-  return true;
+  return mesh_.comm()->size() > 1;
 }
 
 EntOffsetsArray OmegaHLagrangeLayout::GetEntOffsets() const

@@ -1,6 +1,7 @@
 #ifndef PCMS_BACKENDS_OMEGA_H_FIELD_DATA_HPP
 #define PCMS_BACKENDS_OMEGA_H_FIELD_DATA_HPP
 
+#include "pcms/field/detail/field_data_ops.hpp"
 #include "pcms/field/field_data.hpp"
 #include "pcms/field/field_layout.hpp"
 #include "pcms/backends/omega_h/omega_h_geometry.hpp"
@@ -8,10 +9,12 @@
 #include "pcms/utility/memory_spaces.hpp"
 #include "pcms/utility/omega_h_array_utils.hpp"
 #include <Omega_h_array.hpp>
+#include <Omega_h_comm.hpp>
 #include <Omega_h_mesh.hpp>
 #include <Kokkos_Core.hpp>
 #include <atomic>
 #include <memory>
+#include <span>
 #include <string>
 
 namespace pcms::omega_h
@@ -125,20 +128,92 @@ public:
   void SetValues(Rank2View<const T, DeviceMemorySpace> values) override
   {
     pcms::detail::CopyDeviceRank2ViewToDeviceView(device_data_, values);
-    mesh_->set_tag(tag_dim_, tag_name_,
-                   detail::OwnedValuesAsTag<T, tag_value_type>(
-                     GetValues(), layout_->GetOwnedIndices(),
-                     mesh_->nents(tag_dim_), layout_->GetNumComponents()));
+    SetTagFromOwned();
   }
 
+protected:
+  void LinearSum(T a, const FieldData<T>& x, T b,
+                 const FieldData<T>& y) override
+  {
+    pcms::detail::LinearSumValues(device_data_, a, Data(x), b, Data(y));
+    SetTagFromOwned();
+  }
+
+  void Scale(T c, const FieldData<T>& x) override
+  {
+    pcms::detail::ScaleValues(device_data_, c, Data(x));
+    SetTagFromOwned();
+  }
+
+  void Const(T c) override
+  {
+    pcms::detail::ConstValues(device_data_, c);
+    SetTagFromOwned();
+  }
+
+  void Div(const FieldData<T>& x, const FieldData<T>& y) override
+  {
+    pcms::detail::DivValues(device_data_, Data(x), Data(y));
+    SetTagFromOwned();
+  }
+
+  [[nodiscard]] T DotProdLocal(const FieldData<T>& x) const override
+  {
+    return pcms::detail::DotProdValues(device_data_, Data(x));
+  }
+
+  [[nodiscard]] T MinLocal() const override
+  {
+    return pcms::detail::MinValues(device_data_);
+  }
+
+  [[nodiscard]] T MaxNormLocal() const override
+  {
+    return pcms::detail::MaxNormValues(device_data_);
+  }
+
+  // Sums over the mesh's ranks. Collective.
+  void SumOverRanks(std::span<T> values) const override
+  {
+    for (auto& value : values) {
+      value = static_cast<T>(mesh_->comm()->allreduce(
+        static_cast<tag_value_type>(value), OMEGA_H_SUM));
+    }
+  }
+
+  // Maximizes over the mesh's ranks. Collective.
+  void MaxOverRanks(std::span<T> values) const override
+  {
+    for (auto& value : values) {
+      value = static_cast<T>(mesh_->comm()->allreduce(
+        static_cast<tag_value_type>(value), OMEGA_H_MAX));
+    }
+  }
+
+public:
   // Fills the tag's ghost entries with their owners' values. Collective.
   void Synchronize() override { mesh_->sync_tag(tag_dim_, tag_name_); }
 
-  // Sets the values from one entry per entity and component, of which only
-  // the owners' entries are read, and fills the ghosts. Collective.
-  void SetFromOwners(Omega_h::Read<tag_value_type> values)
+  // Sets the values to `values` + beta times the current ones, from one entry
+  // per entity and component, of which only the owners' entries are read, and
+  // fills the ghosts. beta == 0 does not read the current values. Collective.
+  void SetFromOwners(Omega_h::Read<tag_value_type> values, T beta = T{})
   {
     const int nc = layout_->GetNumComponents();
+    if (beta != T{}) {
+      const auto current =
+        mesh_->get_array<tag_value_type>(tag_dim_, tag_name_);
+      Omega_h::Write<tag_value_type> combined(values.size(), "set_from_owners");
+      const auto b = static_cast<tag_value_type>(beta);
+      Kokkos::parallel_for(
+        "pcms::OmegaHFieldData::SetFromOwners::Combine",
+        Kokkos::RangePolicy<DeviceMemorySpace::execution_space>(0,
+                                                                values.size()),
+        KOKKOS_LAMBDA(const LO i) {
+          combined[i] = values[i] + b * current[i];
+        });
+      values = Omega_h::Read<tag_value_type>(combined);
+    }
     const auto synced = mesh_->sync_array(tag_dim_, values, nc);
     mesh_->set_tag(tag_dim_, tag_name_, synced);
     const auto owned = layout_->GetOwnedIndices();
@@ -165,6 +240,20 @@ public:
   }
 
 private:
+  static const Kokkos::View<T**, DeviceMemorySpace>& Data(const FieldData<T>& x)
+  {
+    return pcms::detail::OperandOfKind<OmegaHFieldData>(x).device_data_;
+  }
+
+  // Replaces the tag with the owned values (ghosts zero, local to this rank).
+  void SetTagFromOwned()
+  {
+    mesh_->set_tag(tag_dim_, tag_name_,
+                   detail::OwnedValuesAsTag<T, tag_value_type>(
+                     GetValues(), layout_->GetOwnedIndices(),
+                     mesh_->nents(tag_dim_), layout_->GetNumComponents()));
+  }
+
   std::shared_ptr<const FieldLayout> layout_;
   ValueBasis basis_;
   Kokkos::View<T**, DeviceMemorySpace> device_data_;

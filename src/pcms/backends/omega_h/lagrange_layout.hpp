@@ -38,7 +38,8 @@ public:
 
   Rank1View<const bool, HostMemorySpace> GetOwnedHost() const override;
   GlobalIDView<HostMemorySpace> GetGidsHost() const override;
-  GlobalIDView<DeviceMemorySpace> GetGids() const;
+  /// @return the global ids of the DOF holders with ghosts, in mesh order
+  [[nodiscard]] GlobalIDView<DeviceMemorySpace> GetGidsWithGhosts() const;
   CoordinateView<DeviceMemorySpace> GetDOFHolderCoordinates() const override;
   EntOffsetsArray GetEntOffsets() const override;
   Kokkos::View<const LO*, HostMemorySpace> GetOwnedIndicesHost() const override;

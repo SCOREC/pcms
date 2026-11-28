@@ -16,14 +16,12 @@
 
 namespace pcms::transfer
 {
-// Creates a sequential AIJ matrix using the Kokkos backend when available,
-// falling back to standard sequential AIJ on CPU-only builds.
+// Creates a sequential AIJ matrix: Kokkos AIJ on GPU builds, AIJ otherwise.
 // Pass nz=0 and nnz=nullptr when using COO preallocation afterwards.
 PetscErrorCode createSeqAIJMat(MPI_Comm comm, PetscInt m, PetscInt n,
                                PetscInt nz, const PetscInt nnz[], Mat* mat);
 
-// Creates a sequential vector using the Kokkos backend when available,
-// falling back to standard sequential vector on CPU-only builds.
+// Creates a sequential vector: a Kokkos vector on GPU builds, Seq otherwise.
 PetscErrorCode createSeqVec(MPI_Comm comm, PetscInt n, Vec* vec);
 } // namespace pcms::transfer
 

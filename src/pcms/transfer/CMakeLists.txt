@@ -40,6 +40,9 @@ if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
       omega_h_control_variate_projection.hpp
       petsc_utils.hpp
       omega_h_intersection_quadrature.hpp
+      forms.hpp
+      linear_solver.hpp
+      petsc_solver.hpp
       omega_h_form_integrator_utils.hpp)
   list(APPEND PCMS_FIELD_TRANSFER_SOURCES
       conservative_projection_solver.cpp
@@ -49,6 +52,9 @@ if(PCMS_ENABLE_CONSERVATIVE_PROJECTION)
       omega_h_mc_rhs_integrator.cpp
       omega_h_control_variate_projection.cpp
       omega_h_intersection_quadrature.cpp
+      forms.cpp
+      linear_solver.cpp
+      petsc_solver.cpp
       petsc_utils.cpp)
 endif()
 

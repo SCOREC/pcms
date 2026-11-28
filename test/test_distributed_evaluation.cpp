@@ -14,9 +14,11 @@
 #include "pcms/transfer/omega_h_intersection_quadrature.hpp"
 #endif
 
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <map>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -237,9 +239,9 @@ void CheckEvaluate(const pcms::FunctionSpace& space,
 }
 
 // The adjoint identity summed over the ranks, the overwrite of a second
-// EvaluateTranspose, and the matrix against Evaluate.
-void CheckTransposeAndMatrix(const pcms::FunctionSpace& space,
-                             const Points& bound, const std::string& name)
+// EvaluateTranspose, and the accumulation with beta = 1.
+void CheckTranspose(const pcms::FunctionSpace& space, const Points& bound,
+                    const std::string& name)
 {
   const auto& layout = *space.GetLayout();
   const int nc = layout.GetNumComponents();
@@ -311,44 +313,18 @@ void CheckTransposeAndMatrix(const pcms::FunctionSpace& space,
     Check(differ == 0, name + ": a second EvaluateTranspose overwrites");
   }
 
-  // E x from the CSR rows, with x looked up by global id
-  const auto matrix = evaluator->GetMatrix();
-  const auto offsets = Kokkos::create_mirror_view_and_copy(
-    pcms::HostMemorySpace{}, matrix.row_offsets);
-  const auto columns = Kokkos::create_mirror_view_and_copy(
-    pcms::HostMemorySpace{}, matrix.columns);
-  const auto entries =
-    Kokkos::create_mirror_view_and_copy(pcms::HostMemorySpace{}, matrix.values);
-  Check(offsets.extent(0) == static_cast<size_t>(n_points) + 1,
-        name + ": one CSR row per point");
-  int wrong = 0;
-  for (LO p = 0; p + 1 < static_cast<LO>(offsets.extent(0)); ++p) {
-    for (int c = 0; c < nc; ++c) {
-      Real sum = 0;
-      for (LO k = offsets(p); k < offsets(p + 1); ++k) {
-        sum += entries(k) * DofOfGid(columns(k), c);
-      }
-      if (std::abs(sum - e_x(p, c)) > 1e-13) {
-        if (wrong < 3) {
-          std::fprintf(stderr,
-                       "[rank %d] %s: point %d of %d comp %d: rows %.17g, "
-                       "Evaluate %.17g\n",
-                       Rank(), name.c_str(), p, n_points, c, sum, e_x(p, c));
-          for (LO k = offsets(p); k < offsets(p + 1); ++k) {
-            std::fprintf(stderr, "    k %d gid %lld weight %.17g value %.17g\n",
-                         k, static_cast<long long>(columns(k)), entries(k),
-                         DofOfGid(columns(k), c));
-          }
-        }
-        ++wrong;
+  pcms::detail::EvaluateTranspose(*evaluator, y_view, functional,
+                                  pcms::Real(1));
+  {
+    const auto twice = functional.GetDOFHolderDataHost().GetValues();
+    int differ = 0;
+    for (LO h = 0; h < n_owned; ++h) {
+      for (int c = 0; c < nc; ++c) {
+        differ += std::abs(twice(h, c) - 2 * once(h, c)) > 1e-14;
       }
     }
+    Check(differ == 0, name + ": beta = 1 adds E^T y to the functional");
   }
-  if (wrong > 0) {
-    std::fprintf(stderr, "[rank %d] %s: %d of %d values differ\n", Rank(),
-                 name.c_str(), wrong, n_points * nc);
-  }
-  Check(wrong == 0, name + ": the CSR rows times x equal Evaluate");
 }
 
 // A quadrature sums to the domain measure over the ranks and, given its
@@ -380,6 +356,20 @@ void CheckQuadrature(const pcms::Quadrature& quadrature, Omega_h::Mesh& mesh,
 }
 
 // The points per element of the Gauss rule of `order` on a serial mesh.
+// The geometry's reductions are over the mesh's ranks.
+void CheckReductions(const pcms::Geometry& geometry, const std::string& name)
+{
+  const Real size = SumOverRanks(Real(1));
+  const auto rank = static_cast<Real>(Rank());
+  std::array<Real, 2> sums{1.0, rank};
+  pcms::detail::SumOverRanks(geometry, std::span<Real>(sums));
+  Check(sums[0] == size && sums[1] == size * (size - 1) / 2,
+        name + ": SumOverRanks");
+  std::array<Real, 1> max{rank};
+  pcms::detail::MaxOverRanks(geometry, std::span<Real>(max));
+  Check(max[0] == size - 1, name + ": MaxOverRanks");
+}
+
 int PointsPerElement(Omega_h::Library& library, int dim, int order)
 {
   auto mesh =
@@ -406,6 +396,7 @@ void RunCases(Omega_h::Library& library, int dim, bool ghosted)
   }
   auto geometry =
     pcms::omega_h::CreateGeometry(mesh, pcms::detail::DeferredCartesian());
+  CheckReductions(*geometry, Case(ghosted, dim, 1, 1));
   for (int order : {0, 1}) {
     const auto points = LocalPoints(mesh, order);
     const auto bound = Bind(*geometry, points, dim);
@@ -415,7 +406,7 @@ void RunCases(Omega_h::Library& library, int dim, bool ghosted)
         geometry, order, nc,
         pcms::LagrangeOptions{.backend = pcms::LagrangeBackend::OmegaH});
       CheckEvaluate(*space, points, bound, dim, name);
-      CheckTransposeAndMatrix(*space, bound, name);
+      CheckTranspose(*space, bound, name);
       if (nc == 1) {
         CheckQuadrature(space->GetQuadrature(), mesh,
                         PointsPerElement(library, dim, std::max(1, 2 * order)),

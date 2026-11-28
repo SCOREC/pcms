@@ -182,8 +182,12 @@ public:
     const int stride = stride_;
     const auto holders = holders_;
     const auto weights = weights_;
-    Omega_h::Write<TagValue> sums(layout_->GetNumDofHolderWithGhosts() * n_comp,
-                                  0, "transpose_sums");
+    const int size = layout_->GetNumDofHolderWithGhosts() * n_comp;
+    if (transpose_sums_.size() != size) {
+      transpose_sums_ = Omega_h::Write<TagValue>(size, "transpose_sums");
+    }
+    Omega_h::fill(transpose_sums_, TagValue(0));
+    const auto sums = transpose_sums_;
     pcms::detail::ForEach(
       "OmegaHLagrangePointEvaluator::EvaluateTranspose",
       static_cast<LO>(found.extent(0)), KOKKOS_LAMBDA(const LO k) {
@@ -222,6 +226,8 @@ private:
   Kokkos::View<LO*, DeviceMemorySpace> holders_;
   Kokkos::View<Real*, DeviceMemorySpace> weights_;
   pcms::detail::PointRows rows_;
+  // the scatter target of EvaluateTranspose, reused across calls
+  mutable Omega_h::Write<utility::OmegaHValue_t<T>> transpose_sums_;
 };
 
 // ---------------------------------------------------------------------------

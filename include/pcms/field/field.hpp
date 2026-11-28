@@ -158,9 +158,12 @@ protected:
         Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_staged"),
         values.extent(0), values.extent(1));
       detail::CopyDeviceRank2ViewToRank2View(MakeRank2View(staged), values);
-      host_values_ = Kokkos::View<T**, HostMemorySpace>(
-        Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_host"),
-        values.extent(0), values.extent(1));
+      if (host_values_.extent(0) != values.extent(0) ||
+          host_values_.extent(1) != values.extent(1)) {
+        host_values_ = Kokkos::View<T**, HostMemorySpace>(
+          Kokkos::view_alloc(Kokkos::WithoutInitializing, "owned_values_host"),
+          values.extent(0), values.extent(1));
+      }
       DeepCopyMismatchLayouts(host_values_, staged);
       return MakeConstRank2View(host_values_);
     }
@@ -190,7 +193,7 @@ private:
   std::shared_ptr<const FieldLayout> layout_;
   std::unique_ptr<FieldData<T>> data_;
   // Host copy backing GetDOFHolderDataHost when device memory is not host
-  // memory.
+  // memory; reused, so earlier host views stay valid.
   mutable Kokkos::View<T**, HostMemorySpace> host_values_;
 };
 

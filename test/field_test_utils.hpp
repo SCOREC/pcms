@@ -304,6 +304,17 @@ inline void RequireBoundedBy(const Field<Real>& target,
   REQUIRE(tgt_range.second <= src_range.second + tol);
 }
 
+/// @return `host` copied to the device in the device's own layout
+template <typename T, typename... Properties>
+Kokkos::View<std::remove_const_t<T>**, DeviceMemorySpace> ToDevice(
+  const Kokkos::View<T**, Properties...>& host)
+{
+  Kokkos::View<std::remove_const_t<T>**, DeviceMemorySpace> device(
+    "device", host.extent(0), host.extent(1));
+  DeepCopyMismatchLayouts(device, host);
+  return device;
+}
+
 // Copy coordinates from device memory to a host view.
 // This handles potential layout mismatches between host and device memory
 // spaces.
